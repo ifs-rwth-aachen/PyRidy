@@ -1,0 +1,31 @@
+[tool.poetry]
+name = "pyridy"
+version = "0.1.1"
+description = "Support library for measurements made with the Ridy Android App"
+authors = ["Philipp Simon Leibner <philip.leibner@ifs.rwth-aachen.de>"]
+license = "Apache-2.0"
+readme = "README.md"
+
+classifiers = [
+    "Topic :: Scientific/Engineering :: Information Analysis",
+    "Intended Audience :: Science/Research"
+]
+
+keywords = ["signal processing", "ridy", "android"]
+
+include = [
+    "LICENSE",
+]
+
+[tool.poetry.dependencies]
+python = "^3.7.1"
+pytest = "^6.2.3"
+numpy = "^1.20.2"
+requests = "^2.25.1"
+pandas = "^1.2.4"
+
+[tool.poetry.dev-dependencies]
+
+[build-system]
+requires = ["poetry>=0.12"]
+build-backend = "poetry.masonry.api"
