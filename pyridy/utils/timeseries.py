@@ -12,6 +12,11 @@ class TimeSeries(ABC):
     def to_df(self) -> pd.DataFrame:
         return pd.DataFrame(self.__dict__)
 
+    def __repr__(self):
+        duration = (self.time[-1] - self.time[0]) * 1e-9 if not np.array_equal(self.time, np.array(None)) and len(self.time) > 0 else 0
+        sample_rate = len(self.time) / duration if not np.array_equal(self.time, np.array(None)) and duration > 0 else 0.0
+        return "Length: %d, Duration: %.3f s, Mean Samplerate: %.3f Hz" % (len(self.time), duration, sample_rate)
+
 
 class AccelerationSeries(TimeSeries):
     def __init__(self, time: Union[list, np.ndarray] = None,
