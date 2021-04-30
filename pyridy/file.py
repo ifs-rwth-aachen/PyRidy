@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 import sqlite3
 from sqlite3 import Connection
@@ -11,6 +12,8 @@ from pyridy.utils import Sensor, AccelerationSeries, LinearAccelerationSeries, M
     GyroSeries, RotationSeries, GPSSeries, PressureSeries, HumiditySeries, TemperatureSeries, WzSeries, LightSeries, \
     SubjectiveComfortSeries
 from pyridy.utils.device import Device
+
+logger = logging.getLogger(__name__)
 
 
 class RDYFile:
@@ -57,6 +60,8 @@ class RDYFile:
         pass
 
     def load_file(self, path: str):
+        logger.info("Loading file: %s" % path)
+
         _, self.extension = os.path.splitext(path)
         _, self.filename = os.path.split(path)
 
@@ -100,43 +105,132 @@ class RDYFile:
 
             try:
                 info = dict(pd.read_sql_query("SELECT * from measurement_information_table", self.db_con))
+            except DatabaseError as e:
+                logger.error("DatabaseError occurred when accessing measurement_information_table, file: %s" % self.filename)
+                try:
+                    info = dict(pd.read_sql_query("SELECT * from measurment_information_table", self.db_con))  # Older files can contain wrong table name
+                except DatabaseError:
+                    info = None
+
+            try:
+                sensor_df = pd.read_sql_query("SELECT * from sensor_descriptions_table", self.db_con)
+                for _, row in sensor_df.iterrows():
+                    self.sensors.append(Sensor(**dict(row)))
             except DatabaseError:
-                info = dict(pd.read_sql_query("SELECT * from measurment_information_table", self.db_con))  # Older files can contain wrong table name
+                logger.error("DatabaseError occurred when accessing sensor_descriptions_table, file: %s" % self.filename)
 
-            sensor_df = pd.read_sql_query("SELECT * from sensor_descriptions_table", self.db_con)
-            for _, row in sensor_df.iterrows():
-                self.sensors.append(Sensor(**dict(row)))
-                pass
-
-            self.device = Device(**dict(pd.read_sql_query("SELECT * from device_information_table", self.db_con)))
+            try:
+                device_df = pd.read_sql_query("SELECT * from device_information_table", self.db_con)
+                self.device = Device(**dict(device_df))
+            except DatabaseError:
+                logger.error("DatabaseError occurred when accessing device_information_table, file: %s" % self.filename)
+                self.device = Device()
 
             # Info
-            self.rdy_format_version = info['rdy_format_version'][0]
-            self.rdy_info_name = info['rdy_info_name'][0]
-            self.rdy_info_sex = info['rdy_info_sex'][0]
-            self.rdy_info_age = info['rdy_info_age'][0]
-            self.rdy_info_height = info['rdy_info_height'][0]
-            self.rdy_info_weight = info['rdy_info_weight'][0]
+            if info is not None:
+                self.rdy_format_version = info['rdy_format_version'][0]
+                self.rdy_info_name = info['rdy_info_name'][0]
+                self.rdy_info_sex = info['rdy_info_sex'][0]
+                self.rdy_info_age = info['rdy_info_age'][0]
+                self.rdy_info_height = info['rdy_info_height'][0]
+                self.rdy_info_weight = info['rdy_info_weight'][0]
 
-            self.t0 = info['t0'][0]
-            self.timestamp_when_started = info['timestamp_when_started'][0]
-            self.timestamp_when_stopped = info['timestamp_when_stopped'][0]
+                self.t0 = info['t0'][0]
+                self.timestamp_when_started = info['timestamp_when_started'][0]
+                self.timestamp_when_stopped = info['timestamp_when_stopped'][0]
 
             # Measurements
-            self.acc_series = AccelerationSeries(**dict(pd.read_sql_query("SELECT * from acc_measurements_table", self.db_con)))
-            self.lin_acc_series = LinearAccelerationSeries(**dict(pd.read_sql_query("SELECT * from lin_acc_measurements_table", self.db_con)))
-            self.mag_series = MagnetometerSeries(**dict(pd.read_sql_query("SELECT * from mag_measurements_table", self.db_con)))
-            self.orient_series = OrientationSeries(**dict(pd.read_sql_query("SELECT * from orient_measurements_table", self.db_con)))
-            self.gyro_series = GyroSeries(**dict(pd.read_sql_query("SELECT * from gyro_measurements_table", self.db_con)))
-            self.rot_series = RotationSeries(**dict(pd.read_sql_query("SELECT * from rot_measurements_table", self.db_con)))
-            self.gps_series = GPSSeries(**dict(pd.read_sql_query("SELECT * from gps_measurements_table", self.db_con)))
-            self.pressure_series = PressureSeries(**dict(pd.read_sql_query("SELECT * from pressure_measurements_table", self.db_con)))
-            self.temperature_series = TemperatureSeries(**dict(pd.read_sql_query("SELECT * from temperature_measurements_table", self.db_con)))
-            self.humidity_series = HumiditySeries(**dict(pd.read_sql_query("SELECT * from humidity_measurements_table", self.db_con)))
-            self.light_series = LightSeries(**dict(pd.read_sql_query("SELECT * from light_measurements_table", self.db_con)))
-            self.wz_series = WzSeries(**dict(pd.read_sql_query("SELECT * from wz_measurements_table", self.db_con)))
-            self.subjective_comfort_series = SubjectiveComfortSeries(**dict(pd.read_sql_query("SELECT * from subjective_comfort_measurements_table", self.db_con)))
-            pass
+            try:
+                acc_df = pd.read_sql_query("SELECT * from acc_measurements_table", self.db_con)
+                self.acc_series = AccelerationSeries(**dict(acc_df))
+            except DatabaseError:
+                logger.error("DatabaseError occurred when accessing acc_measurements_table, file: %s" % self.filename)
+                self.acc_series = AccelerationSeries()
+
+            try:
+                lin_acc_df = pd.read_sql_query("SELECT * from lin_acc_measurements_table", self.db_con)
+                self.lin_acc_series = LinearAccelerationSeries(**dict(lin_acc_df))
+            except DatabaseError:
+                logger.error("DatabaseError occurred when accessing lin_acc_measurements_table, file: %s" % self.filename)
+                self.lin_acc_series = LinearAccelerationSeries()
+
+            try:
+                mag_df = pd.read_sql_query("SELECT * from mag_measurements_table", self.db_con)
+                self.mag_series = MagnetometerSeries(**dict(mag_df))
+            except DatabaseError:
+                logger.error("DatabaseError occurred when accessing mag_measurements_table, file: %s" % self.filename)
+                self.mag_series = MagnetometerSeries()
+
+            try:
+                orient_df = pd.read_sql_query("SELECT * from orient_measurements_table", self.db_con)
+                self.orient_series = OrientationSeries(**dict(orient_df))
+            except DatabaseError:
+                logger.error("DatabaseError occurred when accessing orient_measurements_table, file: %s" % self.filename)
+                self.orient_series = OrientationSeries()
+
+            try:
+                gyro_df = pd.read_sql_query("SELECT * from gyro_measurements_table", self.db_con)
+                self.gyro_series = GyroSeries(**dict(gyro_df))
+            except DatabaseError:
+                logger.error("DatabaseError occurred when accessing gyro_measurements_table, file: %s" % self.filename)
+                self.gyro_series = GyroSeries()
+
+            try:
+                rot_df = pd.read_sql_query("SELECT * from rot_measurements_table", self.db_con)
+                self.rot_series = RotationSeries(**dict(rot_df))
+            except DatabaseError:
+                logger.error("DatabaseError occurred when accessing rot_measurements_table, file: %s" % self.filename)
+                self.rot_series = RotationSeries()
+
+            try:
+                gps_df = pd.read_sql_query("SELECT * from gps_measurements_table", self.db_con)
+                self.gps_series = GPSSeries(**dict(gps_df))
+            except DatabaseError:
+                logger.error("DatabaseError occurred when accessing gps_measurements_table, file: %s" % self.filename)
+                self.gps_series = GPSSeries()
+
+            try:
+                pressure_df = pd.read_sql_query("SELECT * from pressure_measurements_table", self.db_con)
+                self.pressure_series = PressureSeries(**dict(pressure_df))
+            except DatabaseError:
+                logger.error("DatabaseError occurred when accessing pressure_measurements_table, file: %s" % self.filename)
+                self.pressure_series = PressureSeries()
+
+            try:
+                temperature_df = pd.read_sql_query("SELECT * from temperature_measurements_table", self.db_con)
+                self.temperature_series = TemperatureSeries(**dict(temperature_df))
+            except DatabaseError:
+                logger.error("DatabaseError occurred when accessing temperature_measurements_table, file: %s" % self.filename)
+                self.temperature_series = TemperatureSeries()
+
+            try:
+                humidity_df = pd.read_sql_query("SELECT * from humidity_measurements_table", self.db_con)
+                self.humidity_series = HumiditySeries(**dict(humidity_df))
+            except DatabaseError:
+                logger.error("DatabaseError occurred when accessing humidity_measurements_table, file: %s" % self.filename)
+                self.humidity_series = HumiditySeries()
+
+            try:
+                light_df = pd.read_sql_query("SELECT * from light_measurements_table", self.db_con)
+                self.light_series = LightSeries(**dict(light_df))
+            except DatabaseError:
+                logger.error("DatabaseError occurred when accessing light_measurements_table, file: %s" % self.filename)
+                self.light_series = LightSeries()
+
+            try:
+                wz_df = pd.read_sql_query("SELECT * from wz_measurements_table", self.db_con)
+                self.wz_series = WzSeries(**dict(wz_df))
+            except DatabaseError:
+                logger.error("DatabaseError occurred when accessing wz_measurements_table, file: %s" % self.filename)
+                self.wz_series = WzSeries()
+
+            try:
+                subjective_comfort_df = pd.read_sql_query("SELECT * from subjective_comfort_measurements_table",
+                                                          self.db_con)
+                self.subjective_comfort_series = SubjectiveComfortSeries(**dict(subjective_comfort_df))
+            except DatabaseError:
+                logger.error("DatabaseError occurred when accessing subjective_comfort_measurements_table, file: %s" % self.filename)
+                self.subjective_comfort_series = SubjectiveComfortSeries()
+
         else:
             raise ValueError("File extension %s is not supported" % self.extension)
-

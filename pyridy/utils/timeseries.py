@@ -14,10 +14,10 @@ class TimeSeries(ABC):
 
 
 class AccelerationSeries(TimeSeries):
-    def __init__(self, time: Union[list, np.ndarray],
-                 acc_x: Union[list, np.ndarray],
-                 acc_y: Union[list, np.ndarray],
-                 acc_z: Union[list, np.ndarray]):
+    def __init__(self, time: Union[list, np.ndarray] = None,
+                 acc_x: Union[list, np.ndarray] = None,
+                 acc_y: Union[list, np.ndarray] = None,
+                 acc_z: Union[list, np.ndarray] = None):
         super(AccelerationSeries, self).__init__(time=time)
         self.acc_x: np.ndarray = np.array(acc_x)
         self.acc_y: np.ndarray = np.array(acc_y)
@@ -25,10 +25,10 @@ class AccelerationSeries(TimeSeries):
 
 
 class LinearAccelerationSeries(TimeSeries):
-    def __init__(self, time: Union[list, np.ndarray],
-                 lin_acc_x: Union[list, np.ndarray],
-                 lin_acc_y: Union[list, np.ndarray],
-                 lin_acc_z: Union[list, np.ndarray]):
+    def __init__(self, time: Union[list, np.ndarray] = None,
+                 lin_acc_x: Union[list, np.ndarray] = None,
+                 lin_acc_y: Union[list, np.ndarray] = None,
+                 lin_acc_z: Union[list, np.ndarray] = None):
         super(LinearAccelerationSeries, self).__init__(time=time)
         self.lin_acc_x: np.ndarray = np.array(lin_acc_x)
         self.lin_acc_y: np.ndarray = np.array(lin_acc_y)
@@ -36,10 +36,10 @@ class LinearAccelerationSeries(TimeSeries):
 
 
 class MagnetometerSeries(TimeSeries):
-    def __init__(self, time: Union[list, np.ndarray],
-                 mag_x: Union[list, np.ndarray],
-                 mag_y: Union[list, np.ndarray],
-                 mag_z: Union[list, np.ndarray]):
+    def __init__(self, time: Union[list, np.ndarray] = None,
+                 mag_x: Union[list, np.ndarray] = None,
+                 mag_y: Union[list, np.ndarray] = None,
+                 mag_z: Union[list, np.ndarray] = None):
         super(MagnetometerSeries, self).__init__(time=time)
         self.mag_x: np.ndarray = np.array(mag_x)
         self.mag_y: np.ndarray = np.array(mag_y)
@@ -47,10 +47,10 @@ class MagnetometerSeries(TimeSeries):
 
 
 class OrientationSeries(TimeSeries):
-    def __init__(self, time: Union[list, np.ndarray],
-                 azimuth: Union[list, np.ndarray],
-                 pitch: Union[list, np.ndarray],
-                 roll: Union[list, np.ndarray]):
+    def __init__(self, time: Union[list, np.ndarray] = None,
+                 azimuth: Union[list, np.ndarray] = None,
+                 pitch: Union[list, np.ndarray] = None,
+                 roll: Union[list, np.ndarray] = None):
         super(OrientationSeries, self).__init__(time=time)
         self.azimuth: np.ndarray = np.array(azimuth)
         self.pitch: np.ndarray = np.array(pitch)
@@ -58,10 +58,10 @@ class OrientationSeries(TimeSeries):
 
 
 class GyroSeries(TimeSeries):
-    def __init__(self, time: Union[list, np.ndarray],
-                 w_x: Union[list, np.ndarray],
-                 w_y: Union[list, np.ndarray],
-                 w_z: Union[list, np.ndarray]):
+    def __init__(self, time: Union[list, np.ndarray] = None,
+                 w_x: Union[list, np.ndarray] = None,
+                 w_y: Union[list, np.ndarray] = None,
+                 w_z: Union[list, np.ndarray] = None):
         super(GyroSeries, self).__init__(time=time)
         self.w_x: np.ndarray = np.array(w_x)
         self.w_y: np.ndarray = np.array(w_y)
@@ -69,12 +69,12 @@ class GyroSeries(TimeSeries):
 
 
 class RotationSeries(TimeSeries):
-    def __init__(self, time: Union[list, np.ndarray],
-                 rot_x: Union[list, np.ndarray],
-                 rot_y: Union[list, np.ndarray],
-                 rot_z: Union[list, np.ndarray],
-                 cos_phi: Union[list, np.ndarray],
-                 heading_acc: Union[list, np.ndarray]):
+    def __init__(self, time: Union[list, np.ndarray] = None,
+                 rot_x: Union[list, np.ndarray] = None,
+                 rot_y: Union[list, np.ndarray] = None,
+                 rot_z: Union[list, np.ndarray] = None,
+                 cos_phi: Union[list, np.ndarray] = None,
+                 heading_acc: Union[list, np.ndarray] = None):
         super(RotationSeries, self).__init__(time=time)
         self.rot_x: np.ndarray = np.array(rot_x)
         self.rot_y: np.ndarray = np.array(rot_y)
@@ -84,17 +84,17 @@ class RotationSeries(TimeSeries):
 
 
 class GPSSeries(TimeSeries):
-    def __init__(self, time: Union[list, np.ndarray],
-                 lat: Union[list, np.ndarray],
-                 lon: Union[list, np.ndarray],
-                 altitude: Union[list, np.ndarray],
-                 bearing: Union[list, np.ndarray],
-                 speed: Union[list, np.ndarray],
-                 hor_acc: Union[list, np.ndarray],
-                 ver_acc: Union[list, np.ndarray],
-                 bear_acc: Union[list, np.ndarray],
-                 speed_acc: Union[list, np.ndarray],
-                 utc_time: Union[list, np.ndarray]):
+    def __init__(self, time: Union[list, np.ndarray] = None,
+                 lat: Union[list, np.ndarray] = None,
+                 lon: Union[list, np.ndarray] = None,
+                 altitude: Union[list, np.ndarray] = None,
+                 bearing: Union[list, np.ndarray] = None,
+                 speed: Union[list, np.ndarray] = None,
+                 hor_acc: Union[list, np.ndarray] = None,
+                 ver_acc: Union[list, np.ndarray] = None,
+                 bear_acc: Union[list, np.ndarray] = None,
+                 speed_acc: Union[list, np.ndarray] = None,
+                 utc_time: Union[list, np.ndarray] = None):
         super(GPSSeries, self).__init__(time=time)
         self.lat: np.ndarray = np.array(lat)
         self.lon: np.ndarray = np.array(lon)
@@ -109,38 +109,38 @@ class GPSSeries(TimeSeries):
 
 
 class PressureSeries(TimeSeries):
-    def __init__(self, time: Union[list, np.ndarray],
-                 pressure: Union[list, np.ndarray]):
+    def __init__(self, time: Union[list, np.ndarray] = None,
+                 pressure: Union[list, np.ndarray] = None):
         super(PressureSeries, self).__init__(time=time)
         self.pressure: np.ndarray = np.array(pressure)
 
 
 class TemperatureSeries(TimeSeries):
-    def __init__(self, time: Union[list, np.ndarray],
-                 temperature: Union[list, np.ndarray]):
+    def __init__(self, time: Union[list, np.ndarray] = None,
+                 temperature: Union[list, np.ndarray] = None):
         super(TemperatureSeries, self).__init__(time=time)
         self.temperature: np.ndarray = np.array(temperature)
 
 
 class HumiditySeries(TimeSeries):
-    def __init__(self, time: Union[list, np.ndarray],
-                 humidity: Union[list, np.ndarray]):
+    def __init__(self, time: Union[list, np.ndarray] = None,
+                 humidity: Union[list, np.ndarray] = None):
         super(HumiditySeries, self).__init__(time=time)
         self.humidity: np.ndarray = np.array(humidity)
 
 
 class LightSeries(TimeSeries):
-    def __init__(self, time: Union[list, np.ndarray],
-                 light: Union[list, np.ndarray]):
+    def __init__(self, time: Union[list, np.ndarray] = None,
+                 light: Union[list, np.ndarray] = None):
         super(LightSeries, self).__init__(time=time)
         self.light: np.ndarray = np.array(light)
 
 
 class WzSeries(TimeSeries):
-    def __init__(self, time: Union[list, np.ndarray],
-                 wz_x: Union[list, np.ndarray],
-                 wz_y: Union[list, np.ndarray],
-                 wz_z: Union[list, np.ndarray]):
+    def __init__(self, time: Union[list, np.ndarray] = None,
+                 wz_x: Union[list, np.ndarray] = None,
+                 wz_y: Union[list, np.ndarray] = None,
+                 wz_z: Union[list, np.ndarray] = None):
         super(WzSeries, self).__init__(time=time)
         self.wz_x: np.ndarray = np.array(wz_x)
         self.wz_y: np.ndarray = np.array(wz_y)
@@ -148,7 +148,7 @@ class WzSeries(TimeSeries):
 
 
 class SubjectiveComfortSeries(TimeSeries):
-    def __init__(self, time: Union[list, np.ndarray],
-                 comfort: Union[list, np.ndarray]):
+    def __init__(self, time: Union[list, np.ndarray] = None,
+                 comfort: Union[list, np.ndarray] = None):
         super(SubjectiveComfortSeries, self).__init__(time=time)
         self.comfort: np.ndarray = np.array(comfort)
