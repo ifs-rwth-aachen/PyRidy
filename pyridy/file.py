@@ -5,6 +5,7 @@ from sqlite3 import Connection
 from typing import Optional, List
 
 import pandas as pd
+from pandas.io.sql import DatabaseError
 
 from pyridy.utils import Sensor, AccelerationSeries, LinearAccelerationSeries, MagnetometerSeries, OrientationSeries, \
     GyroSeries, RotationSeries, GPSSeries, PressureSeries, HumiditySeries, TemperatureSeries, WzSeries, LightSeries, \
@@ -97,8 +98,29 @@ class RDYFile:
         elif self.extension == ".sqlite":
             self.db_con = sqlite3.connect(path)
 
-            info = dict(pd.read_sql_query("SELECT * from measurement_information_table", self.db_con))
-            sensors = dict(pd.read_sql_query("SELECT * from sensor_descriptions_table", self.db_con))
+            try:
+                info = dict(pd.read_sql_query("SELECT * from measurement_information_table", self.db_con))
+            except DatabaseError:
+                info = dict(pd.read_sql_query("SELECT * from measurment_information_table", self.db_con))  # Older files can contain wrong table name
+
+            sensor_df = pd.read_sql_query("SELECT * from sensor_descriptions_table", self.db_con)
+            for _, row in sensor_df.iterrows():
+                self.sensors.append(Sensor(**dict(row)))
+                pass
+
+            self.device = Device(**dict(pd.read_sql_query("SELECT * from device_information_table", self.db_con)))
+
+            # Info
+            self.rdy_format_version = info['rdy_format_version'][0]
+            self.rdy_info_name = info['rdy_info_name'][0]
+            self.rdy_info_sex = info['rdy_info_sex'][0]
+            self.rdy_info_age = info['rdy_info_age'][0]
+            self.rdy_info_height = info['rdy_info_height'][0]
+            self.rdy_info_weight = info['rdy_info_weight'][0]
+
+            self.t0 = info['t0'][0]
+            self.timestamp_when_started = info['timestamp_when_started'][0]
+            self.timestamp_when_stopped = info['timestamp_when_stopped'][0]
 
             # Measurements
             self.acc_series = AccelerationSeries(**dict(pd.read_sql_query("SELECT * from acc_measurements_table", self.db_con)))

@@ -5,13 +5,17 @@ from .file import RDYFile
 
 
 class CampaignManager:
-    def __init__(self, name="", folder: Union[list, str] = None):
+    def __init__(self, name="", folder: Union[list, str] = None, recursive=True):
         """
         The Manager manages loading, processing etc of RDY files
         """
         self.folder = folder
         self.name = name
         self.files: List[RDYFile] = []
+
+        if folder:
+            self.import_folder(self.folder, recursive)
+
         pass
 
     def import_folder(self, folder: Union[list, str] = None, recursive=False):
@@ -33,7 +37,13 @@ class CampaignManager:
                 self.import_folder(os.path.join(sub_folder_path))
 
             for file in files:
-                self.files.append(RDYFile(os.path.join(folder, file)))
+                file_path = os.path.join(folder, file)
+                _, ext = os.path.splitext(file_path)
+
+                if ext not in [".rdy", ".sqlite"]:
+                    continue
+                else:
+                    self.files.append(RDYFile(file_path))
 
         else:
             raise TypeError("folder argument must be list or str")
