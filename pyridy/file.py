@@ -2,6 +2,7 @@ import json
 import logging
 import os
 import sqlite3
+from datetime import datetime
 from sqlite3 import Connection, DatabaseError
 from typing import Optional, List
 
@@ -72,35 +73,148 @@ class RDYFile:
             with open(path, 'r') as file:
                 rdy = json.load(file)
 
-            self.rdy_format_version = rdy['RDY_Format_Version']
-            self.rdy_info_name = rdy['RDY_Info_Name']
-            self.rdy_info_sex = rdy['RDY_Info_Sex']
-            self.rdy_info_age = rdy['RDY_Info_Age']
-            self.rdy_info_height = rdy['RDY_Info_Height']
-            self.rdy_info_weight = rdy['RDY_Info_Weight']
+            if 'RDY_Format_Version' in rdy:
+                self.rdy_format_version = rdy['RDY_Format_Version']
+            else:
+                logger.info("No RDY_Format_Version in file: %s" % self.filename)
+                self.rdy_format_version = None
 
-            self.t0 = rdy['t0']
-            self.timestamp_when_started = rdy['timestamp_when_started'] if 'timestamp_when_started' in rdy else None
-            self.timestamp_when_stopped = rdy['timestamp_when_stopped'] if 'timestamp_when_stopped' in rdy else None
+            if 'RDY_Info_Name' in rdy:
+                self.rdy_info_name = rdy['RDY_Info_Name']
+            else:
+                logger.info("No RDY_Info_Name in file: %s" % self.filename)
+                self.rdy_info_name = None
 
-            self.device = Device(**rdy['device_info'])
+            if 'RDY_Info_Sex' in rdy:
+                self.rdy_info_sex = rdy['RDY_Info_Sex']
+            else:
+                logger.info("No RDY_Info_Sex in file: %s" % self.filename)
+                self.rdy_info_sex = None
 
-            for sensor in rdy['sensors']:
-                self.sensors.append(Sensor(**sensor))
+            if 'RDY_Info_Age' in rdy:
+                self.rdy_info_age = rdy['RDY_Info_Age']
+            else:
+                logger.info("No RDY_Info_Age in file: %s" % self.filename)
+                self.rdy_info_age = None
 
-            self.acc_series = AccelerationSeries(**rdy['acc_series'])
-            self.lin_acc_series = LinearAccelerationSeries(**rdy['lin_acc_series'])
-            self.mag_series = MagnetometerSeries(**rdy['mag_series'])
-            self.orient_series = OrientationSeries(**rdy['orient_series'])
-            self.gyro_series = GyroSeries(**rdy['gyro_series'])
-            self.rot_series = RotationSeries(**rdy['rot_series'])
-            self.gps_series = GPSSeries(**rdy['gps_series'])
-            self.pressure_series = PressureSeries(**rdy['pressure_series'])
-            self.temperature_series = TemperatureSeries(**rdy['temperature_series'])
-            self.humidity_series = HumiditySeries(**rdy['humidity_series'])
-            self.light_series = LightSeries(**rdy['light_series'])
-            self.wz_series = WzSeries(**rdy['wz_series'])
-            self.subjective_comfort_series = SubjectiveComfortSeries(**rdy['subjective_comfort_series'])
+            if 'RDY_Info_Height' in rdy:
+                self.rdy_info_height = rdy['RDY_Info_Height']
+            else:
+                logger.info("No RDY_Info_Height in file: %s" % self.filename)
+                self.rdy_info_height = None
+
+            if 'RDY_Info_Weight' in rdy:
+                self.rdy_info_weight = rdy['RDY_Info_Weight']
+            else:
+                logger.info("No RDY_Info_Weight in file: %s" % self.filename)
+                self.rdy_info_weight = None
+
+            if 't0' in rdy:
+                self.t0 = datetime.fromisoformat(rdy['t0'])
+            else:
+                self.t0 = None
+                logger.info("No t0 in file: %s" % self.filename)
+
+            if 'timestamp_when_started' in rdy:
+                self.timestamp_when_started = rdy['timestamp_when_started']
+            else:
+                self.timestamp_when_started = None
+                logger.info("No timestamp_when_started in file: %s" % self.filename)
+
+            if 'timestamp_when_stopped' in rdy:
+                self.timestamp_when_stopped = rdy['timestamp_when_stopped']
+            else:
+                self.timestamp_when_stopped = None
+                logger.info("No timestamp_when_stopped in file: %s" % self.filename)
+
+            if "device" in rdy:
+                self.device = Device(**rdy['device_info'])
+            else:
+                logger.info("No device information in file: %s" % self.filename)
+
+            if "sensors" in rdy:
+                for sensor in rdy['sensors']:
+                    self.sensors.append(Sensor(**sensor))
+            else:
+                logger.info("No sensor descriptions in file: %s" % self.filename)
+
+            if "acc_series" in rdy:
+                self.acc_series = AccelerationSeries(**rdy['acc_series'])
+            else:
+                logger.info("No Acceleration Series in file: %s" % self.filename)
+                self.acc_series = AccelerationSeries()
+
+            if "lin_acc_series" in rdy:
+                self.lin_acc_series = LinearAccelerationSeries(**rdy['lin_acc_series'])
+            else:
+                logger.info("No Linear Acceleration Series in file: %s" % self.filename)
+                self.lin_acc_series = LinearAccelerationSeries()
+
+            if "mag_series" in rdy:
+                self.mag_series = MagnetometerSeries(**rdy['mag_series'])
+            else:
+                logger.info("No Magnetometer Series in file: %s" % self.filename)
+                self.mag_series = MagnetometerSeries()
+
+            if "orient_series" in rdy:
+                self.orient_series = OrientationSeries(**rdy['orient_series'])
+            else:
+                logger.info("No Orientation Series in file: %s" % self.filename)
+                self.orient_series = OrientationSeries()
+
+            if "gyro_series" in rdy:
+                self.gyro_series = GyroSeries(**rdy['gyro_series'])
+            else:
+                logger.info("No Gyro Series in file: %s" % self.filename)
+                self.gyro_series = GyroSeries()
+
+            if "rot_series" in rdy:
+                self.rot_series = RotationSeries(**rdy['rot_series'])
+            else:
+                logger.info("No Rotation Series in file: %s" % self.filename)
+                self.rot_series = RotationSeries()
+
+            if "gps_series" in rdy:
+                self.gps_series = GPSSeries(**rdy['gps_series'])
+            else:
+                logger.info("No GPS Series in file: %s" % self.filename)
+                self.gps_series = GPSSeries()
+
+            if "pressure_series" in rdy:
+                self.pressure_series = PressureSeries(**rdy['pressure_series'])
+            else:
+                logger.info("No Pressure Series in file: %s" % self.filename)
+                self.pressure_series = PressureSeries()
+
+            if "temperature_series" in rdy:
+                self.temperature_series = TemperatureSeries(**rdy['temperature_series'])
+            else:
+                logger.info("No Temperature Series in file: %s" % self.filename)
+                self.temperature_series = TemperatureSeries()
+
+            if "humidity_series" in rdy:
+                self.humidity_series = HumiditySeries(**rdy['humidity_series'])
+            else:
+                logger.info("No Humidity Series in file: %s" % self.filename)
+                self.humidity_series = HumiditySeries()
+
+            if "light_series" in rdy:
+                self.light_series = LightSeries(**rdy['light_series'])
+            else:
+                logger.info("No Light Series in file: %s" % self.filename)
+                self.light_series = LightSeries()
+
+            if "wz_series" in rdy:
+                self.wz_series = WzSeries(**rdy['wz_series'])
+            else:
+                logger.info("No Wz Series in file: %s" % self.filename)
+                self.wz_series = WzSeries()
+
+            if "subjective_comfort_series" in rdy:
+                self.subjective_comfort_series = SubjectiveComfortSeries(**rdy['subjective_comfort_series'])
+            else:
+                logger.info("No Subjective Comfort Series in file: %s" % self.filename)
+                self.subjective_comfort_series = SubjectiveComfortSeries()
             pass
 
         elif self.extension == ".sqlite":

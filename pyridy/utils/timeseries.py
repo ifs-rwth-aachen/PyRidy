@@ -13,8 +13,18 @@ class TimeSeries(ABC):
         return pd.DataFrame(self.__dict__)
 
     def __repr__(self):
-        duration = (self.time[-1] - self.time[0]) * 1e-9 if not np.array_equal(self.time, np.array(None)) and len(self.time) > 0 else 0
-        sample_rate = len(self.time) / duration if not np.array_equal(self.time, np.array(None)) and duration > 0 else 0.0
+        if not np.array_equal(self.time, np.array(None)) and len(self.time) > 0:
+            if type(self.time[0]) == np.int64:
+                duration = (self.time[-1] - self.time[0]) * 1e-9
+            else:
+                duration = (self.time[-1] - self.time[0])
+        else:
+            duration = 0
+
+        if not np.array_equal(self.time, np.array(None)) and duration > 0:
+            sample_rate = len(self.time) / duration
+        else:
+            sample_rate = 0.0
         return "Length: %d, Duration: %.3f s, Mean Samplerate: %.3f Hz" % (len(self.time), duration, sample_rate)
 
 
@@ -33,11 +43,11 @@ class LinearAccelerationSeries(TimeSeries):
     def __init__(self, time: Union[list, np.ndarray] = None,
                  lin_acc_x: Union[list, np.ndarray] = None,
                  lin_acc_y: Union[list, np.ndarray] = None,
-                 lin_acc_z: Union[list, np.ndarray] = None):
+                 lin_acc_z: Union[list, np.ndarray] = None, **kwargs):
         super(LinearAccelerationSeries, self).__init__(time=time)
-        self.lin_acc_x: np.ndarray = np.array(lin_acc_x)
-        self.lin_acc_y: np.ndarray = np.array(lin_acc_y)
-        self.lin_acc_z: np.ndarray = np.array(lin_acc_z)
+        self.lin_acc_x: np.ndarray = np.array(kwargs["acc_x"]) if "acc_x" in kwargs else np.array(lin_acc_x)
+        self.lin_acc_y: np.ndarray = np.array(kwargs["acc_y"]) if "acc_y" in kwargs else np.array(lin_acc_y)
+        self.lin_acc_z: np.ndarray = np.array(kwargs["acc_z"]) if "acc_z" in kwargs else np.array(lin_acc_z)
 
 
 class MagnetometerSeries(TimeSeries):

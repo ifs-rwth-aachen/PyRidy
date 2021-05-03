@@ -1,3 +1,5 @@
+import logging
+
 import pytest
 
 import pyridy
@@ -12,6 +14,7 @@ def test_ridy_manager(my_manager):
     assert True
 
 
-def test_loading_rdy_file(my_manager):
+def test_loading_files(my_manager, caplog):
+    caplog.set_level(logging.DEBUG)
     my_manager.import_folder("files")
-    assert True
+    assert len(my_manager) == 3
