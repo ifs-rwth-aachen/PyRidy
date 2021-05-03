@@ -20,7 +20,7 @@ def test_acceleration_series_to_df(my_acc_series):
     test_df = pd.DataFrame({"time": [1.1, 2, 3],
                             "acc_x": [0.1, -2, 3],
                             "acc_y": [-0.3, 0, 3.4],
-                            "acc_z": [0.6, 3, -3]})
+                            "acc_z": [0.6, 3, -3]}).set_index("time")
 
     acc_df = my_acc_series.to_df()
     assert acc_df.equals(test_df)

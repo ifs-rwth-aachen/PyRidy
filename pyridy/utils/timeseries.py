@@ -10,9 +10,10 @@ class TimeSeries(ABC):
         self.time: np.ndarray = np.array(time)
 
     def to_df(self) -> pd.DataFrame:
-        return pd.DataFrame(self.__dict__)
+        d = self.__dict__
+        return pd.DataFrame(dict([(k, pd.Series(v)) for k, v in d.items()])).set_index("time")
 
-    def __repr__(self):
+    def get_duration(self):
         if not np.array_equal(self.time, np.array(None)) and len(self.time) > 0:
             if type(self.time[0]) == np.int64:
                 duration = (self.time[-1] - self.time[0]) * 1e-9
@@ -21,11 +22,20 @@ class TimeSeries(ABC):
         else:
             duration = 0
 
-        if not np.array_equal(self.time, np.array(None)) and duration > 0:
-            sample_rate = len(self.time) / duration
+        return duration
+
+    def get_sample_rate(self):
+        if not np.array_equal(self.time, np.array(None)) and self.get_duration() > 0:
+            sample_rate = len(self.time) / self.get_duration()
         else:
             sample_rate = 0.0
-        return "Length: %d, Duration: %.3f s, Mean Samplerate: %.3f Hz" % (len(self.time), duration, sample_rate)
+
+        return sample_rate
+
+    def __repr__(self):
+        return "Length: %d, duration: %.3f s, Mean sample rate: %.3f Hz" % (len(self.time),
+                                                                            self.get_duration(),
+                                                                            self.get_sample_rate())
 
 
 class AccelerationSeries(TimeSeries):

@@ -1,1 +1,1 @@
-from .manager import CampaignManager
+from .campaign import Campaign

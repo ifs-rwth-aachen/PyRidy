@@ -7,10 +7,10 @@ from .file import RDYFile
 logger = logging.getLogger(__name__)
 
 
-class CampaignManager:
+class Campaign:
     def __init__(self, name="", folder: Union[list, str] = None, recursive=True, exclude: Union[list, str] = None):
         """
-        The Manager manages loading, processing etc of RDY files
+        A measurement campaign manages loading, processing etc of RDY files
         :param name: Name of the Campaign
         :param folder: Path(s) to folder(s) where to search for measurement files
         :param recursive: If True also searches in subfolders

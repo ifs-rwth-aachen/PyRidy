@@ -3,6 +3,7 @@ import logging
 import os
 import sqlite3
 from datetime import datetime
+from functools import reduce
 from sqlite3 import Connection, DatabaseError
 from typing import Optional, List
 
@@ -20,7 +21,7 @@ logger = logging.getLogger(__name__)
 class RDYFile:
     def __init__(self, path: str = ""):
         self.path = path
-        self.filename: Optional[str] = ""
+        self.name: Optional[str] = ""
         self.extension: Optional[str] = ""
 
         self.db_con: Optional[Connection] = None
@@ -42,32 +43,39 @@ class RDYFile:
         self.sensors: Optional[List[Sensor]] = []
 
         # Measurement Series
-        self.acc_series: Optional[AccelerationSeries] = None
-        self.lin_acc_series: Optional[LinearAccelerationSeries] = None
-        self.mag_series: Optional[MagnetometerSeries] = None
-        self.orient_series: Optional[OrientationSeries] = None
-        self.gyro_series: Optional[GyroSeries] = None
-        self.rot_series: Optional[RotationSeries] = None
-        self.gps_series: Optional[GPSSeries] = None
-        self.pressure_series: Optional[PressureSeries] = None
-        self.temperature_series: Optional[TemperatureSeries] = None
-        self.humidity_series: Optional[HumiditySeries] = None
-        self.light_series: Optional[LightSeries] = None
-        self.wz_series: Optional[WzSeries] = None
-        self.subjective_comfort_series: Optional[SubjectiveComfortSeries] = None
+        self.measurements = {AccelerationSeries: AccelerationSeries(),
+                             LinearAccelerationSeries: LinearAccelerationSeries(),
+                             MagnetometerSeries: MagnetometerSeries(),
+                             OrientationSeries: OrientationSeries(),
+                             GyroSeries: GyroSeries(),
+                             RotationSeries: RotationSeries(),
+                             GPSSeries: GPSSeries(),
+                             PressureSeries: PressureSeries(),
+                             TemperatureSeries: TemperatureSeries(),
+                             HumiditySeries: HumiditySeries(),
+                             LightSeries: LightSeries(),
+                             WzSeries: WzSeries(),
+                             SubjectiveComfortSeries: SubjectiveComfortSeries()}
 
         if self.path:
             self.load_file(self.path)
         pass
 
+    def __iter__(self):
+        """
+        The FileIterator returns the measurements iteratively
+        :return: FileIterator
+        """
+        return FileIterator(self)
+
     def __repr__(self):
-        return "%s" % self.filename
+        return "%s" % self.name
 
     def load_file(self, path: str):
         logger.info("Loading file: %s" % path)
 
         _, self.extension = os.path.splitext(path)
-        _, self.filename = os.path.split(path)
+        _, self.name = os.path.split(path)
 
         if self.extension == ".rdy":
             with open(path, 'r') as file:
@@ -76,145 +84,132 @@ class RDYFile:
             if 'RDY_Format_Version' in rdy:
                 self.rdy_format_version = rdy['RDY_Format_Version']
             else:
-                logger.info("No RDY_Format_Version in file: %s" % self.filename)
+                logger.info("No RDY_Format_Version in file: %s" % self.name)
                 self.rdy_format_version = None
 
             if 'RDY_Info_Name' in rdy:
                 self.rdy_info_name = rdy['RDY_Info_Name']
             else:
-                logger.info("No RDY_Info_Name in file: %s" % self.filename)
+                logger.info("No RDY_Info_Name in file: %s" % self.name)
                 self.rdy_info_name = None
 
             if 'RDY_Info_Sex' in rdy:
                 self.rdy_info_sex = rdy['RDY_Info_Sex']
             else:
-                logger.info("No RDY_Info_Sex in file: %s" % self.filename)
+                logger.info("No RDY_Info_Sex in file: %s" % self.name)
                 self.rdy_info_sex = None
 
             if 'RDY_Info_Age' in rdy:
                 self.rdy_info_age = rdy['RDY_Info_Age']
             else:
-                logger.info("No RDY_Info_Age in file: %s" % self.filename)
+                logger.info("No RDY_Info_Age in file: %s" % self.name)
                 self.rdy_info_age = None
 
             if 'RDY_Info_Height' in rdy:
                 self.rdy_info_height = rdy['RDY_Info_Height']
             else:
-                logger.info("No RDY_Info_Height in file: %s" % self.filename)
+                logger.info("No RDY_Info_Height in file: %s" % self.name)
                 self.rdy_info_height = None
 
             if 'RDY_Info_Weight' in rdy:
                 self.rdy_info_weight = rdy['RDY_Info_Weight']
             else:
-                logger.info("No RDY_Info_Weight in file: %s" % self.filename)
+                logger.info("No RDY_Info_Weight in file: %s" % self.name)
                 self.rdy_info_weight = None
 
             if 't0' in rdy:
                 self.t0 = datetime.fromisoformat(rdy['t0'])
             else:
                 self.t0 = None
-                logger.info("No t0 in file: %s" % self.filename)
+                logger.info("No t0 in file: %s" % self.name)
 
             if 'timestamp_when_started' in rdy:
                 self.timestamp_when_started = rdy['timestamp_when_started']
             else:
                 self.timestamp_when_started = None
-                logger.info("No timestamp_when_started in file: %s" % self.filename)
+                logger.info("No timestamp_when_started in file: %s" % self.name)
 
             if 'timestamp_when_stopped' in rdy:
                 self.timestamp_when_stopped = rdy['timestamp_when_stopped']
             else:
                 self.timestamp_when_stopped = None
-                logger.info("No timestamp_when_stopped in file: %s" % self.filename)
+                logger.info("No timestamp_when_stopped in file: %s" % self.name)
 
             if "device" in rdy:
                 self.device = Device(**rdy['device_info'])
             else:
-                logger.info("No device information in file: %s" % self.filename)
+                logger.info("No device information in file: %s" % self.name)
 
             if "sensors" in rdy:
                 for sensor in rdy['sensors']:
                     self.sensors.append(Sensor(**sensor))
             else:
-                logger.info("No sensor descriptions in file: %s" % self.filename)
+                logger.info("No sensor descriptions in file: %s" % self.name)
 
             if "acc_series" in rdy:
-                self.acc_series = AccelerationSeries(**rdy['acc_series'])
+                self.measurements[AccelerationSeries] = AccelerationSeries(**rdy['acc_series'])
             else:
-                logger.info("No Acceleration Series in file: %s" % self.filename)
-                self.acc_series = AccelerationSeries()
+                logger.info("No Acceleration Series in file: %s" % self.name)
 
             if "lin_acc_series" in rdy:
-                self.lin_acc_series = LinearAccelerationSeries(**rdy['lin_acc_series'])
+                self.measurements[LinearAccelerationSeries] = LinearAccelerationSeries(**rdy['lin_acc_series'])
             else:
-                logger.info("No Linear Acceleration Series in file: %s" % self.filename)
-                self.lin_acc_series = LinearAccelerationSeries()
+                logger.info("No Linear Acceleration Series in file: %s" % self.name)
 
             if "mag_series" in rdy:
-                self.mag_series = MagnetometerSeries(**rdy['mag_series'])
+                self.measurements[MagnetometerSeries] = MagnetometerSeries(**rdy['mag_series'])
             else:
-                logger.info("No Magnetometer Series in file: %s" % self.filename)
-                self.mag_series = MagnetometerSeries()
+                logger.info("No Magnetometer Series in file: %s" % self.name)
 
             if "orient_series" in rdy:
-                self.orient_series = OrientationSeries(**rdy['orient_series'])
+                self.measurements[OrientationSeries] = OrientationSeries(**rdy['orient_series'])
             else:
-                logger.info("No Orientation Series in file: %s" % self.filename)
-                self.orient_series = OrientationSeries()
+                logger.info("No Orientation Series in file: %s" % self.name)
 
             if "gyro_series" in rdy:
-                self.gyro_series = GyroSeries(**rdy['gyro_series'])
+                self.measurements[GyroSeries] = GyroSeries(**rdy['gyro_series'])
             else:
-                logger.info("No Gyro Series in file: %s" % self.filename)
-                self.gyro_series = GyroSeries()
+                logger.info("No Gyro Series in file: %s" % self.name)
 
             if "rot_series" in rdy:
-                self.rot_series = RotationSeries(**rdy['rot_series'])
+                self.measurements[RotationSeries] = RotationSeries(**rdy['rot_series'])
             else:
-                logger.info("No Rotation Series in file: %s" % self.filename)
-                self.rot_series = RotationSeries()
+                logger.info("No Rotation Series in file: %s" % self.name)
 
             if "gps_series" in rdy:
-                self.gps_series = GPSSeries(**rdy['gps_series'])
+                self.measurements[GPSSeries] = GPSSeries(**rdy['gps_series'])
             else:
-                logger.info("No GPS Series in file: %s" % self.filename)
-                self.gps_series = GPSSeries()
+                logger.info("No GPS Series in file: %s" % self.name)
 
             if "pressure_series" in rdy:
-                self.pressure_series = PressureSeries(**rdy['pressure_series'])
+                self.measurements[PressureSeries] = PressureSeries(**rdy['pressure_series'])
             else:
-                logger.info("No Pressure Series in file: %s" % self.filename)
-                self.pressure_series = PressureSeries()
+                logger.info("No Pressure Series in file: %s" % self.name)
 
             if "temperature_series" in rdy:
-                self.temperature_series = TemperatureSeries(**rdy['temperature_series'])
+                self.measurements[TemperatureSeries] = TemperatureSeries(**rdy['temperature_series'])
             else:
-                logger.info("No Temperature Series in file: %s" % self.filename)
-                self.temperature_series = TemperatureSeries()
+                logger.info("No Temperature Series in file: %s" % self.name)
 
             if "humidity_series" in rdy:
-                self.humidity_series = HumiditySeries(**rdy['humidity_series'])
+                self.measurements[HumiditySeries] = HumiditySeries(**rdy['humidity_series'])
             else:
-                logger.info("No Humidity Series in file: %s" % self.filename)
-                self.humidity_series = HumiditySeries()
+                logger.info("No Humidity Series in file: %s" % self.name)
 
             if "light_series" in rdy:
-                self.light_series = LightSeries(**rdy['light_series'])
+                self.measurements[LightSeries] = LightSeries(**rdy['light_series'])
             else:
-                logger.info("No Light Series in file: %s" % self.filename)
-                self.light_series = LightSeries()
+                logger.info("No Light Series in file: %s" % self.name)
 
             if "wz_series" in rdy:
-                self.wz_series = WzSeries(**rdy['wz_series'])
+                self.measurements[WzSeries] = WzSeries(**rdy['wz_series'])
             else:
-                logger.info("No Wz Series in file: %s" % self.filename)
-                self.wz_series = WzSeries()
+                logger.info("No Wz Series in file: %s" % self.name)
 
             if "subjective_comfort_series" in rdy:
-                self.subjective_comfort_series = SubjectiveComfortSeries(**rdy['subjective_comfort_series'])
+                self.measurements[SubjectiveComfortSeries] = SubjectiveComfortSeries(**rdy['subjective_comfort_series'])
             else:
-                logger.info("No Subjective Comfort Series in file: %s" % self.filename)
-                self.subjective_comfort_series = SubjectiveComfortSeries()
+                logger.info("No Subjective Comfort Series in file: %s" % self.name)
             pass
 
         elif self.extension == ".sqlite":
@@ -223,9 +218,11 @@ class RDYFile:
             try:
                 info = dict(pd.read_sql_query("SELECT * from measurement_information_table", self.db_con))
             except (DatabaseError, PandasDatabaseError) as e:
-                logger.error("DatabaseError occurred when accessing measurement_information_table, file: %s" % self.filename)
+                logger.error(
+                    "DatabaseError occurred when accessing measurement_information_table, file: %s" % self.name)
                 try:
-                    info = dict(pd.read_sql_query("SELECT * from measurment_information_table", self.db_con))  # Older files can contain wrong table name
+                    info = dict(pd.read_sql_query("SELECT * from measurment_information_table",
+                                                  self.db_con))  # Older files can contain wrong table name
                 except (DatabaseError, PandasDatabaseError) as e:
                     info = None
 
@@ -234,13 +231,14 @@ class RDYFile:
                 for _, row in sensor_df.iterrows():
                     self.sensors.append(Sensor(**dict(row)))
             except (DatabaseError, PandasDatabaseError) as e:
-                logger.error("DatabaseError occurred when accessing sensor_descriptions_table, file: %s" % self.filename)
+                logger.error(
+                    "DatabaseError occurred when accessing sensor_descriptions_table, file: %s" % self.name)
 
             try:
                 device_df = pd.read_sql_query("SELECT * from device_information_table", self.db_con)
                 self.device = Device(**dict(device_df))
             except (DatabaseError, PandasDatabaseError) as e:
-                logger.error("DatabaseError occurred when accessing device_information_table, file: %s" % self.filename)
+                logger.error("DatabaseError occurred when accessing device_information_table, file: %s" % self.name)
                 self.device = Device()
 
             # Info
@@ -253,101 +251,126 @@ class RDYFile:
                 self.rdy_info_weight = info['rdy_info_weight'][0] if len(info['rdy_info_weight']) > 0 else None
 
                 self.t0 = info['t0'][0] if len(info['t0']) > 0 else None
-                self.timestamp_when_started = info['timestamp_when_started'][0] if len(info['timestamp_when_started']) > 0 else None
-                self.timestamp_when_stopped = info['timestamp_when_stopped'][0] if len(info['timestamp_when_stopped']) > 0 else None
+                self.timestamp_when_started = info['timestamp_when_started'][0] if len(
+                    info['timestamp_when_started']) > 0 else None
+                self.timestamp_when_stopped = info['timestamp_when_stopped'][0] if len(
+                    info['timestamp_when_stopped']) > 0 else None
 
             # Measurements
             try:
                 acc_df = pd.read_sql_query("SELECT * from acc_measurements_table", self.db_con)
-                self.acc_series = AccelerationSeries(**dict(acc_df))
+                self.measurements[AccelerationSeries] = AccelerationSeries(**dict(acc_df))
             except (DatabaseError, PandasDatabaseError) as e:
-                logger.error("DatabaseError occurred when accessing acc_measurements_table, file: %s" % self.filename)
-                self.acc_series = AccelerationSeries()
+                logger.error("DatabaseError occurred when accessing acc_measurements_table, file: %s" % self.name)
 
             try:
                 lin_acc_df = pd.read_sql_query("SELECT * from lin_acc_measurements_table", self.db_con)
-                self.lin_acc_series = LinearAccelerationSeries(**dict(lin_acc_df))
+                self.measurements[LinearAccelerationSeries] = LinearAccelerationSeries(**dict(lin_acc_df))
             except (DatabaseError, PandasDatabaseError) as e:
-                logger.error("DatabaseError occurred when accessing lin_acc_measurements_table, file: %s" % self.filename)
-                self.lin_acc_series = LinearAccelerationSeries()
+                logger.error(
+                    "DatabaseError occurred when accessing lin_acc_measurements_table, file: %s" % self.name)
 
             try:
                 mag_df = pd.read_sql_query("SELECT * from mag_measurements_table", self.db_con)
-                self.mag_series = MagnetometerSeries(**dict(mag_df))
+                self.measurements[MagnetometerSeries] = MagnetometerSeries(**dict(mag_df))
             except (DatabaseError, PandasDatabaseError) as e:
-                logger.error("DatabaseError occurred when accessing mag_measurements_table, file: %s" % self.filename)
-                self.mag_series = MagnetometerSeries()
+                logger.error("DatabaseError occurred when accessing mag_measurements_table, file: %s" % self.name)
 
             try:
                 orient_df = pd.read_sql_query("SELECT * from orient_measurements_table", self.db_con)
-                self.orient_series = OrientationSeries(**dict(orient_df))
+                self.measurements[OrientationSeries] = OrientationSeries(**dict(orient_df))
             except (DatabaseError, PandasDatabaseError) as e:
-                logger.error("DatabaseError occurred when accessing orient_measurements_table, file: %s" % self.filename)
-                self.orient_series = OrientationSeries()
+                logger.error(
+                    "DatabaseError occurred when accessing orient_measurements_table, file: %s" % self.name)
 
             try:
                 gyro_df = pd.read_sql_query("SELECT * from gyro_measurements_table", self.db_con)
-                self.gyro_series = GyroSeries(**dict(gyro_df))
+                self.measurements[GyroSeries] = GyroSeries(**dict(gyro_df))
             except (DatabaseError, PandasDatabaseError) as e:
-                logger.error("DatabaseError occurred when accessing gyro_measurements_table, file: %s" % self.filename)
-                self.gyro_series = GyroSeries()
+                logger.error("DatabaseError occurred when accessing gyro_measurements_table, file: %s" % self.name)
 
             try:
                 rot_df = pd.read_sql_query("SELECT * from rot_measurements_table", self.db_con)
-                self.rot_series = RotationSeries(**dict(rot_df))
+                self.measurements[RotationSeries] = RotationSeries(**dict(rot_df))
             except (DatabaseError, PandasDatabaseError) as e:
-                logger.error("DatabaseError occurred when accessing rot_measurements_table, file: %s" % self.filename)
-                self.rot_series = RotationSeries()
+                logger.error("DatabaseError occurred when accessing rot_measurements_table, file: %s" % self.name)
 
             try:
                 gps_df = pd.read_sql_query("SELECT * from gps_measurements_table", self.db_con)
-                self.gps_series = GPSSeries(**dict(gps_df))
+                self.measurements[GPSSeries] = GPSSeries(**dict(gps_df))
             except (DatabaseError, PandasDatabaseError) as e:
-                logger.error("DatabaseError occurred when accessing gps_measurements_table, file: %s" % self.filename)
-                self.gps_series = GPSSeries()
+                logger.error("DatabaseError occurred when accessing gps_measurements_table, file: %s" % self.name)
 
             try:
                 pressure_df = pd.read_sql_query("SELECT * from pressure_measurements_table", self.db_con)
-                self.pressure_series = PressureSeries(**dict(pressure_df))
+                self.measurements[PressureSeries] = PressureSeries(**dict(pressure_df))
             except (DatabaseError, PandasDatabaseError) as e:
-                logger.error("DatabaseError occurred when accessing pressure_measurements_table, file: %s" % self.filename)
-                self.pressure_series = PressureSeries()
+                logger.error(
+                    "DatabaseError occurred when accessing pressure_measurements_table, file: %s" % self.name)
 
             try:
                 temperature_df = pd.read_sql_query("SELECT * from temperature_measurements_table", self.db_con)
-                self.temperature_series = TemperatureSeries(**dict(temperature_df))
+                self.measurements[TemperatureSeries] = TemperatureSeries(**dict(temperature_df))
             except (DatabaseError, PandasDatabaseError) as e:
-                logger.error("DatabaseError occurred when accessing temperature_measurements_table, file: %s" % self.filename)
-                self.temperature_series = TemperatureSeries()
+                logger.error(
+                    "DatabaseError occurred when accessing temperature_measurements_table, file: %s" % self.name)
 
             try:
                 humidity_df = pd.read_sql_query("SELECT * from humidity_measurements_table", self.db_con)
-                self.humidity_series = HumiditySeries(**dict(humidity_df))
+                self.measurements[HumiditySeries] = HumiditySeries(**dict(humidity_df))
             except (DatabaseError, PandasDatabaseError) as e:
-                logger.error("DatabaseError occurred when accessing humidity_measurements_table, file: %s" % self.filename)
-                self.humidity_series = HumiditySeries()
+                logger.error(
+                    "DatabaseError occurred when accessing humidity_measurements_table, file: %s" % self.name)
 
             try:
                 light_df = pd.read_sql_query("SELECT * from light_measurements_table", self.db_con)
-                self.light_series = LightSeries(**dict(light_df))
+                self.measurements[LightSeries] = LightSeries(**dict(light_df))
             except (DatabaseError, PandasDatabaseError) as e:
-                logger.error("DatabaseError occurred when accessing light_measurements_table, file: %s" % self.filename)
-                self.light_series = LightSeries()
+                logger.error("DatabaseError occurred when accessing light_measurements_table, file: %s" % self.name)
 
             try:
                 wz_df = pd.read_sql_query("SELECT * from wz_measurements_table", self.db_con)
-                self.wz_series = WzSeries(**dict(wz_df))
+                self.measurements[WzSeries] = WzSeries(**dict(wz_df))
             except (DatabaseError, PandasDatabaseError) as e:
-                logger.error("DatabaseError occurred when accessing wz_measurements_table, file: %s" % self.filename)
-                self.wz_series = WzSeries()
+                logger.error("DatabaseError occurred when accessing wz_measurements_table, file: %s" % self.name)
 
             try:
                 subjective_comfort_df = pd.read_sql_query("SELECT * from subjective_comfort_measurements_table",
                                                           self.db_con)
-                self.subjective_comfort_series = SubjectiveComfortSeries(**dict(subjective_comfort_df))
+                self.measurements[SubjectiveComfortSeries] = SubjectiveComfortSeries(**dict(subjective_comfort_df))
             except (DatabaseError, PandasDatabaseError) as e:
-                logger.error("DatabaseError occurred when accessing subjective_comfort_measurements_table, file: %s" % self.filename)
-                self.subjective_comfort_series = SubjectiveComfortSeries()
+                logger.error(
+                    "DatabaseError occurred when accessing subjective_comfort_measurements_table, file: %s" % self.name)
 
         else:
             raise ValueError("File extension %s is not supported" % self.extension)
+
+    def to_df(self) -> pd.DataFrame:
+        """
+
+        :return: DataFrame containing merged measurement series
+        """
+        data_frames = [series.to_df() for series in self.measurements.values()]
+
+        # Concatenate dataframes and resort them ascending
+        df_merged = pd.concat(data_frames).sort_index()
+
+        # Merge identical indices by taking mean of column values and then interpolate NaN values
+        df_merged = df_merged.groupby(level=0).mean().interpolate()
+        return df_merged
+
+
+class FileIterator:
+    def __init__(self, file: RDYFile):
+        self._file = file
+        self._series_types = list(self._file.measurements.keys())
+        self._index = 0
+
+    def __next__(self):
+        if self._index < len(self._series_types):
+            series_type = self._series_types[self._index]
+
+            self._index += 1
+            return self._file.measurements[series_type]
+        else:
+            raise StopIteration
