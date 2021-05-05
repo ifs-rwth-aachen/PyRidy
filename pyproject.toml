@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pyridy"
-version = "0.1.14"
+version = "0.1.20"
 description = "Support library for measurements made with the Ridy Android App"
 authors = ["Philipp Simon Leibner <philip.leibner@ifs.rwth-aachen.de>"]
 license = "Apache-2.0"
@@ -23,6 +23,7 @@ pytest = "^6.2.3"
 numpy = "^1.20.2"
 requests = "^2.25.1"
 pandas = "^1.2.4"
+matplotlib = "^3.4.1"
 
 [tool.poetry.dev-dependencies]
 

@@ -1,41 +1,83 @@
+import logging
 from abc import ABC
-from typing import Union
+from typing import Union, List
 
 import numpy as np
 import pandas as pd
 
+logger = logging.getLogger(__name__)
+
 
 class TimeSeries(ABC):
     def __init__(self, time: Union[list, np.ndarray] = None):
-        self.time: np.ndarray = np.array(time)
+        self._time: np.ndarray = np.array(time)  # Original unadjusted timestamps
+        self.time = self._time.copy()
+
+    def __len__(self):
+        if np.array_equal(self.time, np.array(None)):
+            return 0
+        else:
+            return len(self.time)
+
+    def __repr__(self):
+        return "Length: %d, duration: %.3f s, Mean sample rate: %.3f Hz" % (len(self._time),
+                                                                            self.get_duration(),
+                                                                            self.get_sample_rate())
 
     def to_df(self) -> pd.DataFrame:
         d = self.__dict__
         return pd.DataFrame(dict([(k, pd.Series(v)) for k, v in d.items()])).set_index("time")
 
     def get_duration(self):
-        if not np.array_equal(self.time, np.array(None)) and len(self.time) > 0:
-            if type(self.time[0]) == np.int64:
-                duration = (self.time[-1] - self.time[0]) * 1e-9
+        if not np.array_equal(self._time, np.array(None)) and len(self._time) > 0:
+            if type(self._time[0]) == np.int64:
+                duration = (self._time[-1] - self._time[0]) * 1e-9
             else:
-                duration = (self.time[-1] - self.time[0])
+                duration = (self._time[-1] - self._time[0])
         else:
             duration = 0
 
         return duration
 
     def get_sample_rate(self):
-        if not np.array_equal(self.time, np.array(None)) and self.get_duration() > 0:
-            sample_rate = len(self.time) / self.get_duration()
+        if not np.array_equal(self._time, np.array(None)) and self.get_duration() > 0:
+            sample_rate = len(self._time) / self.get_duration()
         else:
             sample_rate = 0.0
 
         return sample_rate
 
-    def __repr__(self):
-        return "Length: %d, duration: %.3f s, Mean sample rate: %.3f Hz" % (len(self.time),
-                                                                            self.get_duration(),
-                                                                            self.get_sample_rate())
+    def synchronize(self, method: str, sync_timestamp: Union[int, np.int64] = 0,
+                    sync_time: np.datetime64 = np.datetime64(0, "s")):
+        if type(sync_timestamp) not in [int, np.int64]:
+            raise ValueError("sync_timestamp must be integer for method %s, not %s" % (method, str(type(sync_timestamp))))
+
+        if type(sync_time) != np.datetime64:
+            raise ValueError("sync_time must be np.datetime64 for method %s, not %s" % (method, str(type(sync_timestamp))))
+
+        if len(self._time) > 0:
+            if method == "timestamp":
+                if self._time[0] == 0:
+                    logger.warning("Timeseries already starts at 0, timestamp syncing not appropriate")
+                else:
+                    self.time = self._time - sync_timestamp
+
+            elif method == "device_time":
+                if self._time[0] == 0:
+                    logger.warning("Timeseries already starts at 0, timestamp syncing not appropriate")
+                    self.time = self._time.astype('timedelta64[ns]') + sync_time
+                else:
+                    self.time = (self._time - sync_timestamp).astype('timedelta64[ns]') + sync_time
+            elif method == "gps_time":
+                if self._time[0] == 0:
+                    logger.warning("Timeseries already starts at 0, cant sync to due to lack of proper timestamp")
+                else:
+                    self.time = (self._time - sync_timestamp).astype('timedelta64[ns]') + sync_time
+                pass
+            else:
+                raise ValueError("Method %s not supported" % method)
+        else:
+            logger.warning("Trying to synchronize timestamps on empty %s" % self.__class__.__name__)
 
 
 class AccelerationSeries(TimeSeries):
@@ -131,6 +173,19 @@ class GPSSeries(TimeSeries):
         self.bear_acc: np.ndarray = np.array(bear_acc)
         self.speed_acc: np.ndarray = np.array(speed_acc)
         self.utc_time: np.ndarray = np.array(utc_time)
+
+    def to_ipyleaflef(self) -> List[list]:
+        """
+
+        :return: Returns the lat/lon coordinates as list of list for easy visualization using ipyleaflet
+        """
+        if np.array_equal(self.lat, np.array(None)) and np.array_equal(self.lat, np.array(None)):
+            logger.warning("Coordinates are empty")
+            return [[]]
+        elif len(self.lat) == 0 and len(self.lon) == 0:
+            return [[]]
+        else:
+            return [[lat, lon] for lat, lon in zip(self.lat, self.lon)]
 
 
 class PressureSeries(TimeSeries):

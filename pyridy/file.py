@@ -7,6 +7,7 @@ from functools import reduce
 from sqlite3 import Connection, DatabaseError
 from typing import Optional, List
 
+import numpy as np
 import pandas as pd
 from pandas.io.sql import DatabaseError as PandasDatabaseError
 
@@ -19,10 +20,23 @@ logger = logging.getLogger(__name__)
 
 
 class RDYFile:
-    def __init__(self, path: str = ""):
+    def __init__(self, path: str = "", sync_method: str = None):
+        """
+
+        :param sync_method: Must be "timestamp", "device_time" or "gps_time", "timestamp" uses the timestamp when the
+        measurement started to adjust the timestamps (outputs nanoseconds), "device_time" transforms the time series to the
+        datetime (outputs datetime), "gps_time" uses the utc gps time if available (outputs datetime), if no gps data
+        is available it will fallback to the "device_time" method
+        :param path: Path to the Ridy file to be imported (can be .sqlite or .rdy)
+        """
         self.path = path
         self.name: Optional[str] = ""
         self.extension: Optional[str] = ""
+
+        if sync_method is not None and sync_method not in ["timestamp", "device_time", "gps_time"]:
+            raise ValueError("synchronize argument must 'timestamp', 'device_time' or 'gps_time' not %s" % sync_method)
+
+        self.sync_method = sync_method
 
         self.db_con: Optional[Connection] = None
 
@@ -34,7 +48,7 @@ class RDYFile:
         self.rdy_info_height: Optional[float] = None
         self.rdy_info_weight: Optional[float] = None
 
-        self.t0: Optional[str] = None
+        self.t0: Optional[np.datetime64] = None
         self.timestamp_when_started: Optional[int] = None
         self.timestamp_when_stopped: Optional[int] = None
         self.device: Optional[Device] = None
@@ -59,6 +73,10 @@ class RDYFile:
 
         if self.path:
             self.load_file(self.path)
+
+        if self.sync_method:
+            self._synchronize()
+
         pass
 
     def __iter__(self):
@@ -70,6 +88,38 @@ class RDYFile:
 
     def __repr__(self):
         return "%s" % self.name
+
+    def _synchronize(self):
+        if self.sync_method == "timestamp":
+            if self.timestamp_when_started:
+                for m in self.measurements.values():
+                    m.synchronize("timestamp", self.timestamp_when_started)
+            else:
+                raise ValueError("timestamp_when_started must not be none")
+        elif self.sync_method == "device_time":
+            if self.timestamp_when_started and self.t0:
+                for m in self.measurements.values():
+                    m.synchronize("device_time", self.timestamp_when_started, self.t0)
+            else:
+                raise ValueError("timestamp_when_started and t0 must not be none")
+        elif self.sync_method == "gps_time":
+            if len(self.measurements[GPSSeries]) > 0:
+                sync_timestamp = self.measurements[GPSSeries].time[0]
+                utc_sync_time = self.measurements[GPSSeries].utc_time[0]
+
+                for t in self.measurements[GPSSeries].utc_time: # The first utc_time value ending with 000 is a real GPS measurement
+                    if str(t)[-3:] == "000":
+                        utc_sync_time = t
+                        break
+
+                sync_time = np.datetime64(int(utc_sync_time*1e6), "ns")
+                for m in self.measurements.values():
+                    m.synchronize("gps_time", sync_timestamp, sync_time)
+            else:
+                logger.warning("No GPS time recording, falling back to device_time synchronization")
+                self.sync_method = "device_time"
+                self._synchronize()
+        pass
 
     def load_file(self, path: str):
         logger.info("Loading file: %s" % path)
@@ -118,7 +168,7 @@ class RDYFile:
                 self.rdy_info_weight = None
 
             if 't0' in rdy:
-                self.t0 = datetime.fromisoformat(rdy['t0'])
+                self.t0 = np.datetime64(rdy['t0'])
             else:
                 self.t0 = None
                 logger.info("No t0 in file: %s" % self.name)
@@ -250,7 +300,7 @@ class RDYFile:
                 self.rdy_info_height = info['rdy_info_height'][0] if len(info['rdy_info_height']) > 0 else None
                 self.rdy_info_weight = info['rdy_info_weight'][0] if len(info['rdy_info_weight']) > 0 else None
 
-                self.t0 = info['t0'][0] if len(info['t0']) > 0 else None
+                self.t0 = np.datetime64(info['t0'][0]) if len(info['t0']) > 0 else None
                 self.timestamp_when_started = info['timestamp_when_started'][0] if len(
                     info['timestamp_when_started']) > 0 else None
                 self.timestamp_when_stopped = info['timestamp_when_stopped'][0] if len(
