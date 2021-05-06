@@ -5,7 +5,8 @@ import matplotlib.pyplot as plt
 import pytest
 
 import pyridy
-from pyridy.utils import AccelerationSeries, LinearAccelerationSeries
+from pyridy.utils import AccelerationSeries, LinearAccelerationSeries, GPSSeries
+
 
 @pytest.fixture
 def my_manager():
@@ -55,13 +56,16 @@ def test_device_time_syncing(my_manager, caplog):
     assert my_manager.files[4].measurements[AccelerationSeries].time[0] == np.datetime64(
         "2021-04-28T07:51:54.583858628")
 
-    df_acc_1 = my_manager.files[1].measurements[LinearAccelerationSeries].to_df()
-    df_acc_2 = my_manager.files[2].measurements[LinearAccelerationSeries].to_df()
+    df_acc_1 = my_manager.files[1].measurements[AccelerationSeries].to_df()
+    df_acc_2 = my_manager.files[2].measurements[AccelerationSeries].to_df()
 
-    fig, ax = plt.subplots(figsize=(11.69,8.27))
-    ax.plot(df_acc_1["lin_acc_z"],
+    t_start = "2021-05-06T12:51:40"
+    t_end = "2021-05-06T12:51:50"
+
+    fig, ax = plt.subplots(figsize=(11.69, 8.27))
+    ax.plot(df_acc_1[(df_acc_1.index >= t_start) & (df_acc_1.index < t_end)]["acc_z"],
             label="Device 1", linewidth=1)
-    ax.plot(df_acc_2["lin_acc_z"],
+    ax.plot(df_acc_2[(df_acc_2.index >= t_start) & (df_acc_2.index < t_end)]["acc_z"],
             label="Device 2", linewidth=1)
 
     ax.set(xlabel='Time [s]', ylabel='Acceleration [m/s^2]', title='Device time syncing test')
@@ -87,17 +91,59 @@ def test_gps_time_syncing(my_manager, caplog):
     df_acc_1 = my_manager.files[1].measurements[LinearAccelerationSeries].to_df()
     df_acc_2 = my_manager.files[2].measurements[LinearAccelerationSeries].to_df()
 
-    fig, ax = plt.subplots(figsize=(11.69,8.27))
-    ax.plot(df_acc_1["lin_acc_z"],
+    df_gps_1 = my_manager.files[1].measurements[GPSSeries].to_df()
+    df_gps_2 = my_manager.files[2].measurements[GPSSeries].to_df()
+
+    t_start = "2021-05-06T12:51:40"
+    t_end = "2021-05-06T12:51:50"
+
+    fig, ax = plt.subplots(2, 1, figsize=(11.69, 8.27))
+    ax[0].plot(df_acc_1[(df_acc_1.index >= t_start) & (df_acc_1.index < t_end)]["lin_acc_z"],
             label="Device 1", linewidth=1)
-    ax.plot(df_acc_2["lin_acc_z"],
+    ax[0].plot(df_acc_2[(df_acc_2.index >= t_start) & (df_acc_2.index < t_end)]["lin_acc_z"],
             label="Device 2", linewidth=1)
 
-    ax.set(xlabel='Time [s]', ylabel='Acceleration [m/s^2]', title='GPS time syncing test')
+    ax[0].set(xlabel='Time [s]', ylabel='Acceleration [m/s^2]', title='GPS time syncing test')
+    ax[0].grid()
+    ax[0].legend()
+
+    ax[1].plot(df_gps_1[(df_gps_1.index >= t_start) & (df_gps_1.index < t_end)]["utc_time"],
+            label="Device 1", linewidth=1)
+    ax[1].plot(df_gps_2[(df_gps_2.index >= t_start) & (df_gps_2.index < t_end)]["utc_time"],
+            label="Device 2", linewidth=1)
+
+    fig.savefig("files/sqlite/sync/gps_time_sync.png", dpi=300)
+
+    plt.show()
+
+    pass
+
+
+def test_ntp_time_syncing(my_manager, caplog):
+    my_manager.import_folder("files", sync_method="ntp_time")
+
+    assert my_manager.files[1].measurements[AccelerationSeries].time[0] == np.datetime64(
+        "2021-05-06T12:51:13.321774591")
+    assert my_manager.files[2].measurements[AccelerationSeries].time[0] == np.datetime64(
+        "2021-05-06T12:51:13.705642452")
+
+    df_acc_1 = my_manager.files[1].measurements[AccelerationSeries].to_df()
+    df_acc_2 = my_manager.files[2].measurements[AccelerationSeries].to_df()
+
+    t_start = "2021-05-06T12:51:40"
+    t_end = "2021-05-06T12:51:50"
+
+    fig, ax = plt.subplots(figsize=(11.69,8.27))
+    ax.plot(df_acc_1[(df_acc_1.index >= t_start) & (df_acc_1.index < t_end)]["acc_z"],
+            label="Device 1", linewidth=1)
+    ax.plot(df_acc_2[(df_acc_2.index >= t_start) & (df_acc_2.index < t_end)]["acc_z"],
+            label="Device 2", linewidth=1)
+
+    ax.set(xlabel='Time [s]', ylabel='Acceleration [m/s^2]', title='NTP time syncing test')
     ax.grid()
     ax.legend()
 
-    fig.savefig("files/sqlite/sync/gps_time_sync.png", dpi=300)
+    fig.savefig("files/sqlite/sync/ntp_time_sync.png", dpi=300)
 
     plt.show()
 

@@ -26,15 +26,16 @@ class RDYFile:
         :param sync_method: Must be "timestamp", "device_time" or "gps_time", "timestamp" uses the timestamp when the
         measurement started to adjust the timestamps (outputs nanoseconds), "device_time" transforms the time series to the
         datetime (outputs datetime), "gps_time" uses the utc gps time if available (outputs datetime), if no gps data
-        is available it will fallback to the "device_time" method
+        is available it will fallback to the "device_time" method, "ntp_time" uses network time, if not available, it
+        will fallback to the "device_time" methode
         :param path: Path to the Ridy file to be imported (can be .sqlite or .rdy)
         """
         self.path = path
         self.name: Optional[str] = ""
         self.extension: Optional[str] = ""
 
-        if sync_method is not None and sync_method not in ["timestamp", "device_time", "gps_time"]:
-            raise ValueError("synchronize argument must 'timestamp', 'device_time' or 'gps_time' not %s" % sync_method)
+        if sync_method is not None and sync_method not in ["timestamp", "device_time", "gps_time", "ntp_time"]:
+            raise ValueError("synchronize argument must 'timestamp', 'device_time', 'gps_time' or 'ntp_time' not %s" % sync_method)
 
         self.sync_method = sync_method
 
@@ -51,6 +52,8 @@ class RDYFile:
         self.t0: Optional[np.datetime64] = None
         self.timestamp_when_started: Optional[int] = None
         self.timestamp_when_stopped: Optional[int] = None
+        self.ntp_timestamp: Optional[int] = None
+        self.ntp_date_time: Optional[np.datetime64] = None
         self.device: Optional[Device] = None
 
         # Sensors
@@ -107,9 +110,10 @@ class RDYFile:
                 sync_timestamp = self.measurements[GPSSeries].time[0]
                 utc_sync_time = self.measurements[GPSSeries].utc_time[0]
 
-                for t in self.measurements[GPSSeries].utc_time: # The first utc_time value ending with 000 is a real GPS measurement
+                for i, t in enumerate(self.measurements[GPSSeries].utc_time):  # The first utc_time value ending with 000 is a real GPS measurement
                     if str(t)[-3:] == "000":
                         utc_sync_time = t
+                        sync_timestamp = self.measurements[GPSSeries].time[i]
                         break
 
                 sync_time = np.datetime64(int(utc_sync_time*1e6), "ns")
@@ -119,6 +123,16 @@ class RDYFile:
                 logger.warning("No GPS time recording, falling back to device_time synchronization")
                 self.sync_method = "device_time"
                 self._synchronize()
+        elif self.sync_method == "ntp_time":
+            if self.ntp_timestamp and self.ntp_date_time:
+                for m in self.measurements.values():
+                    m.synchronize("gps_time", self.ntp_timestamp, self.ntp_date_time)
+            else:
+                logger.warning("No ntp timestamp and datetime, falling back to device_time synchronization")
+                self.sync_method = "device_time"
+                self._synchronize()
+        else:
+            raise ValueError("sync_method must 'timestamp', 'device_time', 'gps_time' or 'ntp_time' not %s" % self.sync_method)
         pass
 
     def load_file(self, path: str):
@@ -184,6 +198,18 @@ class RDYFile:
             else:
                 self.timestamp_when_stopped = None
                 logger.info("No timestamp_when_stopped in file: %s" % self.name)
+
+            if 'ntp_timestamp' in rdy:
+                self.ntp_timestamp = rdy['ntp_timestamp']
+            else:
+                self.ntp_timestamp = None
+                logger.info("No ntp_timestamp in file: %s" % self.name)
+
+            if 'ntp_date_time' in rdy:
+                self.ntp_date_time = np.datetime64(rdy['ntp_date_time'])
+            else:
+                self.ntp_date_time = None
+                logger.info("No ntp_date_time in file: %s" % self.name)
 
             if "device" in rdy:
                 self.device = Device(**rdy['device_info'])
@@ -293,18 +319,38 @@ class RDYFile:
 
             # Info
             if info is not None:
-                self.rdy_format_version = info['rdy_format_version'][0] if len(info['rdy_format_version']) > 0 else None
-                self.rdy_info_name = info['rdy_info_name'][0] if len(info['rdy_info_name']) > 0 else None
-                self.rdy_info_sex = info['rdy_info_sex'][0] if len(info['rdy_info_sex']) > 0 else None
-                self.rdy_info_age = info['rdy_info_age'][0] if len(info['rdy_info_age']) > 0 else None
-                self.rdy_info_height = info['rdy_info_height'][0] if len(info['rdy_info_height']) > 0 else None
-                self.rdy_info_weight = info['rdy_info_weight'][0] if len(info['rdy_info_weight']) > 0 else None
+                if 'rdy_format_version' in info and len(info['rdy_format_version']) > 0:
+                    self.rdy_format_version = info['rdy_format_version'][0]
 
-                self.t0 = np.datetime64(info['t0'][0]) if len(info['t0']) > 0 else None
-                self.timestamp_when_started = info['timestamp_when_started'][0] if len(
-                    info['timestamp_when_started']) > 0 else None
-                self.timestamp_when_stopped = info['timestamp_when_stopped'][0] if len(
-                    info['timestamp_when_stopped']) > 0 else None
+                if 'rdy_info_name' in info and len(info['rdy_info_name']) > 0:
+                    self.rdy_info_name = info['rdy_info_name'][0]
+
+                if 'rdy_info_sex' in info and len(info['rdy_info_sex']) > 0:
+                    self.rdy_info_sex = info['rdy_info_sex'][0]
+
+                if 'rdy_info_age' in info and len(info['rdy_info_age']) > 0:
+                    self.rdy_info_age = info['rdy_info_age'][0]
+
+                if 'rdy_info_height' in info and len(info['rdy_info_height']) > 0:
+                    self.rdy_info_height = info['rdy_info_height'][0]
+
+                if 'rdy_info_weight' in info and len(info['rdy_info_weight']) > 0:
+                    self.rdy_info_weight = info['rdy_info_weight'][0]
+
+                if 't0' in info and len(info['t0']) > 0:
+                    self.t0 = np.datetime64(info['t0'][0])
+
+                if 'timestamp_when_started' and len(info['timestamp_when_started']) > 0:
+                    self.timestamp_when_started = info['timestamp_when_started'][0]
+
+                if 'timestamp_when_stopped' in info and len(info['timestamp_when_stopped']) > 0:
+                    self.timestamp_when_stopped = info['timestamp_when_stopped'][0]
+
+                if 'ntp_timestamp' in info and len(info['ntp_timestamp']) > 0:
+                    self.ntp_timestamp = info['ntp_timestamp'][0]
+
+                if 'ntp_date_time' in info and len(info['ntp_date_time']) > 0:
+                    self.ntp_date_time = np.datetime64(info['ntp_date_time'][0])
 
             # Measurements
             try:
@@ -392,6 +438,7 @@ class RDYFile:
                 logger.error(
                     "DatabaseError occurred when accessing subjective_comfort_measurements_table, file: %s" % self.name)
 
+            self.db_con.close()
         else:
             raise ValueError("File extension %s is not supported" % self.extension)
 

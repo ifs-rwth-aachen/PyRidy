@@ -15,7 +15,8 @@ class Campaign:
         :param sync_method: Must be "timestamp", "device_time" or "gps_time", "timestamp" uses the timestamp when the
         measurement started to adjust the timestamps (outputs nanoseconds), "device_time" transforms the time series to the
         datetime (outputs datetime), "gps_time" uses the utc gps time if available (outputs datetime), if no gps data
-        is available it will fallback to the "device_time" method
+        is available it will fallback to the "device_time" method, "ntp_time" uses network time, if not available, it
+        will fallback to the "device_time" methode
         :param name: Name of the Campaign
         :param folder: Path(s) to folder(s) where to search for measurement files
         :param recursive: If True also searches in subfolders
@@ -25,8 +26,8 @@ class Campaign:
         self.name = name
         self.files: List[RDYFile] = []
 
-        if sync_method is not None and sync_method not in ["timestamp", "device_time", "gps_time"]:
-            raise ValueError("synchronize argument must 'timestamp', 'device_time' or 'gps_time' not %s" % sync_method)
+        if sync_method is not None and sync_method not in ["timestamp", "device_time", "gps_time", "ntp_time"]:
+            raise ValueError("synchronize argument must 'timestamp', 'device_time', 'gps_time' or 'ntp_time' not %s" % sync_method)
 
         self.sync_method = sync_method
 

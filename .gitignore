@@ -136,3 +136,7 @@ dmypy.json
 
 # Cython debug symbols
 cython_debug/
+/tests/files/sqlite/sync/device1.sqlite-wal
+/tests/files/sqlite/sync/device1.sqlite-shm
+/tests/files/sqlite/sync/device2.sqlite-shm
+/tests/files/sqlite/sync/device2.sqlite-wal
