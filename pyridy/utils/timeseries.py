@@ -10,6 +10,9 @@ logger = logging.getLogger(__name__)
 
 class TimeSeries(ABC):
     def __init__(self, time: Union[list, np.ndarray] = None):
+        if time is None:
+            time = []
+
         self._time: np.ndarray = np.array(time)  # Original unadjusted timestamps
         self.time = self._time.copy()
 
@@ -49,18 +52,22 @@ class TimeSeries(ABC):
 
     def synchronize(self, method: str, sync_timestamp: Union[int, np.int64] = 0,
                     sync_time: np.datetime64 = np.datetime64(0, "s")):
-        if type(sync_timestamp) not in [int, np.int64]:
+        if sync_timestamp and type(sync_timestamp) not in [int, np.int64]:
             raise ValueError("sync_timestamp must be integer for method %s, not %s" % (method, str(type(sync_timestamp))))
 
         if type(sync_time) != np.datetime64:
             raise ValueError("sync_time must be np.datetime64 for method %s, not %s" % (method, str(type(sync_timestamp))))
 
-        if len(self._time) > 0:
+        if not np.array_equal(self._time, np.array(None)) and len(self._time) > 0:
             if method == "timestamp":
                 if self._time[0] == 0:
                     logger.warning("Timeseries already starts at 0, timestamp syncing not appropriate")
                 else:
-                    self.time = self._time - sync_timestamp
+                    if sync_timestamp:
+                        self.time = (self._time - sync_timestamp).astype('timedelta64[ns]')
+                    else:
+                        logger.warning("sync_timestamp is None, using first timestamp for timeseries syncing")
+                        self.time = (self._time - self._time[0]).astype('timedelta64[ns]')
 
             elif method == "device_time":
                 if self._time[0] == 0:
@@ -86,6 +93,16 @@ class AccelerationSeries(TimeSeries):
                  acc_y: Union[list, np.ndarray] = None,
                  acc_z: Union[list, np.ndarray] = None):
         super(AccelerationSeries, self).__init__(time=time)
+
+        if acc_x is None:
+            acc_x = []
+
+        if acc_y is None:
+            acc_y = []
+
+        if acc_z is None:
+            acc_z = []
+
         self.acc_x: np.ndarray = np.array(acc_x)
         self.acc_y: np.ndarray = np.array(acc_y)
         self.acc_z: np.ndarray = np.array(acc_z)
@@ -97,6 +114,25 @@ class LinearAccelerationSeries(TimeSeries):
                  lin_acc_y: Union[list, np.ndarray] = None,
                  lin_acc_z: Union[list, np.ndarray] = None, **kwargs):
         super(LinearAccelerationSeries, self).__init__(time=time)
+
+        if lin_acc_x is None:
+            lin_acc_x = []
+
+        if lin_acc_y is None:
+            lin_acc_y = []
+
+        if lin_acc_z is None:
+            lin_acc_z = []
+
+        if "acc_x" in kwargs and kwargs["acc_x"] is None:
+            kwargs["acc_x"] = []
+
+        if "acc_y" in kwargs and kwargs["acc_y"] is None:
+            kwargs["acc_y"] = []
+
+        if "acc_z" in kwargs and kwargs["acc_z"] is None:
+            kwargs["acc_z"] = []
+
         self.lin_acc_x: np.ndarray = np.array(kwargs["acc_x"]) if "acc_x" in kwargs else np.array(lin_acc_x)
         self.lin_acc_y: np.ndarray = np.array(kwargs["acc_y"]) if "acc_y" in kwargs else np.array(lin_acc_y)
         self.lin_acc_z: np.ndarray = np.array(kwargs["acc_z"]) if "acc_z" in kwargs else np.array(lin_acc_z)
@@ -108,6 +144,16 @@ class MagnetometerSeries(TimeSeries):
                  mag_y: Union[list, np.ndarray] = None,
                  mag_z: Union[list, np.ndarray] = None):
         super(MagnetometerSeries, self).__init__(time=time)
+
+        if mag_x is None:
+            mag_x = []
+
+        if mag_y is None:
+            mag_y = []
+
+        if mag_z is None:
+            mag_z = []
+
         self.mag_x: np.ndarray = np.array(mag_x)
         self.mag_y: np.ndarray = np.array(mag_y)
         self.mag_z: np.ndarray = np.array(mag_z)
@@ -119,6 +165,16 @@ class OrientationSeries(TimeSeries):
                  pitch: Union[list, np.ndarray] = None,
                  roll: Union[list, np.ndarray] = None):
         super(OrientationSeries, self).__init__(time=time)
+
+        if azimuth is None:
+            azimuth = []
+
+        if pitch is None:
+            pitch = []
+
+        if roll is None:
+            roll = []
+
         self.azimuth: np.ndarray = np.array(azimuth)
         self.pitch: np.ndarray = np.array(pitch)
         self.roll: np.ndarray = np.array(roll)
@@ -130,6 +186,16 @@ class GyroSeries(TimeSeries):
                  w_y: Union[list, np.ndarray] = None,
                  w_z: Union[list, np.ndarray] = None):
         super(GyroSeries, self).__init__(time=time)
+
+        if w_x is None:
+            w_x = []
+
+        if w_y is None:
+            w_y = []
+
+        if w_z is None:
+            w_z = []
+
         self.w_x: np.ndarray = np.array(w_x)
         self.w_y: np.ndarray = np.array(w_y)
         self.w_z: np.ndarray = np.array(w_z)
@@ -143,6 +209,22 @@ class RotationSeries(TimeSeries):
                  cos_phi: Union[list, np.ndarray] = None,
                  heading_acc: Union[list, np.ndarray] = None):
         super(RotationSeries, self).__init__(time=time)
+
+        if rot_x is None:
+            rot_x = []
+
+        if rot_y is None:
+            rot_y = []
+
+        if rot_z is None:
+            rot_z = []
+
+        if cos_phi is None:
+            cos_phi = []
+
+        if heading_acc is None:
+            heading_acc = []
+
         self.rot_x: np.ndarray = np.array(rot_x)
         self.rot_y: np.ndarray = np.array(rot_y)
         self.rot_z: np.ndarray = np.array(rot_z)
@@ -163,6 +245,37 @@ class GPSSeries(TimeSeries):
                  speed_acc: Union[list, np.ndarray] = None,
                  utc_time: Union[list, np.ndarray] = None):
         super(GPSSeries, self).__init__(time=time)
+
+        if lat is None:
+            lat = []
+
+        if lon is None:
+            lon = []
+
+        if altitude is None:
+            altitude = []
+
+        if bearing is None:
+            bearing = []
+
+        if speed is None:
+            speed = []
+
+        if hor_acc is None:
+            hor_acc = []
+
+        if ver_acc is None:
+            ver_acc = []
+
+        if bear_acc is None:
+            bear_acc = []
+
+        if speed_acc is None:
+            speed_acc = []
+
+        if utc_time is None:
+            utc_time = []
+
         self.lat: np.ndarray = np.array(lat)
         self.lon: np.ndarray = np.array(lon)
         self.altitude: np.ndarray = np.array(altitude)
@@ -192,6 +305,10 @@ class PressureSeries(TimeSeries):
     def __init__(self, time: Union[list, np.ndarray] = None,
                  pressure: Union[list, np.ndarray] = None):
         super(PressureSeries, self).__init__(time=time)
+
+        if pressure is None:
+            pressure = []
+
         self.pressure: np.ndarray = np.array(pressure)
 
 
@@ -199,6 +316,10 @@ class TemperatureSeries(TimeSeries):
     def __init__(self, time: Union[list, np.ndarray] = None,
                  temperature: Union[list, np.ndarray] = None):
         super(TemperatureSeries, self).__init__(time=time)
+
+        if temperature is None:
+            temperature = []
+
         self.temperature: np.ndarray = np.array(temperature)
 
 
@@ -206,6 +327,10 @@ class HumiditySeries(TimeSeries):
     def __init__(self, time: Union[list, np.ndarray] = None,
                  humidity: Union[list, np.ndarray] = None):
         super(HumiditySeries, self).__init__(time=time)
+
+        if humidity is None:
+            humidity = []
+
         self.humidity: np.ndarray = np.array(humidity)
 
 
@@ -213,6 +338,10 @@ class LightSeries(TimeSeries):
     def __init__(self, time: Union[list, np.ndarray] = None,
                  light: Union[list, np.ndarray] = None):
         super(LightSeries, self).__init__(time=time)
+
+        if light is None:
+            light = []
+
         self.light: np.ndarray = np.array(light)
 
 
@@ -222,6 +351,16 @@ class WzSeries(TimeSeries):
                  wz_y: Union[list, np.ndarray] = None,
                  wz_z: Union[list, np.ndarray] = None):
         super(WzSeries, self).__init__(time=time)
+
+        if wz_x is None:
+            wz_x = []
+
+        if wz_y is None:
+            wz_y = []
+
+        if wz_z is None:
+            wz_z = []
+
         self.wz_x: np.ndarray = np.array(wz_x)
         self.wz_y: np.ndarray = np.array(wz_y)
         self.wz_z: np.ndarray = np.array(wz_z)
@@ -231,4 +370,8 @@ class SubjectiveComfortSeries(TimeSeries):
     def __init__(self, time: Union[list, np.ndarray] = None,
                  comfort: Union[list, np.ndarray] = None):
         super(SubjectiveComfortSeries, self).__init__(time=time)
+
+        if comfort is None:
+            comfort = []
+
         self.comfort: np.ndarray = np.array(comfort)

@@ -94,17 +94,16 @@ class RDYFile:
 
     def _synchronize(self):
         if self.sync_method == "timestamp":
-            if self.timestamp_when_started:
-                for m in self.measurements.values():
-                    m.synchronize("timestamp", self.timestamp_when_started)
-            else:
-                raise ValueError("timestamp_when_started must not be none")
+            for m in self.measurements.values():
+                m.synchronize("timestamp", self.timestamp_when_started)
         elif self.sync_method == "device_time":
-            if self.timestamp_when_started and self.t0:
+            if self.t0:
                 for m in self.measurements.values():
                     m.synchronize("device_time", self.timestamp_when_started, self.t0)
             else:
-                raise ValueError("timestamp_when_started and t0 must not be none")
+                logger.warning("t0 is None, falling back to timestamp synchronization")
+                self.sync_method = "timestamp"
+                self._synchronize()
         elif self.sync_method == "gps_time":
             if len(self.measurements[GPSSeries]) > 0:
                 sync_timestamp = self.measurements[GPSSeries].time[0]
