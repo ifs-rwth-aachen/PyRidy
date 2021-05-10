@@ -34,7 +34,7 @@ class TimeSeries(ABC):
                                                                             self.get_sample_rate())
 
     def to_df(self) -> pd.DataFrame:
-        d = self.__dict__
+        d = self.__dict__.copy()
         d.pop("rdy_format_version")
         return pd.DataFrame(dict([(k, pd.Series(v)) for k, v in d.items()])).set_index("time")
 
