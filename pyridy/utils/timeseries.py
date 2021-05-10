@@ -9,11 +9,17 @@ logger = logging.getLogger(__name__)
 
 
 class TimeSeries(ABC):
-    def __init__(self, time: Union[list, np.ndarray] = None):
+    def __init__(self, time: Union[list, np.ndarray] = None, rdy_format_version: float = None):
+        self.rdy_format_version = rdy_format_version
+
         if time is None:
             time = []
 
         self._time: np.ndarray = np.array(time)  # Original unadjusted timestamps
+
+        if self.rdy_format_version and self.rdy_format_version <= 1.2:
+            self._time = (self._time*1e9).astype(np.int64)
+
         self.time = self._time.copy()
 
     def __len__(self):
@@ -29,6 +35,7 @@ class TimeSeries(ABC):
 
     def to_df(self) -> pd.DataFrame:
         d = self.__dict__
+        d.pop("rdy_format_version")
         return pd.DataFrame(dict([(k, pd.Series(v)) for k, v in d.items()])).set_index("time")
 
     def get_duration(self):
@@ -51,7 +58,7 @@ class TimeSeries(ABC):
         return sample_rate
 
     def synchronize(self, method: str, sync_timestamp: Union[int, np.int64] = 0,
-                    sync_time: np.datetime64 = np.datetime64(0, "s")):
+                    sync_time: np.datetime64 = np.datetime64(0, "s"), timedelta_unit='timedelta64[ns]'):
         if sync_timestamp and type(sync_timestamp) not in [int, np.int64]:
             raise ValueError("sync_timestamp must be integer for method %s, not %s" % (method, str(type(sync_timestamp))))
 
@@ -64,22 +71,22 @@ class TimeSeries(ABC):
                     logger.warning("Timeseries already starts at 0, timestamp syncing not appropriate")
                 else:
                     if sync_timestamp:
-                        self.time = (self._time - sync_timestamp).astype('timedelta64[ns]')
+                        self.time = (self._time - sync_timestamp).astype(timedelta_unit)
                     else:
                         logger.warning("sync_timestamp is None, using first timestamp for timeseries syncing")
-                        self.time = (self._time - self._time[0]).astype('timedelta64[ns]')
+                        self.time = (self._time - self._time[0]).astype(timedelta_unit)
 
             elif method == "device_time":
                 if self._time[0] == 0:
                     logger.warning("Timeseries already starts at 0, timestamp syncing not appropriate")
-                    self.time = self._time.astype('timedelta64[ns]') + sync_time
+                    self.time = self._time.astype(timedelta_unit) + sync_time
                 else:
-                    self.time = (self._time - sync_timestamp).astype('timedelta64[ns]') + sync_time
+                    self.time = (self._time - sync_timestamp).astype(timedelta_unit) + sync_time
             elif method == "gps_time":
                 if self._time[0] == 0:
                     logger.warning("Timeseries already starts at 0, cant sync to due to lack of proper timestamp")
                 else:
-                    self.time = (self._time - sync_timestamp).astype('timedelta64[ns]') + sync_time
+                    self.time = (self._time - sync_timestamp).astype(timedelta_unit) + sync_time
                 pass
             else:
                 raise ValueError("Method %s not supported" % method)
@@ -91,8 +98,9 @@ class AccelerationSeries(TimeSeries):
     def __init__(self, time: Union[list, np.ndarray] = None,
                  acc_x: Union[list, np.ndarray] = None,
                  acc_y: Union[list, np.ndarray] = None,
-                 acc_z: Union[list, np.ndarray] = None):
-        super(AccelerationSeries, self).__init__(time=time)
+                 acc_z: Union[list, np.ndarray] = None,
+                 rdy_format_version: float = None):
+        super(AccelerationSeries, self).__init__(time=time, rdy_format_version=rdy_format_version)
 
         if acc_x is None:
             acc_x = []
@@ -112,8 +120,9 @@ class LinearAccelerationSeries(TimeSeries):
     def __init__(self, time: Union[list, np.ndarray] = None,
                  lin_acc_x: Union[list, np.ndarray] = None,
                  lin_acc_y: Union[list, np.ndarray] = None,
-                 lin_acc_z: Union[list, np.ndarray] = None, **kwargs):
-        super(LinearAccelerationSeries, self).__init__(time=time)
+                 lin_acc_z: Union[list, np.ndarray] = None,
+                 rdy_format_version: float = None, **kwargs):
+        super(LinearAccelerationSeries, self).__init__(time=time, rdy_format_version=rdy_format_version)
 
         if lin_acc_x is None:
             lin_acc_x = []
@@ -142,8 +151,9 @@ class MagnetometerSeries(TimeSeries):
     def __init__(self, time: Union[list, np.ndarray] = None,
                  mag_x: Union[list, np.ndarray] = None,
                  mag_y: Union[list, np.ndarray] = None,
-                 mag_z: Union[list, np.ndarray] = None):
-        super(MagnetometerSeries, self).__init__(time=time)
+                 mag_z: Union[list, np.ndarray] = None,
+                 rdy_format_version: float = None):
+        super(MagnetometerSeries, self).__init__(time=time, rdy_format_version=rdy_format_version)
 
         if mag_x is None:
             mag_x = []
@@ -163,8 +173,9 @@ class OrientationSeries(TimeSeries):
     def __init__(self, time: Union[list, np.ndarray] = None,
                  azimuth: Union[list, np.ndarray] = None,
                  pitch: Union[list, np.ndarray] = None,
-                 roll: Union[list, np.ndarray] = None):
-        super(OrientationSeries, self).__init__(time=time)
+                 roll: Union[list, np.ndarray] = None,
+                 rdy_format_version: float = None):
+        super(OrientationSeries, self).__init__(time=time, rdy_format_version=rdy_format_version)
 
         if azimuth is None:
             azimuth = []
@@ -184,8 +195,9 @@ class GyroSeries(TimeSeries):
     def __init__(self, time: Union[list, np.ndarray] = None,
                  w_x: Union[list, np.ndarray] = None,
                  w_y: Union[list, np.ndarray] = None,
-                 w_z: Union[list, np.ndarray] = None):
-        super(GyroSeries, self).__init__(time=time)
+                 w_z: Union[list, np.ndarray] = None,
+                 rdy_format_version: float = None):
+        super(GyroSeries, self).__init__(time=time, rdy_format_version=rdy_format_version)
 
         if w_x is None:
             w_x = []
@@ -207,8 +219,9 @@ class RotationSeries(TimeSeries):
                  rot_y: Union[list, np.ndarray] = None,
                  rot_z: Union[list, np.ndarray] = None,
                  cos_phi: Union[list, np.ndarray] = None,
-                 heading_acc: Union[list, np.ndarray] = None):
-        super(RotationSeries, self).__init__(time=time)
+                 heading_acc: Union[list, np.ndarray] = None,
+                 rdy_format_version: float = None):
+        super(RotationSeries, self).__init__(time=time, rdy_format_version=rdy_format_version)
 
         if rot_x is None:
             rot_x = []
@@ -243,8 +256,9 @@ class GPSSeries(TimeSeries):
                  ver_acc: Union[list, np.ndarray] = None,
                  bear_acc: Union[list, np.ndarray] = None,
                  speed_acc: Union[list, np.ndarray] = None,
-                 utc_time: Union[list, np.ndarray] = None):
-        super(GPSSeries, self).__init__(time=time)
+                 utc_time: Union[list, np.ndarray] = None,
+                 rdy_format_version: float = None):
+        super(GPSSeries, self).__init__(time=time, rdy_format_version=rdy_format_version)
 
         if lat is None:
             lat = []
@@ -303,8 +317,9 @@ class GPSSeries(TimeSeries):
 
 class PressureSeries(TimeSeries):
     def __init__(self, time: Union[list, np.ndarray] = None,
-                 pressure: Union[list, np.ndarray] = None):
-        super(PressureSeries, self).__init__(time=time)
+                 pressure: Union[list, np.ndarray] = None,
+                 rdy_format_version: float = None):
+        super(PressureSeries, self).__init__(time=time, rdy_format_version=rdy_format_version)
 
         if pressure is None:
             pressure = []
@@ -314,8 +329,9 @@ class PressureSeries(TimeSeries):
 
 class TemperatureSeries(TimeSeries):
     def __init__(self, time: Union[list, np.ndarray] = None,
-                 temperature: Union[list, np.ndarray] = None):
-        super(TemperatureSeries, self).__init__(time=time)
+                 temperature: Union[list, np.ndarray] = None,
+                 rdy_format_version: float = None):
+        super(TemperatureSeries, self).__init__(time=time, rdy_format_version=rdy_format_version)
 
         if temperature is None:
             temperature = []
@@ -325,8 +341,9 @@ class TemperatureSeries(TimeSeries):
 
 class HumiditySeries(TimeSeries):
     def __init__(self, time: Union[list, np.ndarray] = None,
-                 humidity: Union[list, np.ndarray] = None):
-        super(HumiditySeries, self).__init__(time=time)
+                 humidity: Union[list, np.ndarray] = None,
+                 rdy_format_version: float = None):
+        super(HumiditySeries, self).__init__(time=time, rdy_format_version=rdy_format_version)
 
         if humidity is None:
             humidity = []
@@ -336,8 +353,9 @@ class HumiditySeries(TimeSeries):
 
 class LightSeries(TimeSeries):
     def __init__(self, time: Union[list, np.ndarray] = None,
-                 light: Union[list, np.ndarray] = None):
-        super(LightSeries, self).__init__(time=time)
+                 light: Union[list, np.ndarray] = None,
+                 rdy_format_version: float = None):
+        super(LightSeries, self).__init__(time=time, rdy_format_version=rdy_format_version)
 
         if light is None:
             light = []
@@ -349,8 +367,9 @@ class WzSeries(TimeSeries):
     def __init__(self, time: Union[list, np.ndarray] = None,
                  wz_x: Union[list, np.ndarray] = None,
                  wz_y: Union[list, np.ndarray] = None,
-                 wz_z: Union[list, np.ndarray] = None):
-        super(WzSeries, self).__init__(time=time)
+                 wz_z: Union[list, np.ndarray] = None,
+                 rdy_format_version: float = None):
+        super(WzSeries, self).__init__(time=time, rdy_format_version=rdy_format_version)
 
         if wz_x is None:
             wz_x = []
@@ -368,8 +387,9 @@ class WzSeries(TimeSeries):
 
 class SubjectiveComfortSeries(TimeSeries):
     def __init__(self, time: Union[list, np.ndarray] = None,
-                 comfort: Union[list, np.ndarray] = None):
-        super(SubjectiveComfortSeries, self).__init__(time=time)
+                 comfort: Union[list, np.ndarray] = None,
+                 rdy_format_version: float = None):
+        super(SubjectiveComfortSeries, self).__init__(time=time, rdy_format_version=rdy_format_version)
 
         if comfort is None:
             comfort = []
