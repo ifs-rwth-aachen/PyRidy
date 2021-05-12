@@ -307,12 +307,12 @@ class RDYFile:
             try:
                 info = dict(pd.read_sql_query("SELECT * from measurement_information_table", self.db_con))
             except (DatabaseError, PandasDatabaseError) as e:
-                logger.error(
-                    "DatabaseError occurred when accessing measurement_information_table, file: %s" % self.name)
                 try:
                     info = dict(pd.read_sql_query("SELECT * from measurment_information_table",
                                                   self.db_con))  # Older files can contain wrong table name
                 except (DatabaseError, PandasDatabaseError) as e:
+                    logger.warning(
+                        "DatabaseError occurred when accessing measurement_information_table, file: %s" % self.name)
                     info = None
 
             try:

@@ -16,6 +16,7 @@ class TimeSeries(ABC):
             time = []
 
         self._time: np.ndarray = np.array(time)  # Original unadjusted timestamps
+        self._timedelta: np.ndarray = np.diff(self._time)
 
         if self.rdy_format_version and self.rdy_format_version <= 1.2:
             self._time = (self._time*1e9).astype(np.int64)
@@ -51,7 +52,8 @@ class TimeSeries(ABC):
 
     def get_sample_rate(self):
         if not np.array_equal(self._time, np.array(None)) and self.get_duration() > 0:
-            sample_rate = len(self._time) / self.get_duration()
+            mean_timedelta = self._timedelta.mean()
+            sample_rate = 1 / (mean_timedelta * 1e-9) if mean_timedelta != 0.0 else 0.0
         else:
             sample_rate = 0.0
 
