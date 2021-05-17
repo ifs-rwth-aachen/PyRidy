@@ -1,6 +1,9 @@
 import logging
 import os
+from pathlib import Path
 from typing import List, Union
+
+from tqdm.auto import tqdm
 
 from .file import RDYFile
 
@@ -65,34 +68,44 @@ class Campaign:
         if exclude is None:
             exclude = []
 
-        if type(folder) == list:
-            for fdr in folder:
-                self.import_folder(fdr, recursive, exclude, sync_method)
-
-        elif type(folder) == str:
-            logger.info("Searching for file in: %s" % folder)
-            _, sub_folders, files = next(os.walk(folder))
-
-            if recursive:
-                for sub_folder in sub_folders:
-                    if sub_folder not in exclude:
-                        sub_folder_path = os.path.join(folder, sub_folder)
-                        self.import_folder(sub_folder_path, recursive, exclude, sync_method)
-
-            for file in files:
-                file_path = os.path.join(folder, file)
-                _, ext = os.path.splitext(file_path)
-
-                if ext not in [".rdy", ".sqlite"]:
-                    continue
-                else:
-                    if sync_method:
-                        self.sync_method = sync_method
-                        self.files.append(RDYFile(file_path, sync_method=sync_method))
-                    else:
-                        self.files.append(RDYFile(file_path, sync_method=self.sync_method))
-
+        if type(folder) == str:
+            folder = [folder]
+        elif type(folder) == list:
+            pass
         else:
             raise TypeError("folder argument must be list or str")
+
+        file_paths = []
+
+        for fdr in folder:
+            if recursive:
+                all_paths = list(Path(fdr).rglob("*"))
+
+                # File paths without excluded files or folder names
+                for p in all_paths:
+                    inter = set(p.parts).intersection(set(exclude))
+                    if len(inter) > 0:
+                        continue
+                    else:
+                        if p.suffix in [".rdy", ".sqlite"]:
+                            file_paths.append(p)
+                        else:
+                            continue
+            else:
+                _, _, files = next(os.walk(fdr))
+                for f in files:
+                    file_path = os.path.join(fdr, f)
+                    _, ext = os.path.splitext(file_path)
+                    if f not in exclude and ext in [".rdy", ".sqlite"]:
+                        file_paths.append(file_path)
+
+                pass
+
+        for p in tqdm(file_paths):
+            if sync_method:
+                self.sync_method = sync_method
+                self.files.append(RDYFile(p, sync_method=sync_method))
+            else:
+                self.files.append(RDYFile(p, sync_method=self.sync_method))
 
         pass
