@@ -5,7 +5,7 @@ from typing import List, Union
 import overpy
 from tqdm.auto import tqdm
 
-from pyridy.osm.utils import QueryResult
+from pyridy.osm.utils import QueryResult, OSMRailwayLine
 
 logger = logging.getLogger(__name__)
 
@@ -49,7 +49,11 @@ class OSMRegion:
         self.lat_ne = lat_ne
 
         self.desired_railway_types = desired_railway_types
-        self.query_results = {rw_type: {"track_query": QueryResult, "route_query": QueryResult} for rw_type in self.desired_railway_types}
+        self.ways: List[overpy.Way, overpy.RelationWay] = []
+        self.railway_lines: List[OSMRailwayLine] = []
+
+        self.query_results = {rw_type: {"track_query": QueryResult,
+                                        "route_query": QueryResult} for rw_type in self.desired_railway_types}
 
         if download:
             self.download_track_data()
@@ -63,16 +67,22 @@ class OSMRegion:
         if railway_type not in OSMRegion.supported_railway_types:
             raise ValueError("Your desired railway type %s is not supported" % railway_type)
 
-        track_query = """(node[""" + "railway" + """=""" + railway_type + """](""" + str(self.lat_sw) + """,""" + str(self.lon_sw) + """,""" + str(self.lat_ne) + """,""" + str(self.lon_ne) + """);
-                         way[""" + "railway" + """=""" + railway_type + """](""" + str(self.lat_sw) + """,""" + str(self.lon_sw) + """,""" + str(self.lat_ne) + """,""" + str(self.lon_ne) + """);
-                         relation[""" + "railway" + """=""" + railway_type + """](""" + str(self.lat_sw) + """,""" + str(self.lon_sw) + """,""" + str(self.lat_ne) + """,""" + str(self.lon_ne) + """););
+        track_query = """(node[""" + "railway" + """=""" + railway_type + """](""" + str(self.lat_sw) + """,""" + str(
+            self.lon_sw) + """,""" + str(self.lat_ne) + """,""" + str(self.lon_ne) + """);
+                         way[""" + "railway" + """=""" + railway_type + """](""" + str(self.lat_sw) + """,""" + str(
+            self.lon_sw) + """,""" + str(self.lat_ne) + """,""" + str(self.lon_ne) + """);
+                         relation[""" + "railway" + """=""" + railway_type + """](""" + str(
+            self.lat_sw) + """,""" + str(self.lon_sw) + """,""" + str(self.lat_ne) + """,""" + str(self.lon_ne) + """););
                          (._;>;);
                          out body;
                       """
 
-        route_query = """(node[""" + "route" + """=""" + railway_type + """](""" + str(self.lat_sw) + """,""" + str(self.lon_sw) + """,""" + str(self.lat_ne) + """,""" + str(self.lon_ne) + """);
-                         way[""" + "route" + """=""" + railway_type + """](""" + str(self.lat_sw) + """,""" + str(self.lon_sw) + """,""" + str(self.lat_ne) + """,""" + str(self.lon_ne) + """);
-                         relation[""" + "route" + """=""" + railway_type + """](""" + str(self.lat_sw) + """,""" + str(self.lon_sw) + """,""" + str(self.lat_ne) + """,""" + str(self.lon_ne) + """);
+        route_query = """(node[""" + "route" + """=""" + railway_type + """](""" + str(self.lat_sw) + """,""" + str(
+            self.lon_sw) + """,""" + str(self.lat_ne) + """,""" + str(self.lon_ne) + """);
+                         way[""" + "route" + """=""" + railway_type + """](""" + str(self.lat_sw) + """,""" + str(
+            self.lon_sw) + """,""" + str(self.lat_ne) + """,""" + str(self.lon_ne) + """);
+                         relation[""" + "route" + """=""" + railway_type + """](""" + str(self.lat_sw) + """,""" + str(
+            self.lon_sw) + """,""" + str(self.lat_ne) + """,""" + str(self.lon_ne) + """);
                          );
                          (._;>;);
                          out body;
@@ -80,22 +90,24 @@ class OSMRegion:
 
         return track_query, route_query
 
-    def download_track_data(self, railway_type=None):
+    def download_track_data(self, railway_type: Union[List, str] = None):
         if railway_type:
-            # Download data for given railway type
+            railway_types = [railway_type]
+        else:
+            railway_types = self.desired_railway_types
+
+        # Download data for all desired railway types
+        for railway_type in tqdm(railway_types):
             trk_query, rou_query = self._create_query(railway_type=railway_type)
             trk_result = QueryResult(self.query_overpass(trk_query), railway_type)
             rou_result = QueryResult(self.query_overpass(rou_query), railway_type)
             self.query_results[railway_type]["track_query"] = trk_result
             self.query_results[railway_type]["route_query"] = rou_result
-        else:
-            # Download data for all desired railway type
-            for railway_type in tqdm(self.desired_railway_types):
-                trk_query, rou_query = self._create_query(railway_type=railway_type)
-                trk_result = QueryResult(self.query_overpass(trk_query), railway_type)
-                rou_result = QueryResult(self.query_overpass(rou_query), railway_type)
-                self.query_results[railway_type]["track_query"] = trk_result
-                self.query_results[railway_type]["route_query"] = rou_result
+
+            for rel in rou_result.result.relations:
+                rel_way_ids = [mem.ref for mem in rel.members]
+                rel_ways = [w for w in rou_result.result.ways if w.id in rel_way_ids]
+                self.railway_lines.append(OSMRailwayLine(rel.id, rel_ways, rel.tags))
 
     def query_overpass(self, query: str, attempts: int = 3):
         for a in range(attempts):

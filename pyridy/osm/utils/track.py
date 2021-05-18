@@ -10,15 +10,15 @@ from pyridy.osm.utils import bspline
 
 
 class OSMTrack:
-    def __init__(self, ways: List[overpy.Way], identifier=None, name=None, color=None, use_interp=True):
-        self.identifier = identifier
+    def __init__(self, id, ways: List[overpy.Way], name=None, color=None):
+        self.id = id
         self.name = name
         self.ways = ways
         self.track_nodes = [way.nodes for way in ways]
         self.lon: [float] = []
         self.lat: [float] = []
+
         self.stitch_ways_to_track()
-        self.interp = use_interp
 
         self.x, self.y = self.convert_lat_lon_to_xy(self.lon, self.lat)
         self.s, self.ds = self.compute_distance_from_lon_lat(self.lon, self.lat)

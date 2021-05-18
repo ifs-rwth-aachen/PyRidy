@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 class Campaign:
     def __init__(self, name="", folder: Union[list, str] = None, recursive=True, exclude: Union[list, str] = None,
                  sync_method: str = None, lat_sw: float = None, lon_sw: float = None, lat_ne: float = None,
-                 lon_ne: float = None, download_osm_region: bool = False):
+                 lon_ne: float = None, download_osm_region: bool = False, railway_types: Union[list, str] = None):
         """
         A measurement campaign manages loading, processing etc of RDY files
         :param sync_method: Must be "timestamp", "device_time" or "gps_time", "timestamp" uses the timestamp when the
@@ -52,9 +52,8 @@ class Campaign:
             self.determine_geographic_extent()
 
         if download_osm_region:
-            self.osm_region = OSMRegion(lat_sw=self.lat_sw, lon_sw=self.lon_sw, lat_ne=self.lat_ne, lon_ne=self.lon_ne)
-
-        pass
+            self.osm_region = OSMRegion(lat_sw=self.lat_sw, lon_sw=self.lon_sw, lat_ne=self.lat_ne, lon_ne=self.lon_ne,
+                                        desired_railway_types=railway_types)
 
     def __call__(self, name):
         return list(filter(lambda file: file.name == name, self.files))
