@@ -5,7 +5,7 @@ from typing import List, Union
 import overpy
 from tqdm import tqdm
 
-from utils.query import QueryResult
+from pyridy.osm.utils import QueryResult
 
 logger = logging.getLogger(__name__)
 
@@ -14,7 +14,10 @@ class OSMRegion:
     supported_railway_types = ["rail", "tram", "subway", "light_rail"]
 
     def __init__(self, lon_sw: float, lat_sw: float, lon_ne: float, lat_ne: float,
-                 desired_railway_types: Union[List, str] = None):
+                 desired_railway_types: Union[List, str] = None, download: bool = True):
+
+        if None in [lon_sw, lat_sw, lon_ne, lat_ne]:
+            raise ValueError("One or more lat/lon values is None")
 
         if desired_railway_types is None:
             desired_railway_types = ["rail", "tram", "subway", "light_rail"]
@@ -48,6 +51,9 @@ class OSMRegion:
         self.desired_railway_types = desired_railway_types
         self.query_results = {rw_type: QueryResult for rw_type in self.desired_railway_types}
 
+        if download:
+            self.download_track_data()
+
         logger.info("Initialized region: %f, %f (SW), %f, %f (NE)" % (self.lon_sw,
                                                                       self.lat_sw,
                                                                       self.lon_ne,
@@ -74,28 +80,28 @@ class OSMRegion:
         if railway_type:
             # Download data for given railway type
             query = self._create_query(railway_type=railway_type)
-            self.query_results[railway_type] = QueryResult(self.overpass_api.query(query), railway_type)
+            self.query_results[railway_type] = QueryResult(self.query_overpass(query), railway_type)
         else:
             # Download data for all desired railway type
             for railway_type in tqdm(self.desired_railway_types):
                 query = self._create_query(railway_type=railway_type)
-                for attempt in range(3):
-                    try:
-                        self.query_results[railway_type] = QueryResult(self.overpass_api.query(query), railway_type)
-                        break
-                    except overpy.exception.OverpassTooManyRequests as e:
-                        logging.warning("OverpassTooManyRequest, retrying".format(e))
-                    except overpy.exception.OverpassGatewayTimeout as e:
-                        logging.warning("OverpassTooManyRequest, retrying".format(e))
-                    except overpy.exception.OverpassBadRequest as e:
-                        logging.warning("OverpassTooManyRequest, retrying".format(e))
-                else:
-                    raise RuntimeError("Could download OSM data via Overpass after %d tries." % 3)
+                self.query_results[railway_type] = QueryResult(self.query_overpass(query), railway_type)
 
-        pass
-
-    def query_overpass(self, query: str):
-        result = self.overpass_api.query(query)
+    def query_overpass(self, query: str, attempts: int = 3):
+        for a in range(attempts):
+            try:
+                logger.info("Trying to query OSM data, %d/%d tries" % (a, attempts))
+                result = self.overpass_api.query(query)
+                logger.info("Succesfully gathers OSM Data")
+                break
+            except overpy.exception.OverpassTooManyRequests as e:
+                logger.warning("OverpassTooManyRequest, retrying".format(e))
+            except overpy.exception.OverpassGatewayTimeout as e:
+                logger.warning("OverpassTooManyRequest, retrying".format(e))
+            except overpy.exception.OverpassBadRequest as e:
+                logger.warning("OverpassTooManyRequest, retrying".format(e))
+        else:
+            raise RuntimeError("Could download OSM data via Overpass after %d attempts." % attempts)
         return result
 
     def search_curvy_result(self, way_ids: List[int], railway_type="tram"):
@@ -157,7 +163,7 @@ class OSMRegion:
                           % self.lat_ne, UserWarning)
 
     def __repr__(self):
-        return "curvy | %f, %f (SW), %f, %f (NE)" % (self.lon_sw,
-                                                     self.lat_sw,
-                                                     self.lon_ne,
-                                                     self.lat_ne)
+        return "Lat SW: %f, Lon SW: %f , Lat NE: %f, Lon NE: %f" % (self.lat_sw,
+                                                                    self.lon_sw,
+                                                                    self.lat_ne,
+                                                                    self.lon_ne)

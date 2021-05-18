@@ -6,6 +6,7 @@ from typing import List, Union
 from tqdm.auto import tqdm
 
 from .file import RDYFile
+from .osm import OSMRegion
 from .utils import GPSSeries
 
 logger = logging.getLogger(__name__)
@@ -14,7 +15,7 @@ logger = logging.getLogger(__name__)
 class Campaign:
     def __init__(self, name="", folder: Union[list, str] = None, recursive=True, exclude: Union[list, str] = None,
                  sync_method: str = None, lat_sw: float = None, lon_sw: float = None, lat_ne: float = None,
-                 lon_ne: float = None):
+                 lon_ne: float = None, download_osm_region: bool = False):
         """
         A measurement campaign manages loading, processing etc of RDY files
         :param sync_method: Must be "timestamp", "device_time" or "gps_time", "timestamp" uses the timestamp when the
@@ -36,6 +37,7 @@ class Campaign:
         self.files: List[RDYFile] = []
         self.lat_sw, self.lon_sw = lat_sw, lon_sw
         self.lat_ne, self.lon_ne = lat_ne, lon_ne
+        self.osm_region = None
 
         if sync_method is not None and sync_method not in ["timestamp", "device_time", "gps_time", "ntp_time"]:
             raise ValueError(
@@ -48,6 +50,9 @@ class Campaign:
 
         if not self.lat_sw or not self.lat_ne or not self.lon_sw or not self.lon_ne:
             self.determine_geographic_extent()
+
+        if download_osm_region:
+            self.osm_region = OSMRegion(lat_sw=self.lat_sw, lon_sw=self.lon_sw, lat_ne=self.lat_ne, lon_ne=self.lon_ne)
 
         pass
 
@@ -95,9 +100,12 @@ class Campaign:
         self.files = []
 
     def import_folder(self, folder: Union[list, str] = None, recursive: bool = True, exclude: Union[list, str] = None,
-                      sync_method: str = None, det_geo_extent: bool = True):
+                      sync_method: str = None, det_geo_extent: bool = True, download_osm_region: bool = False,
+                      railway_types: Union[list, str] = None):
         """
 
+        :param railway_types: Railway types to be downloaded from OSM (rail, tram, light_rail or subway)
+        :param download_osm_region: If True downloads OSM Region compliant with the geographic extent
         :param det_geo_extent: If True determines the current geographic extent of the campaign
         :param sync_method:
         :param exclude:
@@ -150,3 +158,7 @@ class Campaign:
 
         if det_geo_extent:
             self.determine_geographic_extent()
+
+        if download_osm_region:
+            self.osm_region = OSMRegion(lat_sw=self.lat_sw, lon_sw=self.lon_sw, lat_ne=self.lat_ne, lon_ne=self.lon_ne,
+                                        desired_railway_types=railway_types)
