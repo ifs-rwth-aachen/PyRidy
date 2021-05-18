@@ -59,6 +59,12 @@ class TimeSeries(ABC):
 
         return sample_rate
 
+    def is_empty(self):
+        if len(self) == 0:
+            return True
+        else:
+            return False
+
     def synchronize(self, method: str, sync_timestamp: Union[int, np.int64] = 0,
                     sync_time: np.datetime64 = np.datetime64(0, "s"), timedelta_unit='timedelta64[ns]'):
         if sync_timestamp and type(sync_timestamp) not in [int, np.int64]:
