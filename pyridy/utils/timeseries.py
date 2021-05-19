@@ -318,6 +318,7 @@ class GPSSeries(TimeSeries):
             logger.warning("Coordinates are empty")
             return [[]]
         elif len(self.lat) == 0 and len(self.lon) == 0:
+            logger.warning("Coordinates are empty")
             return [[]]
         else:
             return [[lat, lon] for lat, lon in zip(self.lat, self.lon)]

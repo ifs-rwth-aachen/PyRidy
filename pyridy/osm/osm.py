@@ -105,9 +105,13 @@ class OSMRegion:
             self.query_results[railway_type]["route_query"] = rou_result
 
             for rel in rou_result.result.relations:
-                rel_way_ids = [mem.ref for mem in rel.members]
+                rel_way_ids = [mem.ref for mem in rel.members if type(mem) == overpy.RelationWay and not mem.role]
                 rel_ways = [w for w in rou_result.result.ways if w.id in rel_way_ids]
-                self.railway_lines.append(OSMRailwayLine(rel.id, rel_ways, rel.tags))
+
+                sort_order = {id: idx for id, idx in zip(rel_way_ids, range(len(rel_way_ids)))}
+                rel_ways.sort(key=lambda w: sort_order[w.id])
+
+                self.railway_lines.append(OSMRailwayLine(rel.id, rel_ways, rel.tags, rel.members))
 
     def query_overpass(self, query: str, attempts: int = 3):
         for a in range(attempts):

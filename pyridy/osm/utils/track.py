@@ -1,3 +1,4 @@
+import itertools
 import math
 from typing import List
 
@@ -14,7 +15,8 @@ class OSMTrack:
         self.id = id
         self.name = name
         self.ways = ways
-        self.track_nodes = [way.nodes for way in ways]
+        self.way_nodes = [way.nodes for way in ways]  # List of list of nodes
+        self.nodes = list(itertools.chain.from_iterable(self.way_nodes))  # list of nodes
         self.lon: [float] = []
         self.lat: [float] = []
 
@@ -50,9 +52,9 @@ class OSMTrack:
         self.c = [el * -1 for el in self.c]
 
     def stitch_ways_to_track(self):
-        for i, nodes in enumerate(self.track_nodes[:-1]):
-            c_nodes = self.track_nodes[i]
-            n_nodes = self.track_nodes[i + 1]
+        for i, nodes in enumerate(self.way_nodes[:-1]):
+            c_nodes = self.way_nodes[i]
+            n_nodes = self.way_nodes[i + 1]
 
             if c_nodes[-1] == n_nodes[0]:
                 pass
@@ -64,11 +66,17 @@ class OSMTrack:
             elif c_nodes[0] == n_nodes[0]:
                 c_nodes.reverse()
 
-        for nodes in self.track_nodes:
+        for nodes in self.way_nodes:
             for node in nodes:
                 if node.lon not in self.lon and node.lat not in self.lat:
                     self.lon.append(node.lon)
                     self.lat.append(node.lat)
+
+    def to_ipyleaflet(self):
+        if self.lat and self.lon:
+            return [[float(lat), float(lon)] for lat, lon in zip(self.lat, self.lon)]
+        else:
+            return [[]]
 
     @staticmethod
     def compute_curvature(x: [float], y: [float]):
