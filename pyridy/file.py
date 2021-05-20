@@ -2,8 +2,6 @@ import json
 import logging
 import os
 import sqlite3
-from datetime import datetime
-from functools import reduce
 from sqlite3 import Connection, DatabaseError
 from typing import Optional, List
 

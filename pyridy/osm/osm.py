@@ -1,5 +1,6 @@
 import logging.config
 import warnings
+from itertools import chain
 from typing import List, Union
 
 import overpy
@@ -130,7 +131,15 @@ class OSMRegion:
             raise RuntimeError("Could download OSM data via Overpass after %d attempts." % attempts)
         return result
 
-    def search_curvy_result(self, way_ids: List[int], railway_type="tram"):
+    def get_all_route_nodes(self) -> list:
+        nodes = []
+
+        for railway_type in self.desired_railway_types:
+            nodes.append(self.query_results[railway_type]["route_query"].result.nodes)
+
+        return list(chain.from_iterable(nodes))
+
+    def search_osm_result(self, way_ids: List[int], railway_type="tram"):
         ways = []
 
         for way_id in way_ids:

@@ -13,7 +13,7 @@ def my_campaign():
     return pyridy.Campaign()
 
 
-def test_ridy_manager(my_campaign):
+def test_pyridy_manager(my_campaign):
     assert True
 
 
