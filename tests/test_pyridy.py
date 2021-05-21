@@ -13,7 +13,7 @@ def my_campaign():
     return pyridy.Campaign()
 
 
-def test_pyridy_manager(my_campaign):
+def test_pyridy_campaign_manager(my_campaign):
     assert True
 
 
@@ -27,6 +27,23 @@ def test_loading_files_non_recursive(my_campaign, caplog):
     caplog.set_level(logging.DEBUG)
     my_campaign.import_folder("files/rdy/", recursive=False)
     assert len(my_campaign) == 1
+
+
+def test_get_measurement(my_campaign, caplog):
+    caplog.set_level(logging.DEBUG)
+
+    my_campaign.import_folder("files/rdy/", recursive=False)
+    m = my_campaign[0][0]
+
+    assert type(m) == AccelerationSeries
+
+
+def test_get_sub_series_names(my_campaign, caplog):
+    caplog.set_level(logging.DEBUG)
+
+    my_campaign.import_folder("files/rdy/", recursive=False)
+    sub_series_types = my_campaign[0][0].get_sub_series_names()
+    assert sub_series_types == ["acc_x", "acc_y", "acc_z"]
 
 
 def test_load_additional_osm_data(my_campaign, caplog):

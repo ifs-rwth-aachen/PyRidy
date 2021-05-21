@@ -81,6 +81,10 @@ class RDYFile:
 
         pass
 
+    def __getitem__(self, idx):
+        key = list(self.measurements.keys())[idx]
+        return self.measurements[key]
+
     def __iter__(self):
         """
         The FileIterator returns the measurements iteratively
@@ -134,6 +138,14 @@ class RDYFile:
         pass
 
     def load_file(self, path: str):
+        """
+        Loads a single Ridy file located at path
+
+        Parameters
+        ----------
+        path Path to the ridy file
+
+        """
         logger.info("Loading file: %s" % path)
 
         _, self.extension = os.path.splitext(path)

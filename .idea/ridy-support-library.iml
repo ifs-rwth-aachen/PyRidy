@@ -9,6 +9,8 @@
     <option name="requirementsPath" value="C:\Users\Philipp\sciebo\10_IFS_der_RWTH_Aachen\20_Python\Ridy_Support_Library\ridy-support-library\pyproject.toml" />
   </component>
   <component name="PyDocumentationSettings">
+    <option name="format" value="NUMPY" />
+    <option name="myDocStringFormat" value="NumPy" />
     <option name="renderExternalDocumentation" value="true" />
   </component>
   <component name="TestRunnerService">

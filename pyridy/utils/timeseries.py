@@ -39,6 +39,20 @@ class TimeSeries(ABC):
         d.pop("rdy_format_version")
         return pd.DataFrame(dict([(k, pd.Series(v)) for k, v in d.items()])).set_index("time")
 
+    def get_sub_series_names(self) -> list:
+        """
+
+        Returns
+        -------
+            List of names of sub series (e.g., acc_x, acc_y, acc_z)
+        """
+        d = self.__dict__.copy()
+
+        for k in ["rdy_format_version", "time", "_time", "_timedelta"]:
+            d.pop(k)
+
+        return list(d.keys())
+
     def get_duration(self):
         if not np.array_equal(self._time, np.array(None)) and len(self._time) > 0:
             if type(self._time[0]) == np.int64:

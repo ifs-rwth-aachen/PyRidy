@@ -84,8 +84,8 @@ class Campaign:
                 max_lons.append(gps_series.lon.max())
 
         self.lat_sw = min(min_lats) if min_lats else None
-        self.lat_ne = min(max_lats) if max_lats else None
-        self.lon_sw = max(min_lons) if min_lons else None
+        self.lat_ne = max(max_lats) if max_lats else None
+        self.lon_sw = min(min_lons) if min_lons else None
         self.lon_ne = max(max_lons) if max_lons else None
         logging.info("Geographic boundaries of measurement campaign: Lat SW: %s, Lon SW: %s, Lat NE: %s, Lon NE: %s"
                      % (str(self.lat_sw), str(self.lon_sw), str(self.lat_ne), str(self.lon_ne)))
