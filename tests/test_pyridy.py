@@ -20,7 +20,41 @@ def test_pyridy_campaign_manager(my_campaign):
 def test_loading_files(my_campaign, caplog):
     caplog.set_level(logging.DEBUG)
     my_campaign.import_folder("files")
-    assert len(my_campaign) == 6
+    assert len(my_campaign) == 7
+
+
+def test_load_single_file(my_campaign, caplog):
+    caplog.set_level(logging.DEBUG)
+    my_campaign.import_files("files/sqlite/sample3.sqlite", sync_method="ntp_time")
+
+    assert len(my_campaign) == 1
+
+    # Plot acceleration data
+    t = my_campaign.files[0].measurements[AccelerationSeries].time
+
+    acc_x = my_campaign.files[0].measurements[AccelerationSeries].acc_x
+    acc_y = my_campaign.files[0].measurements[AccelerationSeries].acc_y
+    acc_z = my_campaign.files[0].measurements[AccelerationSeries].acc_z
+
+    fig, ax = plt.subplots(3, 1, sharex="row", figsize=(11.69, 8.27))
+
+    ax[0].plot(t, acc_x)
+    ax[1].plot(t, acc_y)
+    ax[2].plot(t, acc_z)
+
+    ax[0].grid()
+    ax[1].grid()
+    ax[2].grid()
+
+    ax[0].set_ylabel("Acc_x [m/s^2]")
+    ax[1].set_ylabel("Acc_y [m/s^2]")
+    ax[2].set_ylabel("Acc_z [m/s^2]")
+
+    ax[2].set_xlabel("Time")
+
+    # ax[0].set_ylim(-1, 1)
+
+    plt.show()
 
 
 def test_loading_files_non_recursive(my_campaign, caplog):
@@ -33,7 +67,7 @@ def test_get_measurement(my_campaign, caplog):
     caplog.set_level(logging.DEBUG)
 
     my_campaign.import_folder("files/rdy/", recursive=False)
-    m = my_campaign[0][0]
+    m = my_campaign[0].measurements[AccelerationSeries]
 
     assert type(m) == AccelerationSeries
 
@@ -42,7 +76,7 @@ def test_get_sub_series_names(my_campaign, caplog):
     caplog.set_level(logging.DEBUG)
 
     my_campaign.import_folder("files/rdy/", recursive=False)
-    sub_series_types = my_campaign[0][0].get_sub_series_names()
+    sub_series_types = my_campaign[0].measurements[AccelerationSeries].get_sub_series_names()
     assert sub_series_types == ["acc_x", "acc_y", "acc_z"]
 
 
@@ -85,8 +119,8 @@ def test_device_time_syncing(my_campaign, caplog):
     assert my_campaign.files[2].measurements[AccelerationSeries].time[0] == np.datetime64(
         "2021-04-28T07:51:54.583858628")
 
-    df_acc_1 = my_campaign.files[4].measurements[AccelerationSeries].to_df()
-    df_acc_2 = my_campaign.files[5].measurements[AccelerationSeries].to_df()
+    df_acc_1 = my_campaign.files[5].measurements[AccelerationSeries].to_df()
+    df_acc_2 = my_campaign.files[6].measurements[AccelerationSeries].to_df()
 
     t_start = "2021-05-06T12:51:40"
     t_end = "2021-05-06T12:51:50"
@@ -117,11 +151,11 @@ def test_gps_time_syncing(my_campaign, caplog):
     assert my_campaign.files[2].measurements[AccelerationSeries].time[0] == np.datetime64(
         "2021-04-28T07:51:56.892826255")
 
-    df_acc_1 = my_campaign.files[4].measurements[LinearAccelerationSeries].to_df()
-    df_acc_2 = my_campaign.files[5].measurements[LinearAccelerationSeries].to_df()
+    df_acc_1 = my_campaign.files[5].measurements[LinearAccelerationSeries].to_df()
+    df_acc_2 = my_campaign.files[6].measurements[LinearAccelerationSeries].to_df()
 
-    df_gps_1 = my_campaign.files[4].measurements[GPSSeries].to_df()
-    df_gps_2 = my_campaign.files[5].measurements[GPSSeries].to_df()
+    df_gps_1 = my_campaign.files[5].measurements[GPSSeries].to_df()
+    df_gps_2 = my_campaign.files[6].measurements[GPSSeries].to_df()
 
     t_start = "2021-05-06T12:51:40"
     t_end = "2021-05-06T12:51:50"
@@ -151,13 +185,13 @@ def test_gps_time_syncing(my_campaign, caplog):
 def test_ntp_time_syncing(my_campaign, caplog):
     my_campaign.import_folder("files", sync_method="ntp_time")
 
-    assert my_campaign.files[4].measurements[AccelerationSeries].time[0] == np.datetime64(
-        "2021-05-06T12:51:13.321774591")
     assert my_campaign.files[5].measurements[AccelerationSeries].time[0] == np.datetime64(
+        "2021-05-06T12:51:13.321774591")
+    assert my_campaign.files[6].measurements[AccelerationSeries].time[0] == np.datetime64(
         "2021-05-06T12:51:13.705642452")
 
-    df_acc_1 = my_campaign.files[4].measurements[AccelerationSeries].to_df()
-    df_acc_2 = my_campaign.files[5].measurements[AccelerationSeries].to_df()
+    df_acc_1 = my_campaign.files[5].measurements[AccelerationSeries].to_df()
+    df_acc_2 = my_campaign.files[6].measurements[AccelerationSeries].to_df()
 
     t_start = "2021-05-06T12:51:40"
     t_end = "2021-05-06T12:51:50"

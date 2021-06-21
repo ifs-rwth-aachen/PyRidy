@@ -98,11 +98,44 @@ class Campaign:
         """
         self.files = []
 
+    def import_files(self, paths: Union[list, str] = None, sync_method: str = None,
+                     det_geo_extent: bool = True, download_osm_region: bool = False,
+                     railway_types: Union[list, str] = None):
+        """
+        Imports a file or set of files
+        :param railway_types: Railway types to be downloaded from OSM (rail, tram, light_rail or subway)
+        :param download_osm_region: If True downloads OSM Region compliant with the geographic extent
+        :param det_geo_extent: If True determines the current geographic extent of the campaign
+        :param sync_method:
+        :param paths: Path(s) to file(s) that should be imported
+        :return:
+        """
+        if type(paths) == str:
+            paths = [paths]
+        elif type(paths) == list:
+            pass
+        else:
+            raise TypeError("paths argument must be list of str or str")
+
+        for p in tqdm(paths):
+            if sync_method:
+                self.sync_method = sync_method
+                self.files.append(RDYFile(p, sync_method=sync_method))
+            else:
+                self.files.append(RDYFile(p, sync_method=self.sync_method))
+
+        if det_geo_extent:
+            self.determine_geographic_extent()
+
+        if download_osm_region:
+            self.osm_region = OSMRegion(lat_sw=self.lat_sw, lon_sw=self.lon_sw, lat_ne=self.lat_ne, lon_ne=self.lon_ne,
+                                        desired_railway_types=railway_types)
+
     def import_folder(self, folder: Union[list, str] = None, recursive: bool = True, exclude: Union[list, str] = None,
                       sync_method: str = None, det_geo_extent: bool = True, download_osm_region: bool = False,
                       railway_types: Union[list, str] = None):
         """
-
+        Imports a whole folder including subfolders if desired
         :param railway_types: Railway types to be downloaded from OSM (rail, tram, light_rail or subway)
         :param download_osm_region: If True downloads OSM Region compliant with the geographic extent
         :param det_geo_extent: If True determines the current geographic extent of the campaign

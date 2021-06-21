@@ -81,9 +81,9 @@ class RDYFile:
 
         pass
 
-    def __getitem__(self, idx):
-        key = list(self.measurements.keys())[idx]
-        return self.measurements[key]
+    # def __getitem__(self, idx):
+    #     key = list(self.measurements.keys())[idx]
+    #     return self.measurements[key]
 
     def __iter__(self):
         """
