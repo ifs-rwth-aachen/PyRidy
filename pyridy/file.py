@@ -55,6 +55,8 @@ class RDYFile:
         self.ntp_date_time: Optional[np.datetime64] = None
         self.device: Optional[Device] = None
 
+        self.duration: Optional[float] = None
+
         # Sensors
         self.sensors: Optional[List[Sensor]] = []
 
@@ -76,8 +78,13 @@ class RDYFile:
         if self.path:
             self.load_file(self.path)
 
-        if self.sync_method:
-            self._synchronize()
+            if self.timestamp_when_started and self.timestamp_when_stopped:
+                self.duration = (self.timestamp_when_stopped - self.timestamp_when_started) * 1e-9
+
+            if self.sync_method:
+                self._synchronize()
+        else:
+            logging.warning("RDYFile instantiated without a path")
 
         pass
 
@@ -136,6 +143,30 @@ class RDYFile:
         else:
             raise ValueError("sync_method must 'timestamp', 'device_time', 'gps_time' or 'ntp_time' not %s" % self.sync_method)
         pass
+
+    def get_integrity_report(self):
+        """
+        Returns a dict object with information of the rdy file
+        Returns
+        -------
+        Data Integrity Report
+        """
+        report = {}
+
+        for k, v in self.measurements.items():
+            if len(v) > 0:
+                report[k.__name__] = True
+            else:
+                report[k.__name__] = False
+
+        attr = self.__dict__.copy()
+        for a in ["db_con", "measurements", "device", "sensors"]:
+            attr.pop(a)
+            pass
+
+        report.update(attr)
+
+        return report
 
     def load_file(self, path: str):
         """

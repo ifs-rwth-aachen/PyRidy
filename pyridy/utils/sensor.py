@@ -22,3 +22,6 @@ class Sensor:
         self.max_range = max_range
         self.min_delay = min_delay
         pass
+
+    def __repr__(self):
+        return self.string_type + " " + self.name
