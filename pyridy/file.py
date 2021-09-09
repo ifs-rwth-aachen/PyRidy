@@ -160,6 +160,7 @@ class RDYFile:
                 report[k.__name__] = False
 
         attr = self.__dict__.copy()
+        attr.update(attr["device"].__dict__.copy())
         for a in ["db_con", "measurements", "device", "sensors"]:
             attr.pop(a)
             pass

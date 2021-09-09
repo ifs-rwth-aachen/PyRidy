@@ -1,13 +1,16 @@
 import logging
 import os
 from pathlib import Path
-from typing import List, Union
+from typing import List, Union, Tuple
 
+from ipyleaflet import Map, Polyline, Marker, Icon, FullScreenControl, ScaleControl, basemap_to_tiles
+from ipywidgets import HTML
 from tqdm.auto import tqdm
 
 from .file import RDYFile
 from .osm import OSMRegion
 from .utils import GPSSeries
+from .utils.tools import generate_random_color
 
 logger = logging.getLogger(__name__)
 
@@ -32,6 +35,8 @@ class Campaign:
         :param lat_ne: NE boundary Latitude of Campaign
         :param lon_ne: NE boundary Longitude of Campaign
         """
+        self._colors = []  # Used colors
+
         self.folder = folder
         self.name = name
         self.files: List[RDYFile] = []
@@ -56,13 +61,106 @@ class Campaign:
                                         desired_railway_types=railway_types)
 
     def __call__(self, name):
-        return list(filter(lambda file: file.name == name, self.files))
+        results = list(filter(lambda file: file.name == name, self.files))
+        if len(results) == 1:
+            return results[0]
+        else:
+            return results
 
     def __getitem__(self, index):
         return self.files[index]
 
     def __len__(self):
         return len(self.files)
+
+    def add_tracks_to_map(self, m: Map) -> Map:
+        """
+        Adds all tracks(files) in campaign to map m
+        :param m:
+        :return:
+        """
+        for file in self.files:
+            m = self.add_track_to_map(m, file=file)
+
+        return m
+
+    def add_track_to_map(self, m: Map, name: str = "", file: RDYFile = None) -> Map:
+        """
+        Adds a single track to the map given by m. If name and file are given, name will be used
+        :param file:
+        :param m:
+        :param name:
+        :return:
+        """
+
+        if name != "":
+            files = self(name)
+        elif file is not None:
+            files = [file]
+
+        else:
+            raise ValueError("You must provide either a filename or the file")
+
+        for f in files:
+            while True:
+                color = generate_random_color("HEX")
+                if color not in self._colors:
+                    self._colors.append(color)
+                    break
+                else:
+                    continue
+
+            gps_series = f.measurements[GPSSeries]
+            coords = gps_series.to_ipyleaflef()
+
+            if coords == [[]]:
+                logger.warning("Coordinates are empty in file: %s" % f.name)
+            else:
+                file_polyline = Polyline(locations=coords, color=color, fill=False, weight=4,
+                                         dash_array='10, 10')
+                m.add_layer(file_polyline)
+
+                # Add Start/End markers
+                start_icon = Icon(
+                    icon_url='https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png',
+                    shadow_url='https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+                    icon_size=[25, 41],
+                    icon_anchor=[12, 41],
+                    popup_anchor=[1, -34],
+                    shadow_size=[41, 41])
+
+                end_icon = Icon(
+                    icon_url='https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png',
+                    shadow_url='https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+                    icon_size=[25, 41],
+                    icon_anchor=[12, 41],
+                    popup_anchor=[1, -34],
+                    shadow_size=[41, 41])
+
+                start_marker = Marker(location=tuple(coords[0]), draggable=False, icon=start_icon)
+                end_marker = Marker(location=tuple(coords[-1]), draggable=False, icon=end_icon)
+
+                start_message = HTML()
+                end_message = HTML()
+                start_message.value = "<p>Start:</p><p>" + f.name + "</p>"
+                end_message.value = "<p>End:</p><p>" + f.name + "</p>"
+
+                start_marker.popup = start_message
+                end_marker.popup = end_message
+
+                m.add_layer(start_marker)
+                m.add_layer(end_marker)
+
+        return m
+
+    def add_osm_routes_to_map(self, m: Map) -> Map:
+        if self.osm_region:
+            for line in self.osm_region.railway_lines:
+                coords = line.to_ipyleaflet()
+                file_polyline = Polyline(locations=coords, color=line.color, fill=False, weight=4)
+                m.add_layer(file_polyline)
+
+        return m
 
     def determine_geographic_extent(self):
         """
@@ -97,6 +195,42 @@ class Campaign:
         :return:
         """
         self.files = []
+
+    def create_map(self, center: Tuple[float, float] = None) -> Map:
+        if not center:
+            if self.lat_sw and self.lat_ne and self.lon_sw and self.lon_ne:
+                center = (
+                    (self.lat_sw + self.lat_ne) / 2,
+                    (self.lon_sw + self.lon_ne) / 2)
+            else:
+                raise ValueError("Cant determine geographic center of campaign, enter manually using 'center' argument")
+
+        open_street_map_bw = dict(
+            url='https://{s}.tiles.wmflabs.org/bw-mapnik/{z}/{x}/{y}.png',
+            max_zoom=19,
+            name="OpenStreetMap BW"
+        )
+
+        open_railway_map = dict(
+            url='https://{s}.tiles.openrailwaymap.org/standard/{z}/{x}/{y}.png',
+            max_zoom=19,
+            attribution='<a href="https://www.openstreetmap.org/copyright">© OpenStreetMap contributors</a>, Style: <a href="http://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA 2.0</a> <a href="http://www.openrailwaymap.org/">OpenRailwayMap</a> and OpenStreetMap',
+            name='OpenRailwayMap'
+        )
+
+        m = Map(center=center, zoom=12, scroll_wheel_zoom=True, basemap=basemap_to_tiles(open_street_map_bw))
+        m.add_control(ScaleControl(position='bottomleft'))
+        m.add_control(FullScreenControl())
+
+        # Add map
+        osm_layer = basemap_to_tiles(open_railway_map)
+        m.add_layer(osm_layer)
+
+        # Plot GPS points for each measurement
+        m = self.add_osm_routes_to_map(m)
+        m = self.add_tracks_to_map(m)
+
+        return m
 
     def import_files(self, paths: Union[list, str] = None, sync_method: str = None,
                      det_geo_extent: bool = True, download_osm_region: bool = False,
@@ -147,6 +281,8 @@ class Campaign:
         """
         if exclude is None:
             exclude = []
+        elif type(exclude) == str:
+            exclude = [exclude]
 
         if type(folder) == str:
             folder = [folder]

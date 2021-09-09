@@ -23,6 +23,24 @@ def test_loading_files(my_campaign, caplog):
     assert len(my_campaign) == 7
 
 
+def test_exclude_file(my_campaign, caplog):
+    caplog.set_level(logging.DEBUG)
+    my_campaign.import_folder("files", exclude="device1.sqlite")
+    assert len(my_campaign) == 6
+
+
+def test_exclude_files(my_campaign, caplog):
+    caplog.set_level(logging.DEBUG)
+    my_campaign.import_folder("files", exclude=["device1.sqlite", "osm_mapping_test.sqlite"])
+    assert len(my_campaign) == 5
+
+
+def test_exclude_folder(my_campaign, caplog):
+    caplog.set_level(logging.DEBUG)
+    my_campaign.import_folder("files", exclude="sqlite")
+    assert len(my_campaign) == 1
+
+
 def test_load_single_file(my_campaign, caplog):
     caplog.set_level(logging.DEBUG)
     my_campaign.import_files("files/sqlite/sample3.sqlite", sync_method="ntp_time")

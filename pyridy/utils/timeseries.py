@@ -1,4 +1,5 @@
 import logging
+import time
 from abc import ABC
 from typing import Union, List
 
@@ -19,7 +20,7 @@ class TimeSeries(ABC):
         self._timedelta: np.ndarray = np.diff(self._time)
 
         if self.rdy_format_version and self.rdy_format_version <= 1.2:
-            self._time = (self._time*1e9).astype(np.int64)
+            self._time = (self._time * 1e9).astype(np.int64)
 
         self.time = self._time.copy()
 
@@ -30,9 +31,10 @@ class TimeSeries(ABC):
             return len(self.time)
 
     def __repr__(self):
-        return "Length: %d, duration: %.3f s, Mean sample rate: %.3f Hz" % (len(self._time),
-                                                                            self.get_duration(),
-                                                                            self.get_sample_rate())
+        return "Length: %d, Duration: %s, Mean sample rate: %.3f Hz" % (len(self._time),
+                                                                        time.strftime('%H:%M:%S', time.gmtime(
+                                                                            self.get_duration())),
+                                                                        self.get_sample_rate())
 
     def to_df(self) -> pd.DataFrame:
         d = self.__dict__.copy()
@@ -54,6 +56,12 @@ class TimeSeries(ABC):
         return list(d.keys())
 
     def get_duration(self):
+        """
+
+        Returns the duration in seconds
+        -------
+
+        """
         if not np.array_equal(self._time, np.array(None)) and len(self._time) > 0:
             if type(self._time[0]) == np.int64:
                 duration = (self._time[-1] - self._time[0]) * 1e-9
@@ -82,10 +90,12 @@ class TimeSeries(ABC):
     def synchronize(self, method: str, sync_timestamp: Union[int, np.int64] = 0,
                     sync_time: np.datetime64 = np.datetime64(0, "s"), timedelta_unit='timedelta64[ns]'):
         if sync_timestamp and type(sync_timestamp) not in [int, np.int64]:
-            raise ValueError("sync_timestamp must be integer for method %s, not %s" % (method, str(type(sync_timestamp))))
+            raise ValueError(
+                "sync_timestamp must be integer for method %s, not %s" % (method, str(type(sync_timestamp))))
 
         if type(sync_time) != np.datetime64:
-            raise ValueError("sync_time must be np.datetime64 for method %s, not %s" % (method, str(type(sync_timestamp))))
+            raise ValueError(
+                "sync_time must be np.datetime64 for method %s, not %s" % (method, str(type(sync_timestamp))))
 
         if not np.array_equal(self._time, np.array(None)) and len(self._time) > 0:
             if method == "timestamp":

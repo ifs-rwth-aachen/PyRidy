@@ -47,3 +47,7 @@ class Device:
             self.model = model[0] if len(model) > 0 else None
         else:
             self.model = model
+
+    def __repr__(self):
+        return "Model: %s, Product: %s, Device: %s, Manufacturer: %s, Brand: %s, Base OS: %s, API Level: %d " \
+               % (self.model, self.product, self.device, self.manufacturer, self.brand, self.base_os, self.api_level)
