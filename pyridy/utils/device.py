@@ -49,5 +49,6 @@ class Device:
             self.model = model
 
     def __repr__(self):
-        return "Model: %s, Product: %s, Device: %s, Manufacturer: %s, Brand: %s, Base OS: %s, API Level: %d " \
-               % (self.model, self.product, self.device, self.manufacturer, self.brand, self.base_os, self.api_level)
+        return "Brand: %s, Model: %s, Product: %s, Device: %s, Manufacturer: %s, Base OS: %s, API Level: %d " \
+               % (self.brand, self.model, self.product, self.device, self.manufacturer, self.base_os,
+                  self.api_level if self.api_level else -1)

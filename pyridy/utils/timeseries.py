@@ -1,5 +1,5 @@
+import datetime
 import logging
-import time
 from abc import ABC
 from typing import Union, List
 
@@ -32,8 +32,7 @@ class TimeSeries(ABC):
 
     def __repr__(self):
         return "Length: %d, Duration: %s, Mean sample rate: %.3f Hz" % (len(self._time),
-                                                                        time.strftime('%H:%M:%S', time.gmtime(
-                                                                            self.get_duration())),
+                                                                        str(datetime.timedelta(seconds=self.get_duration())),
                                                                         self.get_sample_rate())
 
     def to_df(self) -> pd.DataFrame:

@@ -1,3 +1,4 @@
+import datetime
 import json
 import logging
 import os
@@ -18,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 
 class RDYFile:
-    def __init__(self, path: str = "", sync_method: str = None):
+    def __init__(self, name: str = "", path: str = "", sync_method: str = None):
         """
 
         :param sync_method: Must be "timestamp", "device_time" or "gps_time", "timestamp" uses the timestamp when the
@@ -29,16 +30,21 @@ class RDYFile:
         :param path: Path to the Ridy file to be imported (can be .sqlite or .rdy)
         """
         self.path = path
-        self.name: Optional[str] = ""
+        self.name: Optional[str] = name
         self.extension: Optional[str] = ""
 
         if sync_method is not None and sync_method not in ["timestamp", "device_time", "gps_time", "ntp_time"]:
-            raise ValueError("synchronize argument must 'timestamp', 'device_time', 'gps_time' or 'ntp_time' not %s" % sync_method)
+            raise ValueError(
+                "synchronize argument must 'timestamp', 'device_time', 'gps_time' or 'ntp_time' not %s" % sync_method)
 
         self.sync_method = sync_method
         self.timedelta_unit = 'timedelta64[ns]'
 
         self.db_con: Optional[Connection] = None
+
+        # Ridy App Info
+        self.ridy_version: Optional[str] = None
+        self.ridy_version_code: Optional[int] = None
 
         # RDY File Infos
         self.rdy_format_version: Optional[float] = None
@@ -100,7 +106,9 @@ class RDYFile:
         return FileIterator(self)
 
     def __repr__(self):
-        return "%s" % self.name
+        return "Filename: %s, T0: %s, Duration: %s" % (self.name,
+                                                       str(self.t0),
+                                                       str(datetime.timedelta(seconds=self.duration)))
 
     def _synchronize(self):
         if self.sync_method == "timestamp":
@@ -109,7 +117,8 @@ class RDYFile:
         elif self.sync_method == "device_time":
             if self.t0:
                 for m in self.measurements.values():
-                    m.synchronize("device_time", self.timestamp_when_started, self.t0, timedelta_unit=self.timedelta_unit)
+                    m.synchronize("device_time", self.timestamp_when_started, self.t0,
+                                  timedelta_unit=self.timedelta_unit)
             else:
                 logger.warning("t0 is None, falling back to timestamp synchronization")
                 self.sync_method = "timestamp"
@@ -119,13 +128,14 @@ class RDYFile:
                 sync_timestamp = self.measurements[GPSSeries].time[0]
                 utc_sync_time = self.measurements[GPSSeries].utc_time[0]
 
-                for i, t in enumerate(self.measurements[GPSSeries].utc_time):  # The first utc_time value ending with 000 is a real GPS measurement
+                for i, t in enumerate(self.measurements[
+                                          GPSSeries].utc_time):  # The first utc_time value ending with 000 is a real GPS measurement
                     if str(t)[-3:] == "000":
                         utc_sync_time = t
                         sync_timestamp = self.measurements[GPSSeries].time[i]
                         break
 
-                sync_time = np.datetime64(int(utc_sync_time*1e6), "ns")
+                sync_time = np.datetime64(int(utc_sync_time * 1e6), "ns")
                 for m in self.measurements.values():
                     m.synchronize("gps_time", sync_timestamp, sync_time, timedelta_unit=self.timedelta_unit)
             else:
@@ -135,13 +145,15 @@ class RDYFile:
         elif self.sync_method == "ntp_time":
             if self.ntp_timestamp and self.ntp_date_time:
                 for m in self.measurements.values():
-                    m.synchronize("gps_time", self.ntp_timestamp, self.ntp_date_time, timedelta_unit=self.timedelta_unit)
+                    m.synchronize("gps_time", self.ntp_timestamp, self.ntp_date_time,
+                                  timedelta_unit=self.timedelta_unit)
             else:
                 logger.warning("No ntp timestamp and datetime, falling back to device_time synchronization")
                 self.sync_method = "device_time"
                 self._synchronize()
         else:
-            raise ValueError("sync_method must 'timestamp', 'device_time', 'gps_time' or 'ntp_time' not %s" % self.sync_method)
+            raise ValueError(
+                "sync_method must 'timestamp', 'device_time', 'gps_time' or 'ntp_time' not %s" % self.sync_method)
         pass
 
     def get_integrity_report(self):
@@ -186,6 +198,18 @@ class RDYFile:
         if self.extension == ".rdy":
             with open(path, 'r') as file:
                 rdy = json.load(file)
+
+            if 'Ridy_Version' in rdy:
+                self.ridy_version = rdy['Ridy_Version']
+            else:
+                logger.info("No Ridy_Version in file: %s" % self.name)
+                self.ridy_version = None
+
+            if 'Ridy_Version_Code' in rdy:
+                self.ridy_version_code = rdy['Ridy_Version_Code']
+            else:
+                logger.info("No Ridy_Version_Code in file: %s" % self.name)
+                self.ridy_version_code = None
 
             if 'RDY_Format_Version' in rdy:
                 self.rdy_format_version = rdy['RDY_Format_Version']
@@ -271,8 +295,9 @@ class RDYFile:
                 logger.info("No Acceleration Series in file: %s" % self.name)
 
             if "lin_acc_series" in rdy:
-                self.measurements[LinearAccelerationSeries] = LinearAccelerationSeries(rdy_format_version=self.rdy_format_version,
-                                                                                       **rdy['lin_acc_series'])
+                self.measurements[LinearAccelerationSeries] = LinearAccelerationSeries(
+                    rdy_format_version=self.rdy_format_version,
+                    **rdy['lin_acc_series'])
             else:
                 logger.info("No Linear Acceleration Series in file: %s" % self.name)
 
@@ -337,8 +362,9 @@ class RDYFile:
                 logger.info("No Wz Series in file: %s" % self.name)
 
             if "subjective_comfort_series" in rdy:
-                self.measurements[SubjectiveComfortSeries] = SubjectiveComfortSeries(rdy_format_version=self.rdy_format_version,
-                                                                                     **rdy['subjective_comfort_series'])
+                self.measurements[SubjectiveComfortSeries] = SubjectiveComfortSeries(
+                    rdy_format_version=self.rdy_format_version,
+                    **rdy['subjective_comfort_series'])
             else:
                 logger.info("No Subjective Comfort Series in file: %s" % self.name)
             pass
@@ -374,6 +400,12 @@ class RDYFile:
 
             # Info
             if info is not None:
+                if 'ridy_version' in info and len(info['ridy_version']) > 0:
+                    self.ridy_version = info['ridy_version'][0]
+
+                if 'ridy_version_code' in info and len(info['ridy_version_code']) > 0:
+                    self.ridy_version_code = info['ridy_version_code'][0]
+
                 if 'rdy_format_version' in info and len(info['rdy_format_version']) > 0:
                     self.rdy_format_version = info['rdy_format_version'][0]
 
@@ -417,8 +449,9 @@ class RDYFile:
 
             try:
                 lin_acc_df = pd.read_sql_query("SELECT * from lin_acc_measurements_table", self.db_con)
-                self.measurements[LinearAccelerationSeries] = LinearAccelerationSeries(rdy_format_version=self.rdy_format_version,
-                                                                                       **dict(lin_acc_df))
+                self.measurements[LinearAccelerationSeries] = LinearAccelerationSeries(
+                    rdy_format_version=self.rdy_format_version,
+                    **dict(lin_acc_df))
             except (DatabaseError, PandasDatabaseError) as e:
                 logger.error(
                     "DatabaseError occurred when accessing lin_acc_measurements_table, file: %s" % self.name)
@@ -500,8 +533,9 @@ class RDYFile:
             try:
                 subjective_comfort_df = pd.read_sql_query("SELECT * from subjective_comfort_measurements_table",
                                                           self.db_con)
-                self.measurements[SubjectiveComfortSeries] = SubjectiveComfortSeries(rdy_format_version=self.rdy_format_version,
-                                                                                     **dict(subjective_comfort_df))
+                self.measurements[SubjectiveComfortSeries] = SubjectiveComfortSeries(
+                    rdy_format_version=self.rdy_format_version,
+                    **dict(subjective_comfort_df))
             except (DatabaseError, PandasDatabaseError) as e:
                 logger.error(
                     "DatabaseError occurred when accessing subjective_comfort_measurements_table, file: %s" % self.name)

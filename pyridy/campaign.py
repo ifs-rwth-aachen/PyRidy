@@ -320,9 +320,9 @@ class Campaign:
         for p in tqdm(file_paths):
             if sync_method:
                 self.sync_method = sync_method
-                self.files.append(RDYFile(p, sync_method=sync_method))
+                self.files.append(RDYFile(path=p, sync_method=sync_method))
             else:
-                self.files.append(RDYFile(p, sync_method=self.sync_method))
+                self.files.append(RDYFile(path=p, sync_method=self.sync_method))
 
         if det_geo_extent:
             self.determine_geographic_extent()

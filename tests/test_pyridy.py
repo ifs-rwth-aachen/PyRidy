@@ -20,25 +20,25 @@ def test_pyridy_campaign_manager(my_campaign):
 def test_loading_files(my_campaign, caplog):
     caplog.set_level(logging.DEBUG)
     my_campaign.import_folder("files")
-    assert len(my_campaign) == 7
+    assert len(my_campaign) == 8
 
 
 def test_exclude_file(my_campaign, caplog):
     caplog.set_level(logging.DEBUG)
     my_campaign.import_folder("files", exclude="device1.sqlite")
-    assert len(my_campaign) == 6
+    assert len(my_campaign) == 7
 
 
 def test_exclude_files(my_campaign, caplog):
     caplog.set_level(logging.DEBUG)
     my_campaign.import_folder("files", exclude=["device1.sqlite", "osm_mapping_test.sqlite"])
-    assert len(my_campaign) == 5
+    assert len(my_campaign) == 6
 
 
 def test_exclude_folder(my_campaign, caplog):
     caplog.set_level(logging.DEBUG)
     my_campaign.import_folder("files", exclude="sqlite")
-    assert len(my_campaign) == 1
+    assert len(my_campaign) == 2
 
 
 def test_load_single_file(my_campaign, caplog):
@@ -78,7 +78,7 @@ def test_load_single_file(my_campaign, caplog):
 def test_loading_files_non_recursive(my_campaign, caplog):
     caplog.set_level(logging.DEBUG)
     my_campaign.import_folder("files/rdy/", recursive=False)
-    assert len(my_campaign) == 1
+    assert len(my_campaign) == 2
 
 
 def test_get_measurement(my_campaign, caplog):
@@ -107,7 +107,7 @@ def test_load_additional_osm_data(my_campaign, caplog):
 def test_merging_data_frames(my_campaign, caplog):
     caplog.set_level(logging.DEBUG)
     my_campaign.import_folder("files")
-    f = my_campaign("sample1.rdy")[0]
+    f = my_campaign("sample1.rdy")
     f.to_df()
     assert True
 
@@ -122,8 +122,8 @@ def test_timestamp_syncing(my_campaign, caplog):
     my_campaign.import_folder("files", sync_method="timestamp")
 
     assert my_campaign.files[0].measurements[AccelerationSeries].time[0] == 0
-    assert my_campaign.files[1].measurements[AccelerationSeries].time[0] == -2673398501
-    assert my_campaign.files[2].measurements[AccelerationSeries].time[0] == -86511141372
+    assert my_campaign.files[2].measurements[AccelerationSeries].time[0] == -2673398501
+    assert my_campaign.files[3].measurements[AccelerationSeries].time[0] == -86511141372
     pass
 
 
@@ -132,13 +132,13 @@ def test_device_time_syncing(my_campaign, caplog):
 
     assert my_campaign.files[0].measurements[AccelerationSeries].time[0] == np.datetime64(
         "2021-05-05T18:51:56.285000000")
-    assert my_campaign.files[1].measurements[AccelerationSeries].time[0] == np.datetime64(
-        "2021-04-27T13:08:45.246601499")
     assert my_campaign.files[2].measurements[AccelerationSeries].time[0] == np.datetime64(
+        "2021-04-27T13:08:45.246601499")
+    assert my_campaign.files[3].measurements[AccelerationSeries].time[0] == np.datetime64(
         "2021-04-28T07:51:54.583858628")
 
-    df_acc_1 = my_campaign.files[5].measurements[AccelerationSeries].to_df()
-    df_acc_2 = my_campaign.files[6].measurements[AccelerationSeries].to_df()
+    df_acc_1 = my_campaign.files[6].measurements[AccelerationSeries].to_df()
+    df_acc_2 = my_campaign.files[7].measurements[AccelerationSeries].to_df()
 
     t_start = "2021-05-06T12:51:40"
     t_end = "2021-05-06T12:51:50"
@@ -164,16 +164,16 @@ def test_gps_time_syncing(my_campaign, caplog):
     my_campaign.import_folder("files", sync_method="gps_time")
 
     assert my_campaign.files[0].measurements[AccelerationSeries].time[0] == 0
-    assert my_campaign.files[1].measurements[AccelerationSeries].time[0] == np.datetime64(
-        "2021-04-27T13:08:45.246601499")
     assert my_campaign.files[2].measurements[AccelerationSeries].time[0] == np.datetime64(
+        "2021-04-27T13:08:45.246601499")
+    assert my_campaign.files[3].measurements[AccelerationSeries].time[0] == np.datetime64(
         "2021-04-28T07:51:56.892826255")
 
-    df_acc_1 = my_campaign.files[5].measurements[LinearAccelerationSeries].to_df()
-    df_acc_2 = my_campaign.files[6].measurements[LinearAccelerationSeries].to_df()
+    df_acc_1 = my_campaign.files[6].measurements[LinearAccelerationSeries].to_df()
+    df_acc_2 = my_campaign.files[7].measurements[LinearAccelerationSeries].to_df()
 
-    df_gps_1 = my_campaign.files[5].measurements[GPSSeries].to_df()
-    df_gps_2 = my_campaign.files[6].measurements[GPSSeries].to_df()
+    df_gps_1 = my_campaign.files[6].measurements[GPSSeries].to_df()
+    df_gps_2 = my_campaign.files[7].measurements[GPSSeries].to_df()
 
     t_start = "2021-05-06T12:51:40"
     t_end = "2021-05-06T12:51:50"
@@ -203,13 +203,13 @@ def test_gps_time_syncing(my_campaign, caplog):
 def test_ntp_time_syncing(my_campaign, caplog):
     my_campaign.import_folder("files", sync_method="ntp_time")
 
-    assert my_campaign.files[5].measurements[AccelerationSeries].time[0] == np.datetime64(
-        "2021-05-06T12:51:13.321774591")
     assert my_campaign.files[6].measurements[AccelerationSeries].time[0] == np.datetime64(
+        "2021-05-06T12:51:13.321774591")
+    assert my_campaign.files[7].measurements[AccelerationSeries].time[0] == np.datetime64(
         "2021-05-06T12:51:13.705642452")
 
-    df_acc_1 = my_campaign.files[5].measurements[AccelerationSeries].to_df()
-    df_acc_2 = my_campaign.files[6].measurements[AccelerationSeries].to_df()
+    df_acc_1 = my_campaign.files[6].measurements[AccelerationSeries].to_df()
+    df_acc_2 = my_campaign.files[7].measurements[AccelerationSeries].to_df()
 
     t_start = "2021-05-06T12:51:40"
     t_end = "2021-05-06T12:51:50"
