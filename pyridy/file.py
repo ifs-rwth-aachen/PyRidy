@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 
 class RDYFile:
-    def __init__(self, path: str = "", sync_method: str = None, timedelta_unit: str = 'timedelta64[ns]', name=""):
+    def __init__(self, path: str = "", sync_method: str = None, cutoff: bool = True, timedelta_unit: str = 'timedelta64[ns]', name=""):
         """
 
         :param sync_method: Must be "timestamp", "device_time" or "gps_time", "timestamp" uses the timestamp when the
@@ -40,6 +40,7 @@ class RDYFile:
                 "synchronize argument must 'timestamp', 'device_time', 'gps_time' or 'ntp_time' not %s" % sync_method)
 
         self.sync_method = sync_method
+        self.cutoff = cutoff
         self.timedelta_unit = timedelta_unit
 
         self.db_con: Optional[Connection] = None
@@ -156,7 +157,7 @@ class RDYFile:
         elif self.sync_method == "ntp_time":
             if self.ntp_timestamp and self.ntp_date_time:
                 for m in self.measurements.values():
-                    m.synchronize("gps_time", self.ntp_timestamp, self.ntp_date_time,
+                    m.synchronize("ntp_time", self.ntp_timestamp, self.ntp_date_time,
                                   timedelta_unit=self.timedelta_unit)
             else:
                 logger.warning("No ntp timestamp and datetime, falling back to device_time synchronization")
@@ -665,6 +666,10 @@ class RDYFile:
                 logger.error(e)
 
             self.db_con.close()
+
+            if self.cutoff:
+                for m in self.measurements.values():
+                    m.cutoff(self.timestamp_when_started, self.timestamp_when_stopped)
         else:
             raise ValueError("File extension %s is not supported" % self.extension)
 

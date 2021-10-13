@@ -1,5 +1,6 @@
 import datetime
 import logging
+import types
 from abc import ABC
 from typing import Union, List
 
@@ -12,18 +13,20 @@ logger = logging.getLogger(__name__)
 class TimeSeries(ABC):
     def __init__(self, **kwargs):
         self.rdy_format_version = kwargs["rdy_format_version"]
+        kwargs.pop("rdy_format_version")
+        kwargs.pop("__class__")
 
         for k, v in kwargs.items():  # Replaces None values arguments with empty lists
             if v is None and k != "rdy_format_version":
                 kwargs[k] = np.array([])
             else:
-                if k == "rdy_format_version":
+                if type(v) == np.ndarray:
                     kwargs[k] = v
                 else:
-                    if type(v) == np.ndarray:
-                        kwargs[k] = v
-                    else:
-                        kwargs[k] = np.array(v)
+                    kwargs[k] = np.array(v)
+
+            if k != "time" and len(kwargs["time"]) > 0 and len(v) == 0:
+                kwargs[k] = np.zeros(len(kwargs["time"]))
 
         self.__dict__.update(kwargs)
 
@@ -47,6 +50,27 @@ class TimeSeries(ABC):
                                                                             seconds=self.get_duration())),
                                                                         self.get_sample_rate())
 
+    def cutoff(self, timestamp_when_started: int, timestamp_when_stopped: int):
+        if timestamp_when_started >= timestamp_when_stopped:
+            raise ValueError("timestamp_when_stopped must be greater than timestamp_when_started")
+
+        if len(self.time) > 0 and self.time[0] != 0:
+            d = self.__dict__.copy()
+
+            for key in ["rdy_format_version"]:
+                d.pop(key)
+
+            t = d["time"]
+            idxs = np.where(np.logical_and(t >= timestamp_when_started, t <= timestamp_when_stopped))
+            for k, v in d.items():
+                if len(t) == len(v):
+                    self.__setattr__(k, v[idxs])
+
+        else:
+            logger.warning("Cannot cutoff series if series is empty or series already starts at 0")
+
+        pass
+
     def to_df(self) -> pd.DataFrame:
         d = self.__dict__.copy()
         d.pop("rdy_format_version")
@@ -61,7 +85,7 @@ class TimeSeries(ABC):
         """
         d = self.__dict__.copy()
 
-        for k in ["rdy_format_version", "time", "_time", "_timedelta", "__class__"]:
+        for k in ["rdy_format_version", "time", "_time", "_timedelta"]:
             d.pop(k)
 
         return list(d.keys())
@@ -125,7 +149,7 @@ class TimeSeries(ABC):
                     self.time = self._time.astype(timedelta_unit) + sync_time
                 else:
                     self.time = (self._time - sync_timestamp).astype(timedelta_unit) + sync_time
-            elif method == "gps_time":
+            elif method == "gps_time" or method == "ntp_time":
                 if self._time[0] == 0:
                     logger.warning("Timeseries already starts at 0, cant sync to due to lack of proper timestamp")
                 else:
@@ -167,6 +191,7 @@ class LinearAccelerationSeries(TimeSeries):
                  rdy_format_version: float = None, **kwargs):
         args = locals().copy()
         args.pop("self")
+        args.pop("kwargs")
         super(LinearAccelerationSeries, self).__init__(**args)
 
         if "acc_x" in kwargs and kwargs["acc_x"] is None:

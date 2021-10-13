@@ -119,7 +119,7 @@ def test_invalid_syncing_method(my_campaign, caplog):
 
 
 def test_timestamp_syncing(my_campaign, caplog):
-    my_campaign.import_folder("files", sync_method="timestamp")
+    my_campaign.import_folder("files", sync_method="timestamp", cutoff=False)
 
     assert my_campaign("sample1.rdy").measurements[AccelerationSeries].time[0] == 0
     assert my_campaign("sample1.sqlite").measurements[AccelerationSeries].time[0] == -2673398501
@@ -128,7 +128,7 @@ def test_timestamp_syncing(my_campaign, caplog):
 
 
 def test_device_time_syncing(my_campaign, caplog):
-    my_campaign.import_folder("files", sync_method="device_time")
+    my_campaign.import_folder("files", sync_method="device_time", cutoff=False)
 
     assert my_campaign("sample1.rdy").measurements[AccelerationSeries].time[0] == np.datetime64(
         "2021-05-05T18:51:56.285000000")
@@ -161,7 +161,7 @@ def test_device_time_syncing(my_campaign, caplog):
 
 
 def test_gps_time_syncing(my_campaign, caplog):
-    my_campaign.import_folder("files", sync_method="gps_time")
+    my_campaign.import_folder("files", sync_method="gps_time", cutoff=False)
 
     assert my_campaign("sample1.rdy").measurements[AccelerationSeries].time[0] == 0
     assert my_campaign("sample1.sqlite").measurements[AccelerationSeries].time[0] == np.datetime64(
@@ -201,7 +201,7 @@ def test_gps_time_syncing(my_campaign, caplog):
 
 
 def test_ntp_time_syncing(my_campaign, caplog):
-    my_campaign.import_folder("files", sync_method="ntp_time")
+    my_campaign.import_folder("files", sync_method="ntp_time", cutoff=False)
 
     assert my_campaign("device1.sqlite").measurements[AccelerationSeries].time[0] == np.datetime64(
         "2021-05-06T12:51:13.321774591")
