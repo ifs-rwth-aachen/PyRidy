@@ -136,7 +136,12 @@ dmypy.json
 
 # Cython debug symbols
 cython_debug/
+
+# Test Files wal/shm data
 /tests/files/sqlite/sync/device1.sqlite-wal
 /tests/files/sqlite/sync/device1.sqlite-shm
 /tests/files/sqlite/sync/device2.sqlite-shm
 /tests/files/sqlite/sync/device2.sqlite-wal
+
+# .idea folder from PyCharm
+.idea/

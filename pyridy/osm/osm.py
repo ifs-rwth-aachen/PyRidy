@@ -1,4 +1,5 @@
 import logging.config
+import socket
 import warnings
 from itertools import chain
 from typing import List, Union
@@ -7,6 +8,7 @@ import overpy
 from tqdm.auto import tqdm
 
 from pyridy.osm.utils import QueryResult, OSMRailwayLine
+from pyridy.utils.tools import internet
 
 logger = logging.getLogger(__name__)
 
@@ -98,21 +100,24 @@ class OSMRegion:
             railway_types = self.desired_railway_types
 
         # Download data for all desired railway types
-        for railway_type in tqdm(railway_types):
-            trk_query, rou_query = self._create_query(railway_type=railway_type)
-            trk_result = QueryResult(self.query_overpass(trk_query), railway_type)
-            rou_result = QueryResult(self.query_overpass(rou_query), railway_type)
-            self.query_results[railway_type]["track_query"] = trk_result
-            self.query_results[railway_type]["route_query"] = rou_result
+        if internet():
+            for railway_type in tqdm(railway_types):
+                trk_query, rou_query = self._create_query(railway_type=railway_type)
+                trk_result = QueryResult(self.query_overpass(trk_query), railway_type)
+                rou_result = QueryResult(self.query_overpass(rou_query), railway_type)
+                self.query_results[railway_type]["track_query"] = trk_result
+                self.query_results[railway_type]["route_query"] = rou_result
 
-            for rel in rou_result.result.relations:
-                rel_way_ids = [mem.ref for mem in rel.members if type(mem) == overpy.RelationWay and not mem.role]
-                rel_ways = [w for w in rou_result.result.ways if w.id in rel_way_ids]
+                for rel in rou_result.result.relations:
+                    rel_way_ids = [mem.ref for mem in rel.members if type(mem) == overpy.RelationWay and not mem.role]
+                    rel_ways = [w for w in rou_result.result.ways if w.id in rel_way_ids]
 
-                sort_order = {id: idx for id, idx in zip(rel_way_ids, range(len(rel_way_ids)))}
-                rel_ways.sort(key=lambda w: sort_order[w.id])
+                    sort_order = {id: idx for id, idx in zip(rel_way_ids, range(len(rel_way_ids)))}
+                    rel_ways.sort(key=lambda w: sort_order[w.id])
 
-                self.railway_lines.append(OSMRailwayLine(rel.id, rel_ways, rel.tags, rel.members))
+                    self.railway_lines.append(OSMRailwayLine(rel.id, rel_ways, rel.tags, rel.members))
+        else:
+            logger.warning("Cant download OSM data because of not internet connection")
 
     def query_overpass(self, query: str, attempts: int = 3):
         for a in range(attempts):
@@ -127,6 +132,8 @@ class OSMRegion:
                 logger.warning("OverpassTooManyRequest, retrying".format(e))
             except overpy.exception.OverpassBadRequest as e:
                 logger.warning("OverpassTooManyRequest, retrying".format(e))
+            except socket.timeout as e:
+                logger.warning("Socket timeout, retrying".format(e))
         else:
             raise RuntimeError("Could download OSM data via Overpass after %d attempts." % attempts)
         return result

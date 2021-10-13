@@ -10,13 +10,24 @@ logger = logging.getLogger(__name__)
 
 
 class TimeSeries(ABC):
-    def __init__(self, time: Union[list, np.ndarray] = None, rdy_format_version: float = None):
-        self.rdy_format_version = rdy_format_version
+    def __init__(self, **kwargs):
+        self.rdy_format_version = kwargs["rdy_format_version"]
 
-        if time is None:
-            time = []
+        for k, v in kwargs.items():  # Replaces None values arguments with empty lists
+            if v is None and k != "rdy_format_version":
+                kwargs[k] = np.array([])
+            else:
+                if k == "rdy_format_version":
+                    kwargs[k] = v
+                else:
+                    if type(v) == np.ndarray:
+                        kwargs[k] = v
+                    else:
+                        kwargs[k] = np.array(v)
 
-        self._time: np.ndarray = np.array(time)  # Original unadjusted timestamps
+        self.__dict__.update(kwargs)
+
+        self._time: np.ndarray = np.array(self.time)  # Original unadjusted timestamps
         self._timedelta: np.ndarray = np.diff(self._time)
 
         if self.rdy_format_version and self.rdy_format_version <= 1.2:
@@ -32,7 +43,8 @@ class TimeSeries(ABC):
 
     def __repr__(self):
         return "Length: %d, Duration: %s, Mean sample rate: %.3f Hz" % (len(self._time),
-                                                                        str(datetime.timedelta(seconds=self.get_duration())),
+                                                                        str(datetime.timedelta(
+                                                                            seconds=self.get_duration())),
                                                                         self.get_sample_rate())
 
     def to_df(self) -> pd.DataFrame:
@@ -49,7 +61,7 @@ class TimeSeries(ABC):
         """
         d = self.__dict__.copy()
 
-        for k in ["rdy_format_version", "time", "_time", "_timedelta"]:
+        for k in ["rdy_format_version", "time", "_time", "_timedelta", "__class__"]:
             d.pop(k)
 
         return list(d.keys())
@@ -131,20 +143,20 @@ class AccelerationSeries(TimeSeries):
                  acc_y: Union[list, np.ndarray] = None,
                  acc_z: Union[list, np.ndarray] = None,
                  rdy_format_version: float = None):
-        super(AccelerationSeries, self).__init__(time=time, rdy_format_version=rdy_format_version)
+        args = locals().copy()
+        args.pop("self")
+        super(AccelerationSeries, self).__init__(**args)
 
-        if acc_x is None:
-            acc_x = []
 
-        if acc_y is None:
-            acc_y = []
-
-        if acc_z is None:
-            acc_z = []
-
-        self.acc_x: np.ndarray = np.array(acc_x)
-        self.acc_y: np.ndarray = np.array(acc_y)
-        self.acc_z: np.ndarray = np.array(acc_z)
+class AccelerationUncalibratedSeries(TimeSeries):
+    def __init__(self, time: Union[list, np.ndarray] = None,
+                 acc_uncal_x: Union[list, np.ndarray] = None,
+                 acc_uncal_y: Union[list, np.ndarray] = None,
+                 acc_uncal_z: Union[list, np.ndarray] = None,
+                 rdy_format_version: float = None):
+        args = locals().copy()
+        args.pop("self")
+        super(AccelerationUncalibratedSeries, self).__init__(**args)
 
 
 class LinearAccelerationSeries(TimeSeries):
@@ -153,16 +165,9 @@ class LinearAccelerationSeries(TimeSeries):
                  lin_acc_y: Union[list, np.ndarray] = None,
                  lin_acc_z: Union[list, np.ndarray] = None,
                  rdy_format_version: float = None, **kwargs):
-        super(LinearAccelerationSeries, self).__init__(time=time, rdy_format_version=rdy_format_version)
-
-        if lin_acc_x is None:
-            lin_acc_x = []
-
-        if lin_acc_y is None:
-            lin_acc_y = []
-
-        if lin_acc_z is None:
-            lin_acc_z = []
+        args = locals().copy()
+        args.pop("self")
+        super(LinearAccelerationSeries, self).__init__(**args)
 
         if "acc_x" in kwargs and kwargs["acc_x"] is None:
             kwargs["acc_x"] = []
@@ -184,20 +189,89 @@ class MagnetometerSeries(TimeSeries):
                  mag_y: Union[list, np.ndarray] = None,
                  mag_z: Union[list, np.ndarray] = None,
                  rdy_format_version: float = None):
-        super(MagnetometerSeries, self).__init__(time=time, rdy_format_version=rdy_format_version)
+        args = locals().copy()
+        args.pop("self")
+        super(MagnetometerSeries, self).__init__(**args)
 
-        if mag_x is None:
-            mag_x = []
 
-        if mag_y is None:
-            mag_y = []
+class MagnetometerUncalibratedSeries(TimeSeries):
+    def __init__(self, time: Union[list, np.ndarray] = None,
+                 mag_uncal_x: Union[list, np.ndarray] = None,
+                 mag_uncal_y: Union[list, np.ndarray] = None,
+                 mag_uncal_z: Union[list, np.ndarray] = None,
+                 rdy_format_version: float = None):
+        args = locals().copy()
+        args.pop("self")
+        super(MagnetometerUncalibratedSeries, self).__init__(**args)
 
-        if mag_z is None:
-            mag_z = []
 
-        self.mag_x: np.ndarray = np.array(mag_x)
-        self.mag_y: np.ndarray = np.array(mag_y)
-        self.mag_z: np.ndarray = np.array(mag_z)
+class NMEAMessageSeries(TimeSeries):
+    def __init__(self,
+                 time: Union[list, np.ndarray] = None,
+                 utc_time: Union[list, np.ndarray] = None,
+                 msg: Union[list, np.ndarray] = None,
+                 rdy_format_version: float = None):
+        args = locals().copy()
+        args.pop("self")
+        super(NMEAMessageSeries, self).__init__(**args)
+
+
+class GNSSClockMeasurementSeries(TimeSeries):
+    def __init__(self,
+                 time: Union[list, np.ndarray] = None,
+                 bias_nanos: Union[list, np.ndarray] = None,
+                 bias_uncertainty_nanos: Union[list, np.ndarray] = None,
+                 drift_nanos_per_second: Union[list, np.ndarray] = None,
+                 drift_uncertainty_nanos_per_second: Union[list, np.ndarray] = None,
+                 elapsed_realtime_nanos: Union[list, np.ndarray] = None,
+                 elapsed_realtime_uncertainty_nanos: Union[list, np.ndarray] = None,
+                 full_bias_nanos: Union[list, np.ndarray] = None,
+                 hardware_clock_discontinuity_count: Union[list, np.ndarray] = None,
+                 leap_second: Union[list, np.ndarray] = None,
+                 reference_carrier_frequency_hz_for_isb: Union[list, np.ndarray] = None,
+                 reference_code_type_for_isb: Union[list, np.ndarray] = None,
+                 reference_constellation_type_for_isb: Union[list, np.ndarray] = None,
+                 time_nanos: Union[list, np.ndarray] = None,
+                 time_uncertainty_nanos: Union[list, np.ndarray] = None,
+                 rdy_format_version: float = None):
+        args = locals().copy()
+        args.pop("self")
+        super(GNSSClockMeasurementSeries, self).__init__(**args)
+
+
+class GNSSMeasurementSeries(TimeSeries):
+    # noinspection PyPep8Naming
+    def __init__(self,
+                 time: Union[list, np.ndarray] = None,
+                 accumulated_delta_range_meters: Union[list, np.ndarray] = None,
+                 accumulated_delta_range_state: Union[list, np.ndarray] = None,
+                 accumulated_delta_range_uncertainty_meters: Union[list, np.ndarray] = None,
+                 automatic_gain_control_level_db: Union[list, np.ndarray] = None,
+                 baseband_cn0DbHz: Union[list, np.ndarray] = None,
+                 carrier_cycles: Union[list, np.ndarray] = None,
+                 carrier_frequency_hz: Union[list, np.ndarray] = None,
+                 carrier_phase: Union[list, np.ndarray] = None,
+                 carrier_phase_uncertainty: Union[list, np.ndarray] = None,
+                 cn0DbHz: Union[list, np.ndarray] = None,
+                 code_type: Union[list, np.ndarray] = None,
+                 constellation_type: Union[list, np.ndarray] = None,
+                 full_inter_signal_bias_nanos: Union[list, np.ndarray] = None,
+                 full_inter_signal_bias_uncertainty_nanos: Union[list, np.ndarray] = None,
+                 multipath_indicator: Union[list, np.ndarray] = None,
+                 pseudorange_rate_meters_per_second: Union[list, np.ndarray] = None,
+                 pseudorange_rate_uncertainty_meters_per_second: Union[list, np.ndarray] = None,
+                 received_sv_time_nanos: Union[list, np.ndarray] = None,
+                 received_sv_time_uncertainty_nanos: Union[list, np.ndarray] = None,
+                 satellite_inter_signal_bias_nanos: Union[list, np.ndarray] = None,
+                 satellite_inter_signal_bias_uncertainty_nanos: Union[list, np.ndarray] = None,
+                 snrInDb: Union[list, np.ndarray] = None,
+                 state: Union[list, np.ndarray] = None,
+                 svid: Union[list, np.ndarray] = None,
+                 time_offset_nanos: Union[list, np.ndarray] = None,
+                 rdy_format_version: float = None):
+        args = locals().copy()
+        args.pop("self")
+        super(GNSSMeasurementSeries, self).__init__(**args)
 
 
 class OrientationSeries(TimeSeries):
@@ -206,20 +280,9 @@ class OrientationSeries(TimeSeries):
                  pitch: Union[list, np.ndarray] = None,
                  roll: Union[list, np.ndarray] = None,
                  rdy_format_version: float = None):
-        super(OrientationSeries, self).__init__(time=time, rdy_format_version=rdy_format_version)
-
-        if azimuth is None:
-            azimuth = []
-
-        if pitch is None:
-            pitch = []
-
-        if roll is None:
-            roll = []
-
-        self.azimuth: np.ndarray = np.array(azimuth)
-        self.pitch: np.ndarray = np.array(pitch)
-        self.roll: np.ndarray = np.array(roll)
+        args = locals().copy()
+        args.pop("self")
+        super(OrientationSeries, self).__init__(**args)
 
 
 class GyroSeries(TimeSeries):
@@ -228,20 +291,20 @@ class GyroSeries(TimeSeries):
                  w_y: Union[list, np.ndarray] = None,
                  w_z: Union[list, np.ndarray] = None,
                  rdy_format_version: float = None):
-        super(GyroSeries, self).__init__(time=time, rdy_format_version=rdy_format_version)
+        args = locals().copy()
+        args.pop("self")
+        super(GyroSeries, self).__init__(**args)
 
-        if w_x is None:
-            w_x = []
 
-        if w_y is None:
-            w_y = []
-
-        if w_z is None:
-            w_z = []
-
-        self.w_x: np.ndarray = np.array(w_x)
-        self.w_y: np.ndarray = np.array(w_y)
-        self.w_z: np.ndarray = np.array(w_z)
+class GyroUncalibratedSeries(TimeSeries):
+    def __init__(self, time: Union[list, np.ndarray] = None,
+                 w_uncal_x: Union[list, np.ndarray] = None,
+                 w_uncal_y: Union[list, np.ndarray] = None,
+                 w_uncal_z: Union[list, np.ndarray] = None,
+                 rdy_format_version: float = None):
+        args = locals().copy()
+        args.pop("self")
+        super(GyroUncalibratedSeries, self).__init__(**args)
 
 
 class RotationSeries(TimeSeries):
@@ -252,28 +315,9 @@ class RotationSeries(TimeSeries):
                  cos_phi: Union[list, np.ndarray] = None,
                  heading_acc: Union[list, np.ndarray] = None,
                  rdy_format_version: float = None):
-        super(RotationSeries, self).__init__(time=time, rdy_format_version=rdy_format_version)
-
-        if rot_x is None:
-            rot_x = []
-
-        if rot_y is None:
-            rot_y = []
-
-        if rot_z is None:
-            rot_z = []
-
-        if cos_phi is None:
-            cos_phi = []
-
-        if heading_acc is None:
-            heading_acc = []
-
-        self.rot_x: np.ndarray = np.array(rot_x)
-        self.rot_y: np.ndarray = np.array(rot_y)
-        self.rot_z: np.ndarray = np.array(rot_z)
-        self.cos_phi: np.ndarray = np.array(cos_phi)
-        self.heading_acc: np.ndarray = np.array(heading_acc)
+        args = locals().copy()
+        args.pop("self")
+        super(RotationSeries, self).__init__(**args)
 
 
 class GPSSeries(TimeSeries):
@@ -289,48 +333,9 @@ class GPSSeries(TimeSeries):
                  speed_acc: Union[list, np.ndarray] = None,
                  utc_time: Union[list, np.ndarray] = None,
                  rdy_format_version: float = None):
-        super(GPSSeries, self).__init__(time=time, rdy_format_version=rdy_format_version)
-
-        if lat is None:
-            lat = []
-
-        if lon is None:
-            lon = []
-
-        if altitude is None:
-            altitude = []
-
-        if bearing is None:
-            bearing = []
-
-        if speed is None:
-            speed = []
-
-        if hor_acc is None:
-            hor_acc = []
-
-        if ver_acc is None:
-            ver_acc = []
-
-        if bear_acc is None:
-            bear_acc = []
-
-        if speed_acc is None:
-            speed_acc = []
-
-        if utc_time is None:
-            utc_time = []
-
-        self.lat: np.ndarray = np.array(lat)
-        self.lon: np.ndarray = np.array(lon)
-        self.altitude: np.ndarray = np.array(altitude)
-        self.bearing: np.ndarray = np.array(bearing)
-        self.speed: np.ndarray = np.array(speed)
-        self.hor_acc: np.ndarray = np.array(hor_acc)
-        self.ver_acc: np.ndarray = np.array(ver_acc)
-        self.bear_acc: np.ndarray = np.array(bear_acc)
-        self.speed_acc: np.ndarray = np.array(speed_acc)
-        self.utc_time: np.ndarray = np.array(utc_time)
+        args = locals().copy()
+        args.pop("self")
+        super(GPSSeries, self).__init__(**args)
 
     def to_ipyleaflef(self) -> List[list]:
         """
@@ -351,48 +356,36 @@ class PressureSeries(TimeSeries):
     def __init__(self, time: Union[list, np.ndarray] = None,
                  pressure: Union[list, np.ndarray] = None,
                  rdy_format_version: float = None):
-        super(PressureSeries, self).__init__(time=time, rdy_format_version=rdy_format_version)
-
-        if pressure is None:
-            pressure = []
-
-        self.pressure: np.ndarray = np.array(pressure)
+        args = locals().copy()
+        args.pop("self")
+        super(PressureSeries, self).__init__(**args)
 
 
 class TemperatureSeries(TimeSeries):
     def __init__(self, time: Union[list, np.ndarray] = None,
                  temperature: Union[list, np.ndarray] = None,
                  rdy_format_version: float = None):
-        super(TemperatureSeries, self).__init__(time=time, rdy_format_version=rdy_format_version)
-
-        if temperature is None:
-            temperature = []
-
-        self.temperature: np.ndarray = np.array(temperature)
+        args = locals().copy()
+        args.pop("self")
+        super(TemperatureSeries, self).__init__(**args)
 
 
 class HumiditySeries(TimeSeries):
     def __init__(self, time: Union[list, np.ndarray] = None,
                  humidity: Union[list, np.ndarray] = None,
                  rdy_format_version: float = None):
-        super(HumiditySeries, self).__init__(time=time, rdy_format_version=rdy_format_version)
-
-        if humidity is None:
-            humidity = []
-
-        self.humidity: np.ndarray = np.array(humidity)
+        args = locals().copy()
+        args.pop("self")
+        super(HumiditySeries, self).__init__(**args)
 
 
 class LightSeries(TimeSeries):
     def __init__(self, time: Union[list, np.ndarray] = None,
                  light: Union[list, np.ndarray] = None,
                  rdy_format_version: float = None):
-        super(LightSeries, self).__init__(time=time, rdy_format_version=rdy_format_version)
-
-        if light is None:
-            light = []
-
-        self.light: np.ndarray = np.array(light)
+        args = locals().copy()
+        args.pop("self")
+        super(LightSeries, self).__init__(**args)
 
 
 class WzSeries(TimeSeries):
@@ -401,29 +394,15 @@ class WzSeries(TimeSeries):
                  wz_y: Union[list, np.ndarray] = None,
                  wz_z: Union[list, np.ndarray] = None,
                  rdy_format_version: float = None):
-        super(WzSeries, self).__init__(time=time, rdy_format_version=rdy_format_version)
-
-        if wz_x is None:
-            wz_x = []
-
-        if wz_y is None:
-            wz_y = []
-
-        if wz_z is None:
-            wz_z = []
-
-        self.wz_x: np.ndarray = np.array(wz_x)
-        self.wz_y: np.ndarray = np.array(wz_y)
-        self.wz_z: np.ndarray = np.array(wz_z)
+        args = locals().copy()
+        args.pop("self")
+        super(WzSeries, self).__init__(**args)
 
 
 class SubjectiveComfortSeries(TimeSeries):
     def __init__(self, time: Union[list, np.ndarray] = None,
                  comfort: Union[list, np.ndarray] = None,
                  rdy_format_version: float = None):
-        super(SubjectiveComfortSeries, self).__init__(time=time, rdy_format_version=rdy_format_version)
-
-        if comfort is None:
-            comfort = []
-
-        self.comfort: np.ndarray = np.array(comfort)
+        args = locals().copy()
+        args.pop("self")
+        super(SubjectiveComfortSeries, self).__init__(**args)
