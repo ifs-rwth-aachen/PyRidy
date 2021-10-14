@@ -20,7 +20,8 @@ logger = logging.getLogger(__name__)
 
 
 class RDYFile:
-    def __init__(self, path: str = "", sync_method: str = None, cutoff: bool = True, timedelta_unit: str = 'timedelta64[ns]', name=""):
+    def __init__(self, path: str = "", sync_method: str = None, cutoff: bool = True,
+                 timedelta_unit: str = 'timedelta64[ns]', strip_timezone: bool = True, name=""):
         """
 
         :param sync_method: Must be "timestamp", "device_time" or "gps_time", "timestamp" uses the timestamp when the
@@ -42,6 +43,7 @@ class RDYFile:
         self.sync_method = sync_method
         self.cutoff = cutoff
         self.timedelta_unit = timedelta_unit
+        self.strip_timezone = strip_timezone
 
         self.db_con: Optional[Connection] = None
 
@@ -260,7 +262,11 @@ class RDYFile:
                 self.rdy_info_weight = None
 
             if 't0' in rdy:
-                self.t0 = np.datetime64(rdy['t0'])
+                if self.strip_timezone:
+                    t0 = datetime.datetime.fromisoformat(rdy['t0']).replace(tzinfo=None)
+                    self.t0 = np.datetime64(t0)
+                else:
+                    self.t0 = np.datetime64(rdy['t0'])
             else:
                 self.t0 = None
                 logger.info("No t0 in file: %s" % self.name)
@@ -290,7 +296,11 @@ class RDYFile:
                 logger.info("No ntp_timestamp in file: %s" % self.name)
 
             if 'ntp_date_time' in rdy:
-                self.ntp_date_time = np.datetime64(rdy['ntp_date_time'])
+                if self.strip_timezone:
+                    ntp_date_time = datetime.datetime.fromisoformat(rdy['ntp_date_time']).replace(tzinfo=None)
+                    self.ntp_date_time = np.datetime64(ntp_date_time)
+                else:
+                    self.ntp_date_time = np.datetime64(rdy['t0'])
             else:
                 self.ntp_date_time = None
                 logger.info("No ntp_date_time in file: %s" % self.name)
@@ -485,7 +495,11 @@ class RDYFile:
                 self.rdy_info_weight = info['rdy_info_weight'].iloc[-1]
 
             if 't0' in info and len(info['t0']) > 0:
-                self.t0 = np.datetime64(info['t0'].iloc[-1])
+                if self.strip_timezone:
+                    t0 = datetime.datetime.fromisoformat(info['t0'].iloc[-1]).replace(tzinfo=None)
+                    self.t0 = np.datetime64(t0)
+                else:
+                    self.t0 = np.datetime64(info['t0'].iloc[-1])
 
             if 'cs_matrix_string' in info and len(info['cs_matrix_string']) > 0:
                 self.cs_matrix_string = info['cs_matrix_string'].iloc[-1]
@@ -500,7 +514,11 @@ class RDYFile:
                 self.ntp_timestamp = info['ntp_timestamp'].iloc[-1]
 
             if 'ntp_date_time' in info and len(info['ntp_date_time']) > 0:
-                self.ntp_date_time = np.datetime64(info['ntp_date_time'].iloc[-1])
+                if self.strip_timezone:
+                    ntp_date_time = datetime.datetime.fromisoformat(info['ntp_date_time'].iloc[-1]).replace(tzinfo=None)
+                    self.ntp_date_time = np.datetime64(ntp_date_time)
+                else:
+                    self.ntp_date_time = np.datetime64(info['ntp_date_time'].iloc[-1])
 
             # Measurements
             try:

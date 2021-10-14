@@ -131,17 +131,17 @@ def test_device_time_syncing(my_campaign, caplog):
     my_campaign.import_folder("files", sync_method="device_time", cutoff=False)
 
     assert my_campaign("sample1.rdy").measurements[AccelerationSeries].time[0] == np.datetime64(
-        "2021-05-05T18:51:56.285000000")
+        "2021-05-05T20:51:56.285000000")
     assert my_campaign("sample1.sqlite").measurements[AccelerationSeries].time[0] == np.datetime64(
-        "2021-04-27T13:08:45.246601499")
+        "2021-04-27T15:08:45.246601499")
     assert my_campaign("sample2.sqlite").measurements[AccelerationSeries].time[0] == np.datetime64(
-        "2021-04-28T07:51:54.583858628")
+        "2021-04-28T09:51:54.583858628")
 
     df_acc_1 = my_campaign("device1.sqlite").measurements[AccelerationSeries].to_df()
     df_acc_2 = my_campaign("device2.sqlite").measurements[AccelerationSeries].to_df()
 
-    t_start = "2021-05-06T12:51:40"
-    t_end = "2021-05-06T12:51:50"
+    t_start = "2021-05-06T14:51:40"
+    t_end = "2021-05-06T14:51:50"
 
     fig, ax = plt.subplots(figsize=(11.69, 8.27))
     ax.plot(df_acc_1[(df_acc_1.index >= t_start) & (df_acc_1.index < t_end)]["acc_z"],
@@ -161,7 +161,7 @@ def test_device_time_syncing(my_campaign, caplog):
 
 
 def test_gps_time_syncing(my_campaign, caplog):
-    my_campaign.import_folder("files", sync_method="gps_time", cutoff=False)
+    my_campaign.import_folder("files", sync_method="gps_time", strip_timezone=False, cutoff=False)
 
     assert my_campaign("sample1.rdy").measurements[AccelerationSeries].time[0] == 0
     assert my_campaign("sample1.sqlite").measurements[AccelerationSeries].time[0] == np.datetime64(
@@ -204,15 +204,15 @@ def test_ntp_time_syncing(my_campaign, caplog):
     my_campaign.import_folder("files", sync_method="ntp_time", cutoff=False)
 
     assert my_campaign("device1.sqlite").measurements[AccelerationSeries].time[0] == np.datetime64(
-        "2021-05-06T12:51:13.321774591")
+        "2021-05-06T14:51:13.321774591")
     assert my_campaign("device2.sqlite").measurements[AccelerationSeries].time[0] == np.datetime64(
-        "2021-05-06T12:51:13.705642452")
+        "2021-05-06T14:51:13.705642452")
 
     df_acc_1 = my_campaign("device1.sqlite").measurements[AccelerationSeries].to_df()
     df_acc_2 = my_campaign("device2.sqlite").measurements[AccelerationSeries].to_df()
 
-    t_start = "2021-05-06T12:51:40"
-    t_end = "2021-05-06T12:51:50"
+    t_start = "2021-05-06T14:51:40"
+    t_end = "2021-05-06T14:51:50"
 
     fig, ax = plt.subplots(figsize=(11.69, 8.27))
     ax.plot(df_acc_1[(df_acc_1.index >= t_start) & (df_acc_1.index < t_end)]["acc_z"],

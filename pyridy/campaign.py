@@ -17,7 +17,8 @@ logger = logging.getLogger(__name__)
 
 class Campaign:
     def __init__(self, name="", folder: Union[list, str] = None, recursive=True, exclude: Union[list, str] = None,
-                 sync_method: str = None, cutoff: bool = True, lat_sw: float = None, lon_sw: float = None, lat_ne: float = None,
+                 sync_method: str = None, strip_timezone: bool = True, cutoff: bool = True, lat_sw: float = None,
+                 lon_sw: float = None, lat_ne: float = None,
                  lon_ne: float = None, download_osm_region: bool = False, railway_types: Union[list, str] = None):
         """
         A measurement campaign manages loading, processing etc of RDY files
@@ -34,6 +35,7 @@ class Campaign:
         :param lon_sw: SW boundary Longitude of Campaign
         :param lat_ne: NE boundary Latitude of Campaign
         :param lon_ne: NE boundary Longitude of Campaign
+        :param strip_timezone: If false, in case of time based sync methods, all time values will be converted to GMT
         :param cutoff: Cutoffs values before/after start/end timestamp
         """
         self._colors = []  # Used colors
@@ -50,6 +52,7 @@ class Campaign:
                 "synchronize argument must 'timestamp', 'device_time', 'gps_time' or 'ntp_time' not %s" % sync_method)
 
         self.sync_method = sync_method
+        self.strip_timezone = strip_timezone
         self.cutoff = cutoff
 
         if folder:
@@ -268,7 +271,8 @@ class Campaign:
                                         desired_railway_types=railway_types)
 
     def import_folder(self, folder: Union[list, str] = None, recursive: bool = True, exclude: Union[list, str] = None,
-                      sync_method: str = None, cutoff: bool = True, det_geo_extent: bool = True, download_osm_region: bool = False,
+                      sync_method: str = None, strip_timezone: bool = None, cutoff: bool = True,
+                      det_geo_extent: bool = True, download_osm_region: bool = False,
                       railway_types: Union[list, str] = None):
         """
         Imports a whole folder including subfolders if desired
@@ -277,6 +281,7 @@ class Campaign:
         :param det_geo_extent: If True determines the current geographic extent of the campaign
         :param sync_method:
         :param exclude:
+        :param strip_timezone:
         :param cutoff:
         :param recursive: If True, recursively opens subfolder and tries to load files
         :param folder: Path(s) to folder(s) that should be imported
@@ -323,9 +328,19 @@ class Campaign:
         for p in tqdm(file_paths):
             if sync_method:
                 self.sync_method = sync_method
-                self.files.append(RDYFile(path=p, sync_method=sync_method, cutoff=cutoff))
+                if strip_timezone is not None:
+                    self.files.append(RDYFile(path=p, sync_method=sync_method, strip_timezone=strip_timezone,
+                                              cutoff=cutoff))
+                else:
+                    self.files.append(RDYFile(path=p, sync_method=sync_method, strip_timezone=self.strip_timezone,
+                                              cutoff=cutoff))
             else:
-                self.files.append(RDYFile(path=p, sync_method=self.sync_method, cutoff=cutoff))
+                if strip_timezone is not None:
+                    self.files.append(RDYFile(path=p, sync_method=self.sync_method, strip_timezone=strip_timezone,
+                                              cutoff=cutoff))
+                else:
+                    self.files.append(RDYFile(path=p, sync_method=self.sync_method, strip_timezone=self.strip_timezone,
+                                              cutoff=cutoff))
 
         if det_geo_extent:
             self.determine_geographic_extent()

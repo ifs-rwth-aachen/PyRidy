@@ -66,6 +66,7 @@ class TimeSeries(ABC):
                 if len(t) == len(v):
                     self.__setattr__(k, v[idxs])
 
+            self._timedelta: np.ndarray = np.diff(self._time)
         else:
             logger.warning("Cannot cutoff series if series is empty or series already starts at 0")
 
@@ -74,6 +75,7 @@ class TimeSeries(ABC):
     def to_df(self) -> pd.DataFrame:
         d = self.__dict__.copy()
         d.pop("rdy_format_version")
+        d.pop("_timedelta")
         return pd.DataFrame(dict([(k, pd.Series(v)) for k, v in d.items()])).set_index("time")
 
     def get_sub_series_names(self) -> list:
