@@ -45,3 +45,13 @@ def create_map_circle(lat, lon, color="green"):
     circle.fill_color = color
 
     return circle
+
+
+def requires_internet(func):
+    def inner(*args, **kwargs):
+        if internet():
+            return func(*args, **kwargs)
+        else:
+            raise ConnectionError("This function requires an internet connection")
+
+    return inner()

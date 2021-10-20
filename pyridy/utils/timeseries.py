@@ -1,6 +1,5 @@
 import datetime
 import logging
-import types
 from abc import ABC
 from typing import Union, List
 
@@ -68,7 +67,7 @@ class TimeSeries(ABC):
 
             self._timedelta: np.ndarray = np.diff(self._time)
         else:
-            logger.warning("Cannot cutoff series if series is empty or series already starts at 0")
+            logger.info("Cannot cutoff series if series is empty or series already starts at 0")
 
         pass
 
@@ -137,7 +136,7 @@ class TimeSeries(ABC):
         if not np.array_equal(self._time, np.array(None)) and len(self._time) > 0:
             if method == "timestamp":
                 if self._time[0] == 0:
-                    logger.warning("Timeseries already starts at 0, timestamp syncing not appropriate")
+                    logger.info("Timeseries already starts at 0, timestamp syncing not appropriate")
                 else:
                     if sync_timestamp:
                         self.time = (self._time - sync_timestamp).astype(timedelta_unit)
@@ -147,20 +146,20 @@ class TimeSeries(ABC):
 
             elif method == "device_time":
                 if self._time[0] == 0:
-                    logger.warning("Timeseries already starts at 0, timestamp syncing not appropriate")
+                    logger.info("Timeseries already starts at 0, timestamp syncing not appropriate")
                     self.time = self._time.astype(timedelta_unit) + sync_time
                 else:
                     self.time = (self._time - sync_timestamp).astype(timedelta_unit) + sync_time
             elif method == "gps_time" or method == "ntp_time":
                 if self._time[0] == 0:
-                    logger.warning("Timeseries already starts at 0, cant sync to due to lack of proper timestamp")
+                    logger.info("Timeseries already starts at 0, cant sync to due to lack of proper timestamp")
                 else:
                     self.time = (self._time - sync_timestamp).astype(timedelta_unit) + sync_time
                 pass
             else:
                 raise ValueError("Method %s not supported" % method)
         else:
-            logger.warning("Trying to synchronize timestamps on empty %s" % self.__class__.__name__)
+            logger.info("Trying to synchronize timestamps on empty %s" % self.__class__.__name__)
 
 
 class AccelerationSeries(TimeSeries):

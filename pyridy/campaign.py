@@ -8,7 +8,7 @@ from ipywidgets import HTML
 from tqdm.auto import tqdm
 
 from .file import RDYFile
-from .osm import OSMRegion
+from .osm import OSMRegion, OSMRailwaySwitch, OSMRailwaySignal, OSMLevelCrossing
 from .utils import GPSSeries
 from .utils.tools import generate_random_color
 
@@ -167,6 +167,28 @@ class Campaign:
 
         return m
 
+    def add_osm_railway_elements_to_map(self, m: Map) -> Map:
+        if self.osm_region:
+            for el in self.osm_region.railway_elements:
+                if type(el) == OSMRailwaySwitch:
+                    icon = Icon(
+                        icon_url='https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-black.png',
+                        shadow_url='https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+                        icon_size=[25, 41],
+                        icon_anchor=[12, 41],
+                        popup_anchor=[1, -34],
+                        shadow_size=[41, 41])
+                    marker = Marker(location=(el.lat, el.lon), draggable=False, icon=icon)
+
+                    m.add_layer(marker)
+                elif type(el) == OSMRailwaySignal:
+                    pass
+                elif type(el) == OSMLevelCrossing:
+                    pass
+                else:
+                    pass
+        return m
+
     def determine_geographic_extent(self):
         """
         Determines the geographic boundaries of the measurement files
@@ -201,7 +223,7 @@ class Campaign:
         """
         self.files = []
 
-    def create_map(self, center: Tuple[float, float] = None) -> Map:
+    def create_map(self, center: Tuple[float, float] = None, show_railway_elements=False) -> Map:
         if not center:
             if self.lat_sw and self.lat_ne and self.lon_sw and self.lon_ne:
                 center = (
@@ -231,9 +253,12 @@ class Campaign:
         osm_layer = basemap_to_tiles(open_railway_map)
         m.add_layer(osm_layer)
 
-        # Plot GPS points for each measurement
+        # Plot GPS point for each measurement and OSM Tracks
         m = self.add_osm_routes_to_map(m)
         m = self.add_tracks_to_map(m)
+
+        if show_railway_elements:
+            m = self.add_osm_railway_elements_to_map(m)
 
         return m
 

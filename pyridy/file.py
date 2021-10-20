@@ -468,7 +468,7 @@ class RDYFile:
 
             # Info
             if 'ridy_version' in info and len(info['ridy_version']) > 1:
-                logger.warning("Measurement information table contains more than 1 row!")
+                logger.info("Measurement information table contains more than 1 row!")
 
             if 'ridy_version' in info and len(info['ridy_version']) > 0:
                 self.ridy_version = info['ridy_version'].iloc[-1]

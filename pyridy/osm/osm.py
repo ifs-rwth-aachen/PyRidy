@@ -7,7 +7,8 @@ from typing import List, Union
 import overpy
 from tqdm.auto import tqdm
 
-from pyridy.osm.utils import QueryResult, OSMRailwayLine
+from pyridy.osm.utils import QueryResult, OSMLevelCrossing, OSMRailwaySwitch, OSMRailwaySignal, OSMRailwayLine, \
+    OSMRailwayElement
 from pyridy.utils.tools import internet
 
 logger = logging.getLogger(__name__)
@@ -44,7 +45,7 @@ class OSMRegion:
         if not (-180 <= lon_sw <= 180) or not (-180 <= lon_ne <= 180):
             raise ValueError("Lon. value outside valid range")
 
-        self.overpass_api = overpy.Overpass()
+        self.overpass_api = overpy.Overpass(url="https://overpass.kumi.systems/api/interpreter")
 
         self.lon_sw = lon_sw
         self.lat_sw = lat_sw
@@ -53,7 +54,9 @@ class OSMRegion:
 
         self.desired_railway_types = desired_railway_types
         self.ways: List[overpy.Way, overpy.RelationWay] = []
+
         self.railway_lines: List[OSMRailwayLine] = []
+        self.railway_elements: List[OSMRailwayElement] = []
 
         self.query_results = {rw_type: {"track_query": QueryResult,
                                         "route_query": QueryResult} for rw_type in self.desired_railway_types}
@@ -68,7 +71,7 @@ class OSMRegion:
 
     def _create_query(self, railway_type: str):
         if railway_type not in OSMRegion.supported_railway_types:
-            raise ValueError("Your desired railway type %s is not supported" % railway_type)
+            raise ValueError("The desired railway type %s is not supported" % railway_type)
 
         track_query = """(node[""" + "railway" + """=""" + railway_type + """](""" + str(self.lat_sw) + """,""" + str(
             self.lon_sw) + """,""" + str(self.lat_ne) + """,""" + str(self.lon_ne) + """);
@@ -102,12 +105,15 @@ class OSMRegion:
         # Download data for all desired railway types
         if internet():
             for railway_type in tqdm(railway_types):
+                # Create Overpass queries and try downloading them
+                logger.info("Querying data for railway type: %s" % railway_type)
                 trk_query, rou_query = self._create_query(railway_type=railway_type)
                 trk_result = QueryResult(self.query_overpass(trk_query), railway_type)
                 rou_result = QueryResult(self.query_overpass(rou_query), railway_type)
                 self.query_results[railway_type]["track_query"] = trk_result
                 self.query_results[railway_type]["route_query"] = rou_result
 
+                # Convert relation result to OSMRailwayLine objects
                 for rel in rou_result.result.relations:
                     rel_way_ids = [mem.ref for mem in rel.members if type(mem) == overpy.RelationWay and not mem.role]
                     rel_ways = [w for w in rou_result.result.ways if w.id in rel_way_ids]
@@ -116,6 +122,17 @@ class OSMRegion:
                     rel_ways.sort(key=lambda w: sort_order[w.id])
 
                     self.railway_lines.append(OSMRailwayLine(rel.id, rel_ways, rel.tags, rel.members))
+
+                for n in trk_result.result.nodes:
+                    if "railway" in n.tags:
+                        if n.tags["railway"] == "level_crossing":
+                            self.railway_elements.append(OSMLevelCrossing(n))
+                        elif n.tags["railway"] == "signal":
+                            self.railway_elements.append(OSMRailwaySignal(n))
+                        elif n.tags["railway"] == "switch":
+                            self.railway_elements.append(OSMRailwaySwitch(n))
+                        else:
+                            pass
         else:
             logger.warning("Cant download OSM data because of not internet connection")
 
@@ -124,7 +141,7 @@ class OSMRegion:
             try:
                 logger.info("Trying to query OSM data, %d/%d tries" % (a, attempts))
                 result = self.overpass_api.query(query)
-                logger.info("Successfully gathers OSM Data")
+                logger.info("Successfully queried OSM Data")
                 break
             except overpy.exception.OverpassTooManyRequests as e:
                 logger.warning("OverpassTooManyRequest, retrying".format(e))
@@ -155,6 +172,9 @@ class OSMRegion:
                     ways.append(way)
 
         return ways
+
+    def get_switches(self) -> List[OSMRailwayElement]:
+        return [el for el in self.railway_elements if type(el) == OSMRailwaySwitch]
 
     @property
     def lon_sw(self):
