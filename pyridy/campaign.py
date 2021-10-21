@@ -21,22 +21,38 @@ class Campaign:
                  lon_sw: float = None, lat_ne: float = None,
                  lon_ne: float = None, download_osm_region: bool = False, railway_types: Union[list, str] = None):
         """
-        A measurement campaign manages loading, processing etc of RDY files
-        :param sync_method: Must be "timestamp", "device_time" or "gps_time", "timestamp" uses the timestamp when the
-        measurement started to adjust the timestamps (outputs nanoseconds), "device_time" transforms the time series to the
-        datetime (outputs datetime), "gps_time" uses the utc gps time if available (outputs datetime), if no gps data
-        is available it will fallback to the "device_time" method, "ntp_time" uses network time, if not available, it
-        will fallback to the "device_time" methode
-        :param name: Name of the Campaign
-        :param folder: Path(s) to folder(s) where to search for measurement files
-        :param recursive: If True also searches in subfolders
-        :param exclude: List or str of folder(s) to exclude
-        :param lat_sw: SW boundary Latitude of Campaign
-        :param lon_sw: SW boundary Longitude of Campaign
-        :param lat_ne: NE boundary Latitude of Campaign
-        :param lon_ne: NE boundary Longitude of Campaign
-        :param strip_timezone: If false, in case of time based sync methods, all time values will be converted to GMT
-        :param cutoff: Cutoffs values before/after start/end timestamp
+
+        Parameters
+        ----------
+        name: str
+            Name of the campaign
+        folder: str or list of str
+            Folder or list of folders that should be imported
+        recursive: bool, default: True
+            Flag if folders should be searched recursively
+        exclude: str or list of str
+            Name(s) of file or folder that should be excluded
+        sync_method: str
+            Method to use to sync timestamps of individual files
+        strip_timezone: bool, default: True
+            Strips timezone from timestamps as np.datetime64 does not support timezones
+        cutoff: bool, default: True
+            If True, cutoffs the measurements precisely to the timestamp when the measurement was started, respectively
+            stopped. By default Ridy measurement files can contain several seconds of measurements from before/after
+            the button press
+        lat_sw: float
+            South west Latitude of the campaign, if the geographic extent is not given via arguments, the library tries
+            to determine the geographic extent based on the GPS tracks
+        lon_sw: float
+            South west longitude of the campaign
+        lat_ne: float
+            North east latitude of the campaign
+        lon_ne: float
+            North east longitude of the campaign
+        download_osm_region: bool, default: False
+            If True download OSM data via the Overpass API
+        railway_types: list or list of str
+            Railway type to be downloaded from OSM, e.g., "rail", "subway", "tram" or "light_rail"
         """
         self._colors = []  # Used colors
 
@@ -79,10 +95,17 @@ class Campaign:
         return len(self.files)
 
     def add_tracks_to_map(self, m: Map) -> Map:
-        """
-        Adds all tracks(files) in campaign to map m
-        :param m:
-        :return:
+        """ Add all GPS tracks from the campaign files to a Map
+
+        Parameters
+        ----------
+        m: Map
+            ipyleaflet Map
+
+        Returns
+        -------
+        Map
+
         """
         for file in self.files:
             m = self.add_track_to_map(m, file=file)
@@ -90,16 +113,24 @@ class Campaign:
         return m
 
     def add_track_to_map(self, m: Map, name: str = "", file: RDYFile = None) -> Map:
-        """
-        Adds a single track to the map given by m. If name and file are given, name will be used
-        :param file:
-        :param m:
-        :param name:
-        :return:
-        """
+        """ Adds a GPS track from a file to the Map
 
+        Parameters
+        ----------
+        m: Map
+            ipyleaflet map
+        name: str
+            Name of the file that should be drawn onto the map
+        file: RDYFile
+            Alternatively, provide RDYFile that should be drawn on the map
+
+        Returns
+        -------
+        Map
+
+        """
         if name != "":
-            files = self(name)
+            files = [self(name)]
         elif file is not None:
             files = [file]
 
@@ -159,15 +190,42 @@ class Campaign:
         return m
 
     def add_osm_routes_to_map(self, m: Map) -> Map:
+        """ Adds OSM Routes from the downloaded OSM Region
+
+        Parameters
+        ----------
+        m: Map
+            ipyleaflet Map
+
+        Returns
+        -------
+        Map
+
+        """
         if self.osm_region:
             for line in self.osm_region.railway_lines:
                 coords = line.to_ipyleaflet()
                 file_polyline = Polyline(locations=coords, color=line.color, fill=False, weight=4)
                 m.add_layer(file_polyline)
+        else:
+            logger.warning("No OSM region downloaded!")
 
         return m
 
     def add_osm_railway_elements_to_map(self, m: Map) -> Map:
+        """ Draws railway elements using markers on top of a map
+
+        Parameters
+        ----------
+        m: Map
+            Map where railway elements should be drawn on top of
+
+        Returns
+        -------
+        m: Map
+            Map containing railway elements
+
+        """
         if self.osm_region:
             for el in self.osm_region.railway_elements:
                 if type(el) == OSMRailwaySwitch:
@@ -190,8 +248,8 @@ class Campaign:
         return m
 
     def determine_geographic_extent(self):
-        """
-        Determines the geographic boundaries of the measurement files
+        """ Determines the geographic extent of the campaign in terms of min/max lat/lon
+
         """
         min_lats = []
         max_lats = []
@@ -218,12 +276,22 @@ class Campaign:
 
     def clear_files(self):
         """
-        Clears all files
-        :return:
+            Clear all files from the campaign
         """
         self.files = []
 
     def create_map(self, center: Tuple[float, float] = None, show_railway_elements=False) -> Map:
+        """ Creates a ipyleaflet map showing the GPS tracks of measurement files
+
+        Parameters
+        ----------
+        center
+        show_railway_elements
+
+        Returns
+        -------
+
+        """
         if not center:
             if self.lat_sw and self.lat_ne and self.lon_sw and self.lon_ne:
                 center = (
@@ -265,14 +333,20 @@ class Campaign:
     def import_files(self, paths: Union[list, str] = None, sync_method: str = None,
                      det_geo_extent: bool = True, download_osm_region: bool = False,
                      railway_types: Union[list, str] = None):
-        """
-        Imports a file or set of files
-        :param railway_types: Railway types to be downloaded from OSM (rail, tram, light_rail or subway)
-        :param download_osm_region: If True downloads OSM Region compliant with the geographic extent
-        :param det_geo_extent: If True determines the current geographic extent of the campaign
-        :param sync_method:
-        :param paths: Path(s) to file(s) that should be imported
-        :return:
+        """ Import files into the campaign
+
+        Parameters
+        ----------
+        paths: str or list of str
+            Individual file paths of the files that should be imported
+        sync_method: str
+            Method to use for timestamp syncing
+        det_geo_extent: bool, default: True
+            If True, determine the geographic extent of the imported files
+        download_osm_region: bool, default: False
+            If True, download OSM Data via the Overpass API
+        railway_types: str or list of str
+            Railway types to be downloaded via the Overpass API
         """
         if type(paths) == str:
             paths = [paths]
@@ -299,18 +373,28 @@ class Campaign:
                       sync_method: str = None, strip_timezone: bool = None, cutoff: bool = True,
                       det_geo_extent: bool = True, download_osm_region: bool = False,
                       railway_types: Union[list, str] = None):
-        """
-        Imports a whole folder including subfolders if desired
-        :param railway_types: Railway types to be downloaded from OSM (rail, tram, light_rail or subway)
-        :param download_osm_region: If True downloads OSM Region compliant with the geographic extent
-        :param det_geo_extent: If True determines the current geographic extent of the campaign
-        :param sync_method:
-        :param exclude:
-        :param strip_timezone:
-        :param cutoff:
-        :param recursive: If True, recursively opens subfolder and tries to load files
-        :param folder: Path(s) to folder(s) that should be imported
-        :return:
+        """ Imports folder(s) into the campaign
+
+        Parameters
+        ----------
+        folder: str or list of str
+            Folder(s) that should be imported
+        recursive: bool, default: True
+            Flag if folders should be imported recursively, i.e., whether subfolders should also be searched
+        exclude: str or list of str
+            Folder(s) or file(s) that should be excluded while importing
+        sync_method:
+            Method for timestamp syncing
+        strip_timezone: bool, default: True
+            If True, strips timezone from timestamp arrays
+        cutoff: bool, default: True
+            If True, cutoffs measurement precisely to timestamp when the measurement was started respectively stopped
+        det_geo_extent: bool: default: True
+            If True, tries to automatically determine the geographic extent of the imported files via their GPS tracks
+        download_osm_region: bool, default: True
+            If True, downloads OSM Data via the Overpass API
+        railway_types: str or list of str
+            Railway types to be downloaded via the Overpass API
         """
         if exclude is None:
             exclude = []
