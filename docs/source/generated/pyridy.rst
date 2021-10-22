@@ -1,0 +1,23 @@
+﻿pyridy
+======
+
+.. automodule:: pyridy
+
+   
+   
+   
+
+   
+   
+   
+
+   
+   
+   
+
+   
+   
+   
+
+
+
