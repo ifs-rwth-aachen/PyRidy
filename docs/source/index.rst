@@ -29,4 +29,5 @@ Contents
 .. toctree::
 
    usage
+   campaign
    api

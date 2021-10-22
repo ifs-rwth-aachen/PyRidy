@@ -30,6 +30,8 @@ geopy = "^2.1.0"
 scipy = "^1.6.3"
 pyproj = "^3.0.1"
 ipyleaflet = "^0.14.0"
+Sphinx = "^4.2.0"
+sphinx-rtd-theme = "^1.0.0"
 
 [tool.poetry.dev-dependencies]
 
