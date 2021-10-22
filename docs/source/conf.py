@@ -12,7 +12,7 @@
 #
 import os
 import sys
-sys.path.insert(0, os.path.abspath('./pyridy'))
+sys.path.insert(0, os.path.abspath('../../pyridy/'))
 
 
 # -- Project information -----------------------------------------------------
