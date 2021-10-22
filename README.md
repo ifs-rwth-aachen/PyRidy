@@ -33,7 +33,7 @@ In addition, pyridy provides several more features:
 * Automatic conversion of sensor data into objects and numpy arrays
 * Conversion of arrays to Pandas DataFrame objects
 * Time synchronization of individual files (e.g. from different phones)
-* Download of OSM Railway Data viathe Overpass API
+* Download of OSM Railway Data via the Overpass API
 * Plotting of GPS tracks onto a map using ipyleaflet
 
 ### Documentation
