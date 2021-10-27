@@ -1,8 +1,7 @@
-ridy-support-library
-====================
+pyridy
+======
 
 .. toctree::
    :maxdepth: 4
 
    pyridy
-   tests

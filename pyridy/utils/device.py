@@ -14,7 +14,20 @@ class Device:
                  model: Union[str, Series] = None,
                  gnss_hardware_model_name: Union[str, Series] = None,
                  gnss_year_of_hardware: Union[int, Series] = None):
+        """ Class representing Android device information
 
+        Parameters
+        ----------
+        api_level
+        base_os
+        brand
+        manufacturer
+        device
+        product
+        model
+        gnss_hardware_model_name
+        gnss_year_of_hardware
+        """
         if type(api_level) == Series:
             self.api_level = api_level[0] if len(api_level) > 0 else None
         else:

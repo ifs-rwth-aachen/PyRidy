@@ -20,18 +20,18 @@ pyridy.osm.utils.query module
    :undoc-members:
    :show-inheritance:
 
-pyridy.osm.utils.tools module
------------------------------
+pyridy.osm.utils.relation module
+--------------------------------
 
-.. automodule:: pyridy.osm.utils.tools
+.. automodule:: pyridy.osm.utils.relation
    :members:
    :undoc-members:
    :show-inheritance:
 
-pyridy.osm.utils.track module
+pyridy.osm.utils.tools module
 -----------------------------
 
-.. automodule:: pyridy.osm.utils.track
+.. automodule:: pyridy.osm.utils.tools
    :members:
    :undoc-members:
    :show-inheritance:

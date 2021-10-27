@@ -1,6 +1,6 @@
 import random
 import socket
-from typing import Optional
+from typing import Optional, Union
 
 import numpy as np
 from ipyleaflet import Circle
@@ -33,7 +33,7 @@ def internet(host="8.8.8.8", port=53, timeout=3):
         return False
 
 
-def generate_random_color(color_format: str = "RGB") -> Optional[list, str]:
+def generate_random_color(color_format: str = "RGB") -> Union[list, str]:
     """
     Parameters
     ----------

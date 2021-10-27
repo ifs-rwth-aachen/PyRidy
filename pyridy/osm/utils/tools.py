@@ -5,6 +5,8 @@ import scipy.interpolate as si
 def bspline(cv, n=10000, degree=3, periodic=False):
     """ Calculate n samples on a bspline
 
+        Parameters
+        ----------
         cv: array_like
             Array ov control vertices
         n: int

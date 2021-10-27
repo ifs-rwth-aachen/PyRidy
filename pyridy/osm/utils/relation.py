@@ -1,6 +1,6 @@
 import itertools
 import math
-from typing import List
+from typing import List, Tuple
 
 import numpy as np
 import overpy
@@ -44,8 +44,8 @@ class OSMRelation:
 
     @staticmethod
     def interpolate(x, y):
-        """
-            Static method that uses a bspline to interpolate the coordinates
+        """ Static method that uses a bspline to interpolate the coordinates
+
         Parameters
         ----------
         x: array_like
@@ -53,7 +53,7 @@ class OSMRelation:
 
         Returns
         -------
-            tuple
+        tuple
         """
         if len(x) > 0:
             interp_trk = bspline(np.array([x, y]), n=10000)
@@ -118,7 +118,7 @@ class OSMRelation:
             return [[]]
 
     @staticmethod
-    def compute_curvature(x: [float], y: [float]):
+    def compute_curvature(x: List[float], y: List[float]) -> List[float]:
         """ Calculates the Menger curvature for a set of coordinates
 
         Parameters
@@ -128,7 +128,7 @@ class OSMRelation:
 
         Returns
         -------
-            list
+        list
         """
         if len(x) != len(y):
             raise ValueError("x and y have to be same length")
@@ -183,7 +183,7 @@ class OSMRelation:
             return []
 
     @staticmethod
-    def compute_distance_from_xy(x: [float], y: [float]):
+    def compute_distance_from_xy(x: List[float], y: List[float]) -> Tuple[list, list]:
         """ Computes distances between a set of x y coordinates as well as the total distance
 
         Parameters
@@ -193,7 +193,7 @@ class OSMRelation:
 
         Returns
         -------
-        list, list
+        Tuple
             List containing total distance, list of pairwise distances
         """
         if len(x) != len(y):
