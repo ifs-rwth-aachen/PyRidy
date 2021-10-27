@@ -1,16 +1,28 @@
 import random
 import socket
+from typing import Optional
 
 import numpy as np
 from ipyleaflet import Circle
 
 
 def internet(host="8.8.8.8", port=53, timeout=3):
-    """
-    Host: 8.8.8.8 (google-public-dns-a.google.com)
-    OpenPort: 53/tcp
-    Service: domain (DNS/TCP)
+    """ Function that returns True if an internet connection is available, False if otherwise
+
     Based on https://stackoverflow.com/questions/3764291/how-can-i-see-if-theres-an-available-and-active-network-connection-in-python
+
+    Parameters
+    ----------
+    host: str
+        IP of the host, which should be used for checking the internet connections
+    port: int
+        Port that should be used
+    timeout: int
+        Timeout in seconds
+
+    Returns
+    -------
+    bool
     """
     try:
         socket.setdefaulttimeout(timeout)
@@ -21,26 +33,39 @@ def internet(host="8.8.8.8", port=53, timeout=3):
         return False
 
 
-def generate_random_color(format="RGB"):
+def generate_random_color(color_format: str = "RGB") -> Optional[list, str]:
+    """
+    Parameters
+    ----------
+    color_format: str
+        Color format of the generated color, either "RGB" or "HEX". RGB values range from 0 to 255
     """
 
-    :param seed: Seed for random generation
-    :param format: Either "RGB" or "HEX"
-    :return:
-    """
-
-    if format == "RGB":
+    if color_format == "RGB":
         return list(np.random.choice(range(256), size=3))
-    elif format == "HEX":
+    elif color_format == "HEX":
         return "#" + ''.join([random.choice('0123456789ABCDEF') for _ in range(6)])
     else:
-        raise ValueError("Format %s is not valid, must be 'RGB' or 'HEX' " % format)
+        raise ValueError("Format %s is not valid, must be 'RGB' or 'HEX' " % color_format)
 
 
-def create_map_circle(lat, lon, color="green"):
+def create_map_circle(lat: float, lon: float, color="green", radius: int = 2):
+    """ Creates an ipyleaflet circle marker
+
+    Parameters
+    ----------
+    lat: float
+    lon: float
+    color: str
+    radius: int
+
+    Returns
+    -------
+    Circle
+    """
     circle = Circle()
     circle.location = (lat, lon)
-    circle.radius = 2
+    circle.radius = radius
     circle.color = color
     circle.fill_color = color
 
@@ -48,6 +73,17 @@ def create_map_circle(lat, lon, color="green"):
 
 
 def requires_internet(func):
+    """ Decorator for functions that require internet
+
+    Parameters
+    ----------
+    func: func
+        Function that requires an active internet connection
+    Returns
+    -------
+
+    """
+
     def inner(*args, **kwargs):
         if internet():
             return func(*args, **kwargs)

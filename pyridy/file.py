@@ -24,12 +24,22 @@ class RDYFile:
                  timedelta_unit: str = 'timedelta64[ns]', strip_timezone: bool = True, name=""):
         """
 
-        :param sync_method: Must be "timestamp", "device_time" or "gps_time", "timestamp" uses the timestamp when the
-        measurement started to adjust the timestamps (outputs nanoseconds), "device_time" transforms the time series to
-        the datetime (outputs datetime), "gps_time" uses the utc gps time if available (outputs datetime), if no gps
-        data is available it will fallback to the "device_time" method, "ntp_time" uses network time, if not available,
-        it will fallback to the "device_time" methode
-        :param path: Path to the Ridy file to be imported (can be .sqlite or .rdy)
+        Parameters
+        ----------
+        path: str
+            Path to the Ridy File
+        sync_method: str
+            Sync method to be applied
+        cutoff: bool, default: True
+            If True, cutoffs the measurements precisely to the timestamp when the measurement was started, respectively
+            stopped. By default Ridy measurement files can contain several seconds of measurements from before/after
+            the button press
+        timedelta_unit: str
+            NumPy timedelta unit to applied
+        strip_timezone: bool, default: True
+            Strips timezone from timestamps as np.datetime64 does not support timezones
+        name: str
+            Name of the files, will be the filename if not provided
         """
         self.path = path
 
@@ -124,6 +134,9 @@ class RDYFile:
                                                        str(datetime.timedelta(seconds=self.duration)))
 
     def _synchronize(self):
+        """ Internal method that synchronizes the timestamps to a given sync timestamp
+
+        """
         if self.sync_method == "timestamp":
             for m in self.measurements.values():
                 m.synchronize("timestamp", self.timestamp_when_started, timedelta_unit=self.timedelta_unit)
@@ -171,11 +184,12 @@ class RDYFile:
         pass
 
     def get_integrity_report(self):
-        """
-        Returns a dict object with information of the rdy file
+        """ Returns a dict that contains information which measurement types are available in the file
+
+
         Returns
         -------
-        Data Integrity Report
+            dict
         """
         report = {}
 
@@ -196,8 +210,7 @@ class RDYFile:
         return report
 
     def load_file(self, path: str):
-        """
-        Loads a single Ridy file located at path
+        """ Loads a single Ridy file located at path
 
         Parameters
         ----------
@@ -297,8 +310,12 @@ class RDYFile:
 
             if 'ntp_date_time' in rdy:
                 if self.strip_timezone:
-                    ntp_date_time = datetime.datetime.fromisoformat(rdy['ntp_date_time']).replace(tzinfo=None)
-                    self.ntp_date_time = np.datetime64(ntp_date_time)
+                    ntp_datetime_str = rdy['ntp_date_time']
+                    if ntp_datetime_str:
+                        ntp_date_time = datetime.datetime.fromisoformat(ntp_datetime_str).replace(tzinfo=None)
+                        self.ntp_date_time = np.datetime64(ntp_date_time)
+                    else:
+                        self.ntp_date_time = None
                 else:
                     self.ntp_date_time = np.datetime64(rdy['t0'])
             else:
@@ -515,8 +532,12 @@ class RDYFile:
 
             if 'ntp_date_time' in info and len(info['ntp_date_time']) > 0:
                 if self.strip_timezone:
-                    ntp_date_time = datetime.datetime.fromisoformat(info['ntp_date_time'].iloc[-1]).replace(tzinfo=None)
-                    self.ntp_date_time = np.datetime64(ntp_date_time)
+                    ntp_datetime_str = info['ntp_date_time'].iloc[-1]
+                    if ntp_datetime_str:
+                        ntp_date_time = datetime.datetime.fromisoformat(ntp_datetime_str).replace(tzinfo=None)
+                        self.ntp_date_time = np.datetime64(ntp_date_time)
+                    else:
+                        self.ntp_date_time = None
                 else:
                     self.ntp_date_time = np.datetime64(info['ntp_date_time'].iloc[-1])
 
@@ -692,9 +713,11 @@ class RDYFile:
             raise ValueError("File extension %s is not supported" % self.extension)
 
     def to_df(self) -> pd.DataFrame:
-        """
+        """ Merges the measurement series to a single DataFrame
 
-        :return: DataFrame containing merged measurement series
+        Returns
+        -------
+            pd.DataFrame
         """
         data_frames = [series.to_df() for series in self.measurements.values()]
 

@@ -10,8 +10,21 @@ from geopy.distance import geodesic
 from pyridy.osm.utils import bspline
 
 
-class OSMTrack:
-    def __init__(self, id, ways: List[overpy.Way], name=None, color=None):
+class OSMRelation:
+    def __init__(self, id, ways: List[overpy.Way], name: str = None, color=None):
+        """ Class Representing an OpenStreetMap relation
+
+        Parameters
+        ----------
+        id: int
+            ID of the relation
+        ways: List[overpy.Way]
+            Ways part of the relation
+        name: str
+            Name of the relation
+        color:
+            Color when used to draw the track e.g. using ipyleaflet
+        """
         self.id = id
         self.name = name
         self.ways = ways
@@ -22,7 +35,7 @@ class OSMTrack:
 
         self.stitch_ways_to_track()
 
-        self.x, self.y = self.convert_lat_lon_to_xy(self.lon, self.lat)
+        self.x, self.y = self.convert_lon_lat_to_xy(self.lon, self.lat)
         self.s, self.ds = self.compute_distance_from_lon_lat(self.lon, self.lat)
         self.c = self.compute_curvature(self.x, self.y)
 
@@ -31,6 +44,17 @@ class OSMTrack:
 
     @staticmethod
     def interpolate(x, y):
+        """
+            Static method that uses a bspline to interpolate the coordinates
+        Parameters
+        ----------
+        x: array_like
+        y: array_like
+
+        Returns
+        -------
+            tuple
+        """
         if len(x) > 0:
             interp_trk = bspline(np.array([x, y]), n=10000)
             return interp_trk[:, 0], interp_trk[:, 1]
@@ -40,6 +64,9 @@ class OSMTrack:
             return None, None
 
     def reverse_track(self):
+        """
+            Reverses the lon/lat respectively x/y coordinates
+        """
         self.lon.reverse()
         self.lat.reverse()
         self.x.reverse()
@@ -49,9 +76,16 @@ class OSMTrack:
         self.c = self.compute_curvature(self.x, self.y)
 
     def flip_curvature(self):
+        """
+            Flips the calculated curvature upside down
+        """
         self.c = [el * -1 for el in self.c]
 
     def stitch_ways_to_track(self):
+        """
+            The order of the nodes inside a way can vary. Hence, nodes cannot be put into a list directly.
+            This prototype algorithm tries to stitch the nodes of all ways together to a single track.
+        """
         for i, nodes in enumerate(self.way_nodes[:-1]):
             c_nodes = self.way_nodes[i]
             n_nodes = self.way_nodes[i + 1]
@@ -73,6 +107,11 @@ class OSMTrack:
                     self.lat.append(node.lat)
 
     def to_ipyleaflet(self):
+        """ Converts the coordinates to the format required by ipyleaflet for drawing
+        Returns
+        -------
+            list
+        """
         if self.lat and self.lon:
             return [[float(lat), float(lon)] for lat, lon in zip(self.lat, self.lon)]
         else:
@@ -80,6 +119,17 @@ class OSMTrack:
 
     @staticmethod
     def compute_curvature(x: [float], y: [float]):
+        """ Calculates the Menger curvature for a set of coordinates
+
+        Parameters
+        ----------
+        x
+        y
+
+        Returns
+        -------
+            list
+        """
         if len(x) != len(y):
             raise ValueError("x and y have to be same length")
 
@@ -134,6 +184,18 @@ class OSMTrack:
 
     @staticmethod
     def compute_distance_from_xy(x: [float], y: [float]):
+        """ Computes distances between a set of x y coordinates as well as the total distance
+
+        Parameters
+        ----------
+        x
+        y
+
+        Returns
+        -------
+        list, list
+            List containing total distance, list of pairwise distances
+        """
         if len(x) != len(y):
             raise ValueError("x and y have to be same length")
 
@@ -159,7 +221,18 @@ class OSMTrack:
             return [], []
 
     @staticmethod
-    def compute_distance_from_lon_lat(lon: [float], lat: [float]):
+    def compute_distance_from_lon_lat(lon: List[float], lat: List[float]):
+        """ Computes pairwise and total distance using geodesic distance of individual lat/lon coordinates
+
+        Parameters
+        ----------
+        lon: list
+        lat: list
+
+        Returns
+        -------
+        list, list
+        """
         if len(lon) != len(lat):
             raise ValueError("x and y have to be same length")
 
@@ -179,7 +252,18 @@ class OSMTrack:
             return [], []
 
     @staticmethod
-    def convert_lat_lon_to_xy(lon: [float], lat: [float]):
+    def convert_lon_lat_to_xy(lon: List[float], lat: List[float]):
+        """ Convert lon/lat coordinates to a metric coordinate system
+
+        Parameters
+        ----------
+        lon: list[float]
+        lat: list[float]
+
+        Returns
+        -------
+        list, list
+        """
         if lon and lat:
             P = pyproj.Proj(proj='utm', zone=1, ellps='WGS84', preserve_units=True)
             x, y = P(lon, lat)

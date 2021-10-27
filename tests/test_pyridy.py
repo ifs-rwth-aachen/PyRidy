@@ -75,6 +75,14 @@ def test_load_single_file(my_campaign, caplog):
     plt.show()
 
 
+def test_device_information_repr(my_campaign, caplog):
+    caplog.set_level(logging.DEBUG)
+    my_campaign.import_files("files/sqlite/sample3.sqlite", sync_method="ntp_time")
+    f = my_campaign("sample3.sqlite")
+    device_str = str(f.device)
+    assert True
+
+
 def test_loading_files_non_recursive(my_campaign, caplog):
     caplog.set_level(logging.DEBUG)
     my_campaign.import_folder("files/rdy/", recursive=False)

@@ -5,12 +5,19 @@ import scipy.interpolate as si
 def bspline(cv, n=10000, degree=3, periodic=False):
     """ Calculate n samples on a bspline
 
-        cv :      Array ov control vertices
-        n  :      Number of samples to return
-        degree:   Curve degree
-        periodic: True - Curve is closed
-                  False - Curve is open
-    """
+        cv: array_like
+            Array ov control vertices
+        n: int
+            Number of samples to return
+        degree: int
+            Curve degree
+        periodic: bool
+            True - Curve is closed, False - Curve is open
+        Returns
+        -------
+        np.ndarray
+
+        """
 
     # If periodic, extend the point array by count+degree+1
     cv = np.asarray(cv)

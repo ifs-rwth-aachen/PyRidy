@@ -62,7 +62,7 @@ class Device:
 
     def __repr__(self):
         return "Brand: %s, Model: %s, Product: %s, Device: %s, Manufacturer: %s, Base OS: %s, API Level: %d, " \
-               "GNSS Hardware Model Name: %s, GNSS Year of Hardware" \
+               "GNSS Hardware Model Name: %s, GNSS Year of Hardware %d" \
                % (self.brand, self.model, self.product, self.device, self.manufacturer, self.base_os,
                   self.api_level if self.api_level else -1, self.gnss_hardware_model_name,
                   self.gnss_year_of_hardware if self.gnss_year_of_hardware else -1)

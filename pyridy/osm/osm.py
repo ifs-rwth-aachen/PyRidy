@@ -1,5 +1,6 @@
 import logging.config
 import socket
+import time
 import warnings
 from itertools import chain
 from typing import List, Union
@@ -45,7 +46,8 @@ class OSMRegion:
         if not (-180 <= lon_sw <= 180) or not (-180 <= lon_ne <= 180):
             raise ValueError("Lon. value outside valid range")
 
-        self.overpass_api = overpy.Overpass(url="https://overpass.kumi.systems/api/interpreter")
+        self.overpass_api = overpy.Overpass()
+        self.overpass_api_alt = overpy.Overpass(url="https://overpass.kumi.systems/api/interpreter")
 
         self.lon_sw = lon_sw
         self.lat_sw = lat_sw
@@ -142,18 +144,39 @@ class OSMRegion:
                 logger.info("Trying to query OSM data, %d/%d tries" % (a, attempts))
                 result = self.overpass_api.query(query)
                 logger.info("Successfully queried OSM Data")
-                break
+                return result
             except overpy.exception.OverpassTooManyRequests as e:
                 logger.warning("OverpassTooManyRequest, retrying".format(e))
+                time.sleep(1)
             except overpy.exception.OverpassGatewayTimeout as e:
                 logger.warning("OverpassTooManyRequest, retrying".format(e))
+                time.sleep(1)
             except overpy.exception.OverpassBadRequest as e:
                 logger.warning("OverpassTooManyRequest, retrying".format(e))
+                time.sleep(1)
+            except socket.timeout as e:
+                logger.warning("Socket timeout, retrying".format(e))
+
+        logger.info("Using alternative Overpass API url")
+        for a in range(attempts):
+            try:
+                logger.info("Trying to query OSM data, %d/%d tries" % (a, attempts))
+                result = self.overpass_api_alt.query(query)
+                logger.info("Successfully queried OSM Data")
+                return result
+            except overpy.exception.OverpassTooManyRequests as e:
+                logger.warning("OverpassTooManyRequest, retrying".format(e))
+                time.sleep(1)
+            except overpy.exception.OverpassGatewayTimeout as e:
+                logger.warning("OverpassTooManyRequest, retrying".format(e))
+                time.sleep(1)
+            except overpy.exception.OverpassBadRequest as e:
+                logger.warning("OverpassTooManyRequest, retrying".format(e))
+                time.sleep(1)
             except socket.timeout as e:
                 logger.warning("Socket timeout, retrying".format(e))
         else:
             raise RuntimeError("Could download OSM data via Overpass after %d attempts." % attempts)
-        return result
 
     def get_all_route_nodes(self) -> list:
         nodes = []
@@ -174,7 +197,31 @@ class OSMRegion:
         return ways
 
     def get_switches(self) -> List[OSMRailwayElement]:
+        """ Returns a list of railway switches found in the downloaded OSM region
+
+        Returns
+        -------
+            list
+        """
         return [el for el in self.railway_elements if type(el) == OSMRailwaySwitch]
+
+    def get_signals(self) -> List[OSMRailwayElement]:
+        """ Returns a list of railway signals found in the downloaded OSM region
+
+        Returns
+        -------
+            list
+        """
+        return [el for el in self.railway_elements if type(el) == OSMRailwaySignal]
+
+    def get_level_crossings(self) -> List[OSMRailwayElement]:
+        """ Returns a list of railway level crossings found in the downloaded OSM region
+
+        Returns
+        -------
+            list
+        """
+        return [el for el in self.railway_elements if type(el) == OSMLevelCrossing]
 
     @property
     def lon_sw(self):
