@@ -178,8 +178,10 @@ class Campaign:
 
                 start_message = HTML()
                 end_message = HTML()
-                start_message.value = "<p>Start:</p><p>" + f.name + "</p>"
-                end_message.value = "<p>End:</p><p>" + f.name + "</p>"
+                start_message.value = "<p>Start:</p><p>" + f.name + "</p><p>" + f.device.manufacturer + "; " \
+                                      + f.device.model + "</p>"
+                end_message.value = "<p>End:</p><p>" + f.name + "</p><p>" + f.device.manufacturer + "; " \
+                                    + f.device.model + "</p>"
 
                 start_marker.popup = start_message
                 end_marker.popup = end_message

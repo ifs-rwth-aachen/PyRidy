@@ -65,24 +65,27 @@ class TimeSeries(ABC):
         timestamp_when_stopped: int
             Timestamp when the measurement was stopped (i.e., when the (stop) recording button was pressed)
         """
-        if timestamp_when_started >= timestamp_when_stopped:
-            raise ValueError("timestamp_when_stopped must be greater than timestamp_when_started")
+        if timestamp_when_started and timestamp_when_stopped:
+            if timestamp_when_started >= timestamp_when_stopped:
+                raise ValueError("timestamp_when_stopped must be greater than timestamp_when_started")
 
-        if len(self.time) > 0 and self.time[0] != 0:
-            d = self.__dict__.copy()
+            if len(self.time) > 0 and self.time[0] != 0:
+                d = self.__dict__.copy()
 
-            for key in ["rdy_format_version"]:
-                d.pop(key)
+                for key in ["rdy_format_version"]:
+                    d.pop(key)
 
-            t = d["time"]
-            idxs = np.where(np.logical_and(t >= timestamp_when_started, t <= timestamp_when_stopped))
-            for k, v in d.items():
-                if len(t) == len(v):
-                    self.__setattr__(k, v[idxs])
+                t = d["time"]
+                idxs = np.where(np.logical_and(t >= timestamp_when_started, t <= timestamp_when_stopped))
+                for k, v in d.items():
+                    if len(t) == len(v):
+                        self.__setattr__(k, v[idxs])
 
-            self._timedelta: np.ndarray = np.diff(self._time)
+                self._timedelta: np.ndarray = np.diff(self._time)
+            else:
+                logger.info("Cannot cutoff series if series is empty or series already starts at 0")
         else:
-            logger.info("Cannot cutoff series if series is empty or series already starts at 0")
+            logger.warning("timestamp_when_started and/or timestamp_when_stopped are None")
 
         pass
 

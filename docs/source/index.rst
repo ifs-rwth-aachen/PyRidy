@@ -6,9 +6,9 @@
 Welcome to PyRidy's documentation!
 ==================================
 
-Check out the :doc:`usage` section for further information, including how to
-:ref:`install <installation>` the project.
-
+Check out the :doc:`usage` section for usage information on pyridy, including how to
+:ref:`install <installation>` the library.
+General information about Ridy can be found in the :doc:`ridy` section.
 
 .. toctree::
    :maxdepth: 2
@@ -28,6 +28,8 @@ Contents
 
 .. toctree::
 
+   ridy
    usage
    campaign
    api
+   contact
