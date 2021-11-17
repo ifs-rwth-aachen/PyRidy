@@ -220,7 +220,7 @@ class Campaign:
         Parameters
         ----------
         m: Map
-            Map where railway elements should be drawn on top of
+            Map where railway elements should be drawn onto
 
         Returns
         -------
@@ -274,7 +274,6 @@ class Campaign:
         self.lon_ne = max(max_lons) if max_lons else None
         logging.info("Geographic boundaries of measurement campaign: Lat SW: %s, Lon SW: %s, Lat NE: %s, Lon NE: %s"
                      % (str(self.lat_sw), str(self.lon_sw), str(self.lat_ne), str(self.lon_ne)))
-        pass
 
     def clear_files(self):
         """

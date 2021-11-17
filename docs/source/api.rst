@@ -1,5 +1,5 @@
-API
-===
+PyRidy API
+==========
 
 .. autosummary::
    :toctree: generated

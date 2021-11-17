@@ -1,21 +1,31 @@
-Ridy
-====
+Ridy Smart Sensing Platform
+===========================
+
 .. image:: images/ic_launcher.png
    :width: 200px
    :alt: Ridy Logo
    :align: center
 
-Ridy Smart Sensing Platform
-###########################
+The Ridy Smart Sensing Platform comprises of multiple components for fast and easy measurement of sensor data using
+smartphones. The platform is designed for use-cases in the railways, however, it can also be used for other use-case
+scenarios in combination with your own custom algorithms. 
 
-Industries
-----------
+
+Applications
+############
+
+Nowadays smartphones are equipped with many different types of sensors. While theses sensors were originally designed
+for functions like automatically changing between portrait or landscape mode or location the device, more sensors have
+been added over time to provide additonal functionality. Moreover, the technical capabilities and accuracies improved
+significantly. While these sensors cannot provide the same resolution, accuracies or sample rates compared with 
+industrial-grade measurement systems, smartphone sensors can be used to get a first impression about the state 
+
 
 Railways
-^^^^^^^^
+--------
 
 Other
-^^^^^
+-----
 
 Ridy Android App
 ################
@@ -67,6 +77,10 @@ Sharing
    of your choice or press the options button located on the right side of each measurement file. Then select the
    "Share" option and use one of the app of your choice to share a file directly.
 
+Availability
+------------
+The Ridy Android App is currently not publicly available. If you are interested in using it, please contact us 
+(see :doc:`contact`).
 
 Ridy Web
 ########
@@ -74,5 +88,14 @@ Ridy Web is a modern web application for user-friendly processing of
 measurement data currently under development at the Chair and Institute for Rail Vehicles
 and Transport Systems at RWTH Aachen University.
 
+Availability
+------------
+Ridy Web is currently not publicly available.
+
 PyRidy Python Library
 #####################
+
+Availability
+------------
+The PyRidy Python library is publicly available and Open Source.
+The source code can be found here: `<https://github.com/ifs-rwth-aachen/PyRidy/>`_

@@ -253,7 +253,8 @@ class OSMRelation:
 
     @staticmethod
     def convert_lon_lat_to_xy(lon: List[float], lat: List[float]):
-        """ Convert lon/lat coordinates to a metric coordinate system
+        """ Convert lon/lat coordinates to a metric coordinate system. The first coordinate is used for zero-point in
+        the metric coordinate system
 
         Parameters
         ----------

@@ -8,6 +8,8 @@ from typing import Optional, List, Dict
 
 import numpy as np
 import pandas as pd
+from ipyleaflet import Map, basemap_to_tiles, ScaleControl, FullScreenControl, Polyline, Icon, Marker
+from ipywidgets import HTML
 from pandas.io.sql import DatabaseError as PandasDatabaseError
 
 from pyridy.utils import Sensor, AccelerationSeries, LinearAccelerationSeries, MagnetometerSeries, OrientationSeries, \
@@ -15,6 +17,7 @@ from pyridy.utils import Sensor, AccelerationSeries, LinearAccelerationSeries, M
     SubjectiveComfortSeries, AccelerationUncalibratedSeries, MagnetometerUncalibratedSeries, GyroUncalibratedSeries, \
     GNSSClockMeasurementSeries, GNSSMeasurementSeries, NMEAMessageSeries
 from pyridy.utils.device import Device
+from pyridy.utils.tools import generate_random_color
 
 logger = logging.getLogger(__name__)
 
@@ -123,8 +126,10 @@ class RDYFile:
 
     def __iter__(self):
         """
-        The FileIterator returns the measurements iteratively
-        :return: FileIterator
+
+        Returns
+        -------
+            FileIterator
         """
         return FileIterator(self)
 
@@ -146,7 +151,7 @@ class RDYFile:
                     m.synchronize("device_time", self.timestamp_when_started, self.t0,
                                   timedelta_unit=self.timedelta_unit)
             else:
-                logger.warning("t0 is None, falling back to timestamp synchronization")
+                logger.warning("(%s) t0 is None, falling back to timestamp synchronization" % self.name)
                 self.sync_method = "timestamp"
                 self._synchronize()
         elif self.sync_method == "gps_time":
@@ -166,7 +171,7 @@ class RDYFile:
                 for m in self.measurements.values():
                     m.synchronize("gps_time", sync_timestamp, sync_time, timedelta_unit=self.timedelta_unit)
             else:
-                logger.warning("No GPS time recording, falling back to device_time synchronization")
+                logger.warning("(%s) No GPS time recording, falling back to device_time synchronization" % self.name)
                 self.sync_method = "device_time"
                 self._synchronize()
         elif self.sync_method == "ntp_time":
@@ -175,13 +180,112 @@ class RDYFile:
                     m.synchronize("ntp_time", self.ntp_timestamp, self.ntp_date_time,
                                   timedelta_unit=self.timedelta_unit)
             else:
-                logger.warning("No ntp timestamp and datetime, falling back to device_time synchronization")
+                logger.warning("(%s) No ntp timestamp and datetime, falling back to device_time synchronization" %
+                               self.name)
+
                 self.sync_method = "device_time"
                 self._synchronize()
         else:
             raise ValueError(
                 "sync_method must 'timestamp', 'device_time', 'gps_time' or 'ntp_time' not %s" % self.sync_method)
         pass
+
+    def create_map(self) -> Map:
+        """ Creates an ipyleaflet Map using OpenStreetMap and OpenRailwayMap to show the GPS track of the
+        measurement file
+
+        Returns
+        -------
+            Map
+        """
+        gps_series = self.measurements[GPSSeries]
+        coords = gps_series.to_ipyleaflef()
+
+        if coords == [[]]:
+            logger.warning("(%s) Cant create map, GPSSeries is empty!" % self.name)
+        else:
+            color = generate_random_color("HEX")
+
+            open_street_map_bw = dict(
+                url='https://{s}.tiles.wmflabs.org/bw-mapnik/{z}/{x}/{y}.png',
+                max_zoom=19,
+                name="OpenStreetMap BW"
+            )
+
+            open_railway_map = dict(
+                url='https://{s}.tiles.openrailwaymap.org/standard/{z}/{x}/{y}.png',
+                max_zoom=19,
+                attribution='<a href="https://www.openstreetmap.org/copyright">© OpenStreetMap contributors</a>, Style: <a href="http://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA 2.0</a> <a href="http://www.openrailwaymap.org/">OpenRailwayMap</a> and OpenStreetMap',
+                name='OpenRailwayMap'
+            )
+
+            m = Map(center=self.determine_track_center()[::-1],
+                    zoom=12,
+                    scroll_wheel_zoom=True,
+                    basemap=basemap_to_tiles(open_street_map_bw))
+
+            m.add_control(ScaleControl(position='bottomleft'))
+            m.add_control(FullScreenControl())
+
+            # Add map
+            osm_layer = basemap_to_tiles(open_railway_map)
+            m.add_layer(osm_layer)
+
+            file_polyline = Polyline(locations=coords, color=color, fill=False, weight=4, dash_array='10, 10')
+            m.add_layer(file_polyline)
+
+            # Add Start/End markers
+            start_icon = Icon(
+                icon_url='https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png',
+                shadow_url='https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+                icon_size=[25, 41],
+                icon_anchor=[12, 41],
+                popup_anchor=[1, -34],
+                shadow_size=[41, 41])
+
+            end_icon = Icon(
+                icon_url='https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png',
+                shadow_url='https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+                icon_size=[25, 41],
+                icon_anchor=[12, 41],
+                popup_anchor=[1, -34],
+                shadow_size=[41, 41])
+
+            start_marker = Marker(location=tuple(coords[0]), draggable=False, icon=start_icon)
+            end_marker = Marker(location=tuple(coords[-1]), draggable=False, icon=end_icon)
+
+            start_message = HTML()
+            end_message = HTML()
+            start_message.value = "<p>Start:</p><p>" + self.name + "</p><p>" + self.device.manufacturer + "; " \
+                                  + self.device.model + "</p>"
+            end_message.value = "<p>End:</p><p>" + self.name + "</p><p>" + self.device.manufacturer + "; " \
+                                + self.device.model + "</p>"
+
+            start_marker.popup = start_message
+            end_marker.popup = end_message
+
+            m.add_layer(start_marker)
+            m.add_layer(end_marker)
+            return m
+
+    def determine_track_center(self) -> (float, float):
+        """ Determines the geographical center of the GPSSeries, returns None if the GPSSeries is emtpy.
+
+        Returns
+        -------
+            float, float
+        """
+        gps_series = self.measurements[GPSSeries]
+
+        if gps_series.is_empty():
+            logger.warning("(%s) Cant determine track center, GPSSeries is empty!" % self.name)
+        else:
+            center_lon = (gps_series.lon.max() + gps_series.lon.min()) / 2
+            center_lat = (gps_series.lat.max() + gps_series.lat.min()) / 2
+
+            logging.info("Geographic center of track: Lon: %s, Lat: %s" % (str(center_lon), str(center_lat)))
+
+            return center_lon, center_lat
 
     def get_integrity_report(self):
         """ Returns a dict that contains information which measurement types are available in the file
