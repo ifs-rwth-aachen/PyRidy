@@ -1,5 +1,8 @@
+from typing import Tuple, List, Optional, Union
+
 import numpy as np
 import scipy.interpolate as si
+from numpy.linalg import norm
 
 
 def bspline(cv, n=10000, degree=3, periodic=False):
@@ -47,3 +50,67 @@ def bspline(cv, n=10000, degree=3, periodic=False):
 
     # Calculate result
     return np.array(si.splev(u, (kv, cv.T, degree))).T
+
+
+def calc_perpendicular_distance(line: Union[np.ndarray, list], point: Union[np.ndarray, list]) -> float:
+    """
+
+    Parameters
+    ----------
+    line: np.ndarray
+        List of two points defining the line in the form of [[x1, y1],[x2, y2]]
+    point: np.ndarray
+        Point of which the distance perpendicular from the line should be calculated to
+    Returns
+    -------
+    float
+
+    """
+    if type(line) is list:
+        line = np.array(line)
+
+    if type(point) is list:
+        point = np.array(point)
+
+    p1 = line[0]
+    p2 = line[1]
+    p3 = point
+
+    if np.array_equal(p1, p2):
+        raise ValueError("Given line consists of two identical points!")
+
+    d = norm(np.cross(p2 - p1, p1 - p3)) / norm(p2 - p1)
+
+    return d
+
+
+def is_point_within_line_projection(line: Union[np.ndarray, list], point: Union[np.ndarray, list]) -> bool:
+    """ Checks whether a given points line projection falls within the points that the define the line
+
+    Parameters
+    ----------
+    line: np.ndarray
+        List of two points defining the line in the form of [[x1, y1],[x2, y2]]
+    point: np.ndarray
+        Point of which it should be determined whether the projection onto the line falls within the points that
+        define the line
+    Returns
+    -------
+
+    """
+    if type(line) is list:
+        line = np.array(line)
+
+    if type(point) is list:
+        point = np.array(point)
+
+    p1 = line[0]
+    p2 = line[1]
+    p3 = point
+
+    s = p2 - p1
+    v = p3 - p1
+
+    b = (0 <= np.inner(v, s) <= np.inner(s, s))
+
+    return b

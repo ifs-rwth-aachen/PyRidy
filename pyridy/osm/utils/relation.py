@@ -266,8 +266,8 @@ class OSMRelation:
         list, list
         """
         if lon and lat:
-            P = pyproj.Proj(proj='utm', zone=1, ellps='WGS84', preserve_units=True)
-            x, y = P(lon, lat)
+            proj = pyproj.Proj(proj='utm', zone=1, ellps='WGS84', preserve_units=True)
+            x, y = proj(lon, lat)
             return [el - x[0] for el in x], [el - y[0] for el in y]
         else:
             return [], []

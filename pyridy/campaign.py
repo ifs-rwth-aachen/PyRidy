@@ -3,12 +3,15 @@ import os
 from pathlib import Path
 from typing import List, Union, Tuple
 
+import numpy as np
+import pyproj
 from ipyleaflet import Map, Polyline, Marker, Icon, FullScreenControl, ScaleControl, basemap_to_tiles
 from ipywidgets import HTML
 from tqdm.auto import tqdm
 
 from .file import RDYFile
 from .osm import OSMRegion, OSMRailwaySwitch, OSMRailwaySignal, OSMLevelCrossing
+from .osm.utils import calc_perpendicular_distance, is_point_within_line_projection
 from .utils import GPSSeries
 from .utils.tools import generate_random_color
 
@@ -19,7 +22,8 @@ class Campaign:
     def __init__(self, name="", folder: Union[list, str] = None, recursive=True, exclude: Union[list, str] = None,
                  sync_method: str = None, strip_timezone: bool = True, cutoff: bool = True, lat_sw: float = None,
                  lon_sw: float = None, lat_ne: float = None,
-                 lon_ne: float = None, download_osm_region: bool = False, railway_types: Union[list, str] = None):
+                 lon_ne: float = None, download_osm_region: bool = False, filter_osm_region: bool = False,
+                 railway_types: Union[list, str] = None):
         """
 
         Parameters
@@ -51,6 +55,8 @@ class Campaign:
             North east longitude of the campaign
         download_osm_region: bool, default: False
             If True download OSM data via the Overpass API
+        filter_osm_region: bool, default: False
+            If True removes railway elements that are not close to the GPS Tracks of the campaign
         railway_types: list or list of str
             Railway type to be downloaded from OSM, e.g., "rail", "subway", "tram" or "light_rail"
         """
@@ -80,6 +86,8 @@ class Campaign:
         if download_osm_region:
             self.osm_region = OSMRegion(lat_sw=self.lat_sw, lon_sw=self.lon_sw, lat_ne=self.lat_ne, lon_ne=self.lon_ne,
                                         desired_railway_types=railway_types)
+            if filter_osm_region:
+                self.filter_osm_region()
 
     def __call__(self, name):
         results = list(filter(lambda file: file.name == name, self.files))
@@ -249,32 +257,6 @@ class Campaign:
                     pass
         return m
 
-    def determine_geographic_extent(self):
-        """ Determines the geographic extent of the campaign in terms of min/max lat/lon
-
-        """
-        min_lats = []
-        max_lats = []
-        min_lons = []
-        max_lons = []
-
-        for f in self.files:
-            gps_series = f.measurements[GPSSeries]
-            if gps_series.is_empty():
-                continue
-            else:
-                min_lats.append(gps_series.lat.min())
-                max_lats.append(gps_series.lat.max())
-                min_lons.append(gps_series.lon.min())
-                max_lons.append(gps_series.lon.max())
-
-        self.lat_sw = min(min_lats) if min_lats else None
-        self.lat_ne = max(max_lats) if max_lats else None
-        self.lon_sw = min(min_lons) if min_lons else None
-        self.lon_ne = max(max_lons) if max_lons else None
-        logging.info("Geographic boundaries of measurement campaign: Lat SW: %s, Lon SW: %s, Lat NE: %s, Lon NE: %s"
-                     % (str(self.lat_sw), str(self.lon_sw), str(self.lat_ne), str(self.lon_ne)))
-
     def clear_files(self):
         """
             Clear all files from the campaign
@@ -331,9 +313,69 @@ class Campaign:
 
         return m
 
+    def determine_geographic_extent(self):
+        """ Determines the geographic extent of the campaign in terms of min/max lat/lon
+
+        """
+        min_lats = []
+        max_lats = []
+        min_lons = []
+        max_lons = []
+
+        for f in self.files:
+            gps_series = f.measurements[GPSSeries]
+            if gps_series.is_empty():
+                continue
+            else:
+                min_lats.append(gps_series.lat.min())
+                max_lats.append(gps_series.lat.max())
+                min_lons.append(gps_series.lon.min())
+                max_lons.append(gps_series.lon.max())
+
+        self.lat_sw = min(min_lats) if min_lats else None
+        self.lat_ne = max(max_lats) if max_lats else None
+        self.lon_sw = min(min_lons) if min_lons else None
+        self.lon_ne = max(max_lons) if max_lons else None
+        logging.info("Geographic boundaries of measurement campaign: Lat SW: %s, Lon SW: %s, Lat NE: %s, Lon NE: %s"
+                     % (str(self.lat_sw), str(self.lon_sw), str(self.lat_ne), str(self.lon_ne)))
+
+    def filter_osm_region(self, d_min: float = 10.0):
+        """ Remove railway elements that are not with d_min perpendicular distance to the GPS track
+
+        Parameters
+        ----------
+        d_min: float, default: 10.0
+            Distance in meters that any railway element can have at maximum to any GPS track in the campaign
+        """
+        proj = pyproj.Proj(proj='utm', zone=32, ellps='WGS84', preserve_units=True)
+
+        if self.osm_region:
+            mask = [False] * len(self.osm_region.railway_elements)
+            for f in self:
+                gps_coords = f.measurements[GPSSeries]
+                track_xy = np.vstack([proj(gps_coords.lon, gps_coords.lat)]).T
+
+                for i, el in enumerate(tqdm(self.osm_region.railway_elements)):
+                    if mask[i]:
+                        continue
+                    else:
+                        for p1, p2 in zip(track_xy, track_xy[1:]):
+                            if not np.array_equal(p1, p2):
+                                el_x, el_y = proj(el.lon, el.lat)
+                                d = calc_perpendicular_distance(np.array([p1, p2]), np.array([el_x, el_y]))
+                                b = is_point_within_line_projection(np.array([p1, p2]), np.array([el_x, el_y]))
+                                if b and d <= d_min:
+                                    mask[i] = True
+                                    break
+
+            # Remove all railway elements where condition is not met
+            self.osm_region.railway_elements = [el for i, el in enumerate(self.osm_region.railway_elements) if mask[i]]
+        else:
+            logger.warning("Cant filter OSM Region, because no OSM data is None")
+
     def import_files(self, paths: Union[list, str] = None, sync_method: str = None,
                      det_geo_extent: bool = True, download_osm_region: bool = False,
-                     railway_types: Union[list, str] = None):
+                     filter_osm_region: bool = False, railway_types: Union[list, str] = None):
         """ Import files into the campaign
 
         Parameters
@@ -346,6 +388,8 @@ class Campaign:
             If True, determine the geographic extent of the imported files
         download_osm_region: bool, default: False
             If True, download OSM Data via the Overpass API
+        filter_osm_region: bool, default: False
+            If True, removes railway elements that are not close to the GPS tracks
         railway_types: str or list of str
             Railway types to be downloaded via the Overpass API
         """
@@ -369,10 +413,13 @@ class Campaign:
         if download_osm_region:
             self.osm_region = OSMRegion(lat_sw=self.lat_sw, lon_sw=self.lon_sw, lat_ne=self.lat_ne, lon_ne=self.lon_ne,
                                         desired_railway_types=railway_types)
+            if filter_osm_region:
+                self.filter_osm_region()
 
     def import_folder(self, folder: Union[list, str] = None, recursive: bool = True, exclude: Union[list, str] = None,
                       sync_method: str = None, strip_timezone: bool = None, cutoff: bool = True,
                       det_geo_extent: bool = True, download_osm_region: bool = False,
+                      filter_osm_region: bool = False,
                       railway_types: Union[list, str] = None):
         """ Imports folder(s) into the campaign
 
@@ -394,6 +441,8 @@ class Campaign:
             If True, tries to automatically determine the geographic extent of the imported files via their GPS tracks
         download_osm_region: bool, default: True
             If True, downloads OSM Data via the Overpass API
+        filter_osm_region: bool, default: False
+            If True, removes railway elements that are not close to the GPS tracks
         railway_types: str or list of str
             Railway types to be downloaded via the Overpass API
         """
@@ -458,3 +507,5 @@ class Campaign:
         if download_osm_region:
             self.osm_region = OSMRegion(lat_sw=self.lat_sw, lon_sw=self.lon_sw, lat_ne=self.lat_ne, lon_ne=self.lon_ne,
                                         desired_railway_types=railway_types)
+            if filter_osm_region:
+                self.filter_osm_region()
