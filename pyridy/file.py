@@ -4,11 +4,11 @@ import logging
 import os
 import sqlite3
 from sqlite3 import Connection, DatabaseError
-from typing import Optional, List, Dict
+from typing import Optional, List, Dict, Tuple
 
 import numpy as np
 import pandas as pd
-from ipyleaflet import Map, basemap_to_tiles, ScaleControl, FullScreenControl, Polyline, Icon, Marker
+from ipyleaflet import Map, basemap_to_tiles, ScaleControl, FullScreenControl, Polyline, Icon, Marker, Circle
 from ipywidgets import HTML
 from pandas.io.sql import DatabaseError as PandasDatabaseError
 
@@ -190,9 +190,18 @@ class RDYFile:
                 "sync_method must 'timestamp', 'device_time', 'gps_time' or 'ntp_time' not %s" % self.sync_method)
         pass
 
-    def create_map(self) -> Map:
+    def create_map(self, t_lim: Tuple[np.datetime64, np.datetime64] = None, show_hor_acc: bool = False) -> Map:
         """ Creates an ipyleaflet Map using OpenStreetMap and OpenRailwayMap to show the GPS track of the
         measurement file
+
+        Parameters
+        ----------
+            t_lim: tuple, default: None
+                Time limit as a tuple of np.datetime64 to show only parts of the GPS track that are within the specified
+                time interval
+            show_hor_acc : bool, default: False
+                If true shows the horizontal accuracies for each measurement point using circles. The likelihood that
+                that the real position is within the circle is defined as 68 %
 
         Returns
         -------
@@ -200,10 +209,25 @@ class RDYFile:
         """
         gps_series = self.measurements[GPSSeries]
         coords = gps_series.to_ipyleaflef()
+        time = gps_series.time
+        hor_acc = gps_series.hor_acc
 
         if coords == [[]]:
             logger.warning("(%s) Cant create map, GPSSeries is empty!" % self.name)
         else:
+            if t_lim:
+                if type(t_lim) != tuple:
+                    raise ValueError("t_lim must be a tuple of np.datetime64")
+
+                if t_lim[0] > t_lim[1]:
+                    raise ValueError("The first datetime for t_lim must be smaller than the second!")
+
+                mask = (gps_series.time >= t_lim[0]) & (gps_series.time <= t_lim[1])
+
+                coords = [c for i, c in enumerate(coords) if mask[i]]
+                time = [t for i, t in enumerate(gps_series.time) if mask[i]]
+                hor_acc = [h for i, h in enumerate(gps_series.hor_acc) if mask[i]]
+
             color = generate_random_color("HEX")
 
             open_street_map_bw = dict(
@@ -256,26 +280,50 @@ class RDYFile:
 
             start_message = HTML()
             end_message = HTML()
-            start_message.value = "<p>Start:</p><p>" + self.name + "</p><p>" + self.device.manufacturer + "; " \
-                                  + self.device.model + "</p>"
-            end_message.value = "<p>End:</p><p>" + self.name + "</p><p>" + self.device.manufacturer + "; " \
-                                + self.device.model + "</p>"
+            start_message.value = "<p>Start:</p><p>" + self.name + "</p><p>" \
+                                  + str(time[0] or 'n/a') + "</p><p>" \
+                                  + str(self.device.manufacturer or 'n/a') + "; " \
+                                  + str(self.device.model or 'n/a') + "</p>"
+
+            end_message.value = "<p>End:</p><p>" + self.name + "</p><p>" \
+                                + str(time[-1] or 'n/a') + "</p><p>" \
+                                + str(self.device.manufacturer or 'n/a') + "; " \
+                                + str(self.device.model or 'n/a') + "</p>"
 
             start_marker.popup = start_message
             end_marker.popup = end_message
 
             m.add_layer(start_marker)
             m.add_layer(end_marker)
+
+            if show_hor_acc:
+                for c, h in zip(coords, hor_acc):
+                    circle = Circle()
+                    circle.location = (c[0], c[1])
+                    circle.radius = int(h)
+                    circle.color = "#00549F"
+                    circle.fill_color = "#00549F"
+                    circle.weight = 3
+                    circle.fill_opacity = 0.1
+
+                    m.add_layer(circle)
+
             return m
 
-    def determine_track_center(self) -> (float, float):
+    def determine_track_center(self, gps_series: Optional[GPSSeries] = None) -> (float, float):
         """ Determines the geographical center of the GPSSeries, returns None if the GPSSeries is emtpy.
+
+        Parameters
+        ----------
+            gps_series: GPSSeries, default: None
+                If not None, takes the given GPSSeries to determine the track center
 
         Returns
         -------
             float, float
         """
-        gps_series = self.measurements[GPSSeries]
+        if not gps_series:
+            gps_series = self.measurements[GPSSeries]
 
         if gps_series.is_empty():
             logger.warning("(%s) Cant determine track center, GPSSeries is empty!" % self.name)
@@ -816,8 +864,13 @@ class RDYFile:
         else:
             raise ValueError("File extension %s is not supported" % self.extension)
 
-    def to_df(self) -> pd.DataFrame:
+    def to_df(self, interpolate: bool = True) -> pd.DataFrame:
         """ Merges the measurement series to a single DataFrame
+
+        Parameters
+        ----------
+            interpolate : bool
+                If true interpolates NaN values of concatenated measurement series
 
         Returns
         -------
@@ -829,7 +882,10 @@ class RDYFile:
         df_merged = pd.concat(data_frames).sort_index()
 
         # Merge identical indices by taking mean of column values and then interpolate NaN values
-        df_merged = df_merged.groupby(level=0).mean().interpolate()
+        if interpolate:
+            df_merged = df_merged.groupby(level=0).mean().interpolate()
+        else:
+            df_merged = df_merged.groupby(level=0).mean()
         return df_merged
 
 

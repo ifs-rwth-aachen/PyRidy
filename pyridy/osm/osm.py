@@ -1,4 +1,5 @@
 import logging.config
+import re
 import socket
 import time
 import warnings
@@ -6,6 +7,7 @@ from itertools import chain
 from typing import List, Union
 
 import overpy
+from overpy import Result
 from tqdm.auto import tqdm
 
 from pyridy.osm.utils import QueryResult, OSMLevelCrossing, OSMRailwaySwitch, OSMRailwaySignal, OSMRailwayLine, \
@@ -19,7 +21,7 @@ class OSMRegion:
     supported_railway_types = ["rail", "tram", "subway", "light_rail"]
 
     def __init__(self, lon_sw: float, lat_sw: float, lon_ne: float, lat_ne: float,
-                 desired_railway_types: Union[List, str] = None, download: bool = True):
+                 desired_railway_types: Union[List, str] = None, download: bool = True, recurse: str = ">"):
 
         if None in [lon_sw, lat_sw, lon_ne, lat_ne]:
             raise ValueError("One or more lat/lon values is None")
@@ -64,14 +66,17 @@ class OSMRegion:
                                         "route_query": QueryResult} for rw_type in self.desired_railway_types}
 
         if download:
-            self.download_track_data()
+            self.download_track_data(recurse=recurse)
 
         logger.info("Initialized region: %f, %f (SW), %f, %f (NE)" % (self.lon_sw,
                                                                       self.lat_sw,
                                                                       self.lon_ne,
                                                                       self.lat_ne))
 
-    def _create_query(self, railway_type: str):
+    def _create_query(self, railway_type: str, recurse: str = ">"):
+        if recurse not in [">", ">>", "<", "<<"]:
+            raise ValueError("recurse type %s not supported" % recurse)
+
         if railway_type not in OSMRegion.supported_railway_types:
             raise ValueError("The desired railway type %s is not supported" % railway_type)
 
@@ -84,21 +89,33 @@ class OSMRegion:
                          (._;>;);
                          out body;
                       """
+        if railway_type == "rail":  # Railway routes use train instead of rail
+            railway_type = "train"
 
-        route_query = """(node[""" + "route" + """=""" + railway_type + """](""" + str(self.lat_sw) + """,""" + str(
-            self.lon_sw) + """,""" + str(self.lat_ne) + """,""" + str(self.lon_ne) + """);
-                         way[""" + "route" + """=""" + railway_type + """](""" + str(self.lat_sw) + """,""" + str(
-            self.lon_sw) + """,""" + str(self.lat_ne) + """,""" + str(self.lon_ne) + """);
-                         relation[""" + "route" + """=""" + railway_type + """](""" + str(self.lat_sw) + """,""" + str(
-            self.lon_sw) + """,""" + str(self.lat_ne) + """,""" + str(self.lon_ne) + """);
-                         );
-                         (._;>;);
+        # route_query = """(node[""" + "route" + """=""" + railway_type + """](""" + str(self.lat_sw) + """,""" + str(
+        #     self.lon_sw) + """,""" + str(self.lat_ne) + """,""" + str(self.lon_ne) + """);
+        #                  way[""" + "route" + """=""" + railway_type + """](""" + str(self.lat_sw) + """,""" + str(
+        #     self.lon_sw) + """,""" + str(self.lat_ne) + """,""" + str(self.lon_ne) + """);
+        #                  relation[""" + "route" + """=""" + railway_type + """](""" + str(self.lat_sw) + """,""" + str(
+        #     self.lon_sw) + """,""" + str(self.lat_ne) + """,""" + str(self.lon_ne) + """);
+        #                  );
+        #                  (._;>;);
+        #                  out body;
+        #               """
+
+        route_query = """(relation[""" + "route" + """=""" + railway_type + """](""" + str(self.lat_sw) + """,""" \
+                      + str(self.lon_sw) + """,""" + str(self.lat_ne) + """,""" + str(self.lon_ne) + """);
+                        );
+                        (._;""" + recurse + """;);
                          out body;
                       """
 
         return track_query, route_query
 
-    def download_track_data(self, railway_type: Union[List, str] = None):
+    def download_track_data(self, railway_type: Union[List, str] = None, recurse: str = ">"):
+        if recurse not in [">", ">>", "<", "<<"]:
+            raise ValueError("recurse type %s not supported" % recurse)
+
         if railway_type:
             railway_types = [railway_type]
         else:
@@ -109,37 +126,41 @@ class OSMRegion:
             for railway_type in tqdm(railway_types):
                 # Create Overpass queries and try downloading them
                 logger.info("Querying data for railway type: %s" % railway_type)
-                trk_query, rou_query = self._create_query(railway_type=railway_type)
+                trk_query, rou_query = self._create_query(railway_type=railway_type, recurse=recurse)
                 trk_result = QueryResult(self.query_overpass(trk_query), railway_type)
                 rou_result = QueryResult(self.query_overpass(rou_query), railway_type)
                 self.query_results[railway_type]["track_query"] = trk_result
                 self.query_results[railway_type]["route_query"] = rou_result
 
                 # Convert relation result to OSMRailwayLine objects
-                for rel in rou_result.result.relations:
-                    rel_way_ids = [mem.ref for mem in rel.members if type(mem) == overpy.RelationWay and not mem.role]
-                    rel_ways = [w for w in rou_result.result.ways if w.id in rel_way_ids]
+                if rou_result.result:
+                    for rel in rou_result.result.relations:
+                        rel_way_ids = [mem.ref for mem in rel.members if
+                                       type(mem) == overpy.RelationWay and not mem.role]
 
-                    sort_order = {id: idx for id, idx in zip(rel_way_ids, range(len(rel_way_ids)))}
-                    rel_ways.sort(key=lambda w: sort_order[w.id])
+                        rel_ways = [w for w in trk_result.result.ways if w.id in rel_way_ids]
 
-                    self.railway_lines.append(OSMRailwayLine(rel.id, rel_ways, rel.tags, rel.members))
+                        sort_order = {id: idx for id, idx in zip(rel_way_ids, range(len(rel_way_ids)))}
+                        rel_ways.sort(key=lambda w: sort_order[w.id])
+                        self.railway_lines.append(OSMRailwayLine(rel.id, rel_ways, rel.tags, rel.members))
 
-                for n in trk_result.result.nodes:
-                    if "railway" in n.tags:
-                        if n.tags["railway"] == "level_crossing":
-                            self.railway_elements.append(OSMLevelCrossing(n))
-                        elif n.tags["railway"] == "signal":
-                            self.railway_elements.append(OSMRailwaySignal(n))
-                        elif n.tags["railway"] == "switch":
-                            self.railway_elements.append(OSMRailwaySwitch(n))
-                        else:
-                            pass
+                if trk_result.result:
+                    for n in trk_result.result.nodes:
+                        if "railway" in n.tags:
+                            if n.tags["railway"] == "level_crossing":
+                                self.railway_elements.append(OSMLevelCrossing(n))
+                            elif n.tags["railway"] == "signal":
+                                self.railway_elements.append(OSMRailwaySignal(n))
+                            elif n.tags["railway"] == "switch":
+                                self.railway_elements.append(OSMRailwaySwitch(n))
+                            else:
+                                pass
         else:
             logger.warning("Cant download OSM data because of not internet connection")
 
-    def query_overpass(self, query: str, attempts: int = 3):
+    def query_overpass(self, query: str, attempts: int = 3) -> Result:
         for a in range(attempts):
+            time.sleep(a)
             try:
                 logger.info("Trying to query OSM data, %d/%d tries" % (a, attempts))
                 result = self.overpass_api.query(query)
@@ -147,18 +168,16 @@ class OSMRegion:
                 return result
             except overpy.exception.OverpassTooManyRequests as e:
                 logger.warning("OverpassTooManyRequest, retrying".format(e))
-                time.sleep(1)
             except overpy.exception.OverpassGatewayTimeout as e:
                 logger.warning("OverpassTooManyRequest, retrying".format(e))
-                time.sleep(1)
             except overpy.exception.OverpassBadRequest as e:
                 logger.warning("OverpassTooManyRequest, retrying".format(e))
-                time.sleep(1)
             except socket.timeout as e:
                 logger.warning("Socket timeout, retrying".format(e))
 
         logger.info("Using alternative Overpass API url")
         for a in range(attempts):
+            time.sleep(a)
             try:
                 logger.info("Trying to query OSM data, %d/%d tries" % (a, attempts))
                 result = self.overpass_api_alt.query(query)
@@ -166,17 +185,16 @@ class OSMRegion:
                 return result
             except overpy.exception.OverpassTooManyRequests as e:
                 logger.warning("OverpassTooManyRequest, retrying".format(e))
-                time.sleep(1)
             except overpy.exception.OverpassGatewayTimeout as e:
                 logger.warning("OverpassTooManyRequest, retrying".format(e))
-                time.sleep(1)
             except overpy.exception.OverpassBadRequest as e:
                 logger.warning("OverpassTooManyRequest, retrying".format(e))
-                time.sleep(1)
             except socket.timeout as e:
                 logger.warning("Socket timeout, retrying".format(e))
         else:
-            raise RuntimeError("Could download OSM data via Overpass after %d attempts." % attempts)
+            logger.warning("Could download OSM data via Overpass after %d attempts with query: %s" % (attempts,
+                                                                                                      query))
+            return None
 
     def get_all_route_nodes(self) -> list:
         nodes = []
@@ -205,6 +223,28 @@ class OSMRegion:
         """
         return [el for el in self.railway_elements if type(el) == OSMRailwaySwitch]
 
+    def get_switches_for_railway_line(self, line: OSMRailwayLine) -> List[OSMRailwaySwitch]:
+        """ Get switches part of a given railway line
+
+        Parameters
+        ----------
+        line: OSMRailwayLine
+
+        Returns
+        -------
+            list
+        """
+        switches = self.get_switches()
+
+        line_switches = []
+        for w in line.ways:
+            n_ids = [n.id for n in w.nodes]
+            for sw in switches:
+                if sw.id in n_ids:
+                    line_switches.append(sw)
+
+        return line_switches
+
     def get_signals(self) -> List[OSMRailwayElement]:
         """ Returns a list of railway signals found in the downloaded OSM region
 
@@ -222,6 +262,20 @@ class OSMRegion:
             list
         """
         return [el for el in self.railway_elements if type(el) == OSMLevelCrossing]
+
+    def get_railway_line(self, name) -> [OSMRailwayLine]:
+        """ Get railway line by name. Always returns a list, even if only one line is found that matches the name
+
+        Parameters
+        ----------
+        name: str
+            Name of the railway line that should be searched
+
+        Returns
+        -------
+            list
+        """
+        return [line for line in self.railway_lines if re.search(r'\b{0}\b'.format(name), line.name)]
 
     @property
     def lon_sw(self):

@@ -1,4 +1,4 @@
-from typing import Tuple, List, Optional, Union
+from typing import Union
 
 import numpy as np
 import scipy.interpolate as si
@@ -52,7 +52,7 @@ def bspline(cv, n=10000, degree=3, periodic=False):
     return np.array(si.splev(u, (kv, cv.T, degree))).T
 
 
-def calc_perpendicular_distance(line: Union[np.ndarray, list], point: Union[np.ndarray, list]) -> float:
+def project_point_onto_line(line: Union[np.ndarray, list], point: Union[np.ndarray, list]) -> tuple:
     """
 
     Parameters
@@ -63,7 +63,9 @@ def calc_perpendicular_distance(line: Union[np.ndarray, list], point: Union[np.n
         Point of which the distance perpendicular from the line should be calculated to
     Returns
     -------
-    float
+    tuple
+        Returns a tuple with the point where the orthogonal projections of the given points intersects the given the
+        line and secondly the (perpendicular) distance to this point
 
     """
     if type(line) is list:
@@ -81,7 +83,12 @@ def calc_perpendicular_distance(line: Union[np.ndarray, list], point: Union[np.n
 
     d = norm(np.cross(p2 - p1, p1 - p3)) / norm(p2 - p1)
 
-    return d
+    n = p2 - p1
+    n = n / norm(n, 2)
+
+    p = p1 + n * np.dot(p3 - p1, n)
+
+    return p, d
 
 
 def is_point_within_line_projection(line: Union[np.ndarray, list], point: Union[np.ndarray, list]) -> bool:

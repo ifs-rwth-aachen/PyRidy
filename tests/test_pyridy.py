@@ -79,7 +79,6 @@ def test_device_information_repr(my_campaign, caplog):
     caplog.set_level(logging.DEBUG)
     my_campaign.import_files("files/sqlite/sample3.sqlite", sync_method="ntp_time")
     f = my_campaign("sample3.sqlite")
-    device_str = str(f.device)
     assert True
 
 
@@ -108,7 +107,10 @@ def test_get_sub_series_names(my_campaign, caplog):
 
 def test_load_additional_osm_data(my_campaign, caplog):
     caplog.set_level(logging.DEBUG)
-    my_campaign.import_folder("files/sqlite/osm_mapping_test", download_osm_region=True, railway_types=["tram"])
+    my_campaign.import_folder("files/sqlite/osm_mapping_test",
+                              download_osm_region=True,
+                              railway_types=["tram"],
+                              osm_recurse_type="<")
     assert True
 
 

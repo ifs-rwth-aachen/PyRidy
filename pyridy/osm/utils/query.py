@@ -22,11 +22,12 @@ class QueryResult:
     @result.setter
     def result(self, value: overpy.Result):
         # Assign ways to nodes
-        for way in value.ways:
-            for node in way.nodes:
-                if hasattr(node, "ways"):
-                    node.ways.append(way)
-                else:
-                    node.ways = [way]
+        if value:
+            for way in value.ways:
+                for node in way.nodes:
+                    if hasattr(node, "ways"):
+                        node.ways.append(way)
+                    else:
+                        node.ways = [way]
 
         self._result = value

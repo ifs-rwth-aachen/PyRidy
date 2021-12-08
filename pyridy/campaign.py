@@ -1,7 +1,7 @@
 import logging
 import os
 from pathlib import Path
-from typing import List, Union, Tuple
+from typing import List, Union, Tuple, Optional
 
 import numpy as np
 import pyproj
@@ -11,7 +11,7 @@ from tqdm.auto import tqdm
 
 from .file import RDYFile
 from .osm import OSMRegion, OSMRailwaySwitch, OSMRailwaySignal, OSMLevelCrossing
-from .osm.utils import calc_perpendicular_distance, is_point_within_line_projection
+from .osm.utils import project_point_onto_line, is_point_within_line_projection
 from .utils import GPSSeries
 from .utils.tools import generate_random_color
 
@@ -21,8 +21,8 @@ logger = logging.getLogger(__name__)
 class Campaign:
     def __init__(self, name="", folder: Union[list, str] = None, recursive=True, exclude: Union[list, str] = None,
                  sync_method: str = None, strip_timezone: bool = True, cutoff: bool = True, lat_sw: float = None,
-                 lon_sw: float = None, lat_ne: float = None,
-                 lon_ne: float = None, download_osm_region: bool = False, filter_osm_region: bool = False,
+                 lon_sw: float = None, lat_ne: float = None, lon_ne: float = None,
+                 download_osm_region: bool = False, filter_osm_region: bool = False, osm_recurse_type: str = ">",
                  railway_types: Union[list, str] = None):
         """
 
@@ -59,7 +59,10 @@ class Campaign:
             If True removes railway elements that are not close to the GPS Tracks of the campaign
         railway_types: list or list of str
             Railway type to be downloaded from OSM, e.g., "rail", "subway", "tram" or "light_rail"
+        osm_recurse_type : str
+            Recurse type to be used when querying OSM data using the overpass API
         """
+
         self._colors = []  # Used colors
 
         self.folder = folder
@@ -67,7 +70,9 @@ class Campaign:
         self.files: List[RDYFile] = []
         self.lat_sw, self.lon_sw = lat_sw, lon_sw
         self.lat_ne, self.lon_ne = lat_ne, lon_ne
+
         self.osm_region = None
+        self.osm_recurse_type = osm_recurse_type
 
         if sync_method is not None and sync_method not in ["timestamp", "device_time", "gps_time", "ntp_time"]:
             raise ValueError(
@@ -85,7 +90,7 @@ class Campaign:
 
         if download_osm_region:
             self.osm_region = OSMRegion(lat_sw=self.lat_sw, lon_sw=self.lon_sw, lat_ne=self.lat_ne, lon_ne=self.lon_ne,
-                                        desired_railway_types=railway_types)
+                                        desired_railway_types=railway_types, recurse=self.osm_recurse_type)
             if filter_osm_region:
                 self.filter_osm_region()
 
@@ -186,10 +191,14 @@ class Campaign:
 
                 start_message = HTML()
                 end_message = HTML()
-                start_message.value = "<p>Start:</p><p>" + f.name + "</p><p>" + f.device.manufacturer + "; " \
-                                      + f.device.model + "</p>"
-                end_message.value = "<p>End:</p><p>" + f.name + "</p><p>" + f.device.manufacturer + "; " \
-                                    + f.device.model + "</p>"
+                start_message.value = "<p>Start:</p><p>" \
+                                      + str(f.name or '') + "</p><p>" \
+                                      + str(f.device.manufacturer) + "; " \
+                                      + str(f.device.model) + "</p>"
+                end_message.value = "<p>End:</p><p>" \
+                                    + str(f.name or '') + "</p><p>" \
+                                    + str(f.device.manufacturer or '') + "; " \
+                                    + str(f.device.model or '') + "</p>"
 
                 start_marker.popup = start_message
                 end_marker.popup = end_message
@@ -218,7 +227,7 @@ class Campaign:
                 file_polyline = Polyline(locations=coords, color=line.color, fill=False, weight=4)
                 m.add_layer(file_polyline)
         else:
-            logger.warning("No OSM region downloaded!")
+            logger.info("No OSM region downloaded!")
 
         return m
 
@@ -362,7 +371,7 @@ class Campaign:
                         for p1, p2 in zip(track_xy, track_xy[1:]):
                             if not np.array_equal(p1, p2):
                                 el_x, el_y = proj(el.lon, el.lat)
-                                d = calc_perpendicular_distance(np.array([p1, p2]), np.array([el_x, el_y]))
+                                d = project_point_onto_line(np.array([p1, p2]), np.array([el_x, el_y]))
                                 b = is_point_within_line_projection(np.array([p1, p2]), np.array([el_x, el_y]))
                                 if b and d <= d_min:
                                     mask[i] = True
@@ -375,7 +384,8 @@ class Campaign:
 
     def import_files(self, paths: Union[list, str] = None, sync_method: str = None,
                      det_geo_extent: bool = True, download_osm_region: bool = False,
-                     filter_osm_region: bool = False, railway_types: Union[list, str] = None):
+                     filter_osm_region: bool = False, railway_types: Union[list, str] = None,
+                     osm_recurse_type: Optional[str] = None):
         """ Import files into the campaign
 
         Parameters
@@ -392,7 +402,12 @@ class Campaign:
             If True, removes railway elements that are not close to the GPS tracks
         railway_types: str or list of str
             Railway types to be downloaded via the Overpass API
+        osm_recurse_type : str
+            Recurse type to be used when querying OSM data using the overpass API
         """
+        if osm_recurse_type:
+            self.osm_recurse_type = osm_recurse_type
+
         if type(paths) == str:
             paths = [paths]
         elif type(paths) == list:
@@ -412,7 +427,7 @@ class Campaign:
 
         if download_osm_region:
             self.osm_region = OSMRegion(lat_sw=self.lat_sw, lon_sw=self.lon_sw, lat_ne=self.lat_ne, lon_ne=self.lon_ne,
-                                        desired_railway_types=railway_types)
+                                        desired_railway_types=railway_types, recurse=self.osm_recurse_type)
             if filter_osm_region:
                 self.filter_osm_region()
 
@@ -420,7 +435,8 @@ class Campaign:
                       sync_method: str = None, strip_timezone: bool = None, cutoff: bool = True,
                       det_geo_extent: bool = True, download_osm_region: bool = False,
                       filter_osm_region: bool = False,
-                      railway_types: Union[list, str] = None):
+                      railway_types: Union[list, str] = None,
+                      osm_recurse_type: Optional[str] = None):
         """ Imports folder(s) into the campaign
 
         Parameters
@@ -445,7 +461,12 @@ class Campaign:
             If True, removes railway elements that are not close to the GPS tracks
         railway_types: str or list of str
             Railway types to be downloaded via the Overpass API
+        osm_recurse_type : str
+            Recurse type to be used when querying OSM data using the overpass API
         """
+        if osm_recurse_type:
+            self.osm_recurse_type = osm_recurse_type
+
         if exclude is None:
             exclude = []
         elif type(exclude) == str:
@@ -506,6 +527,6 @@ class Campaign:
 
         if download_osm_region:
             self.osm_region = OSMRegion(lat_sw=self.lat_sw, lon_sw=self.lon_sw, lat_ne=self.lat_ne, lon_ne=self.lon_ne,
-                                        desired_railway_types=railway_types)
+                                        desired_railway_types=railway_types, recurse=self.osm_recurse_type)
             if filter_osm_region:
                 self.filter_osm_region()
