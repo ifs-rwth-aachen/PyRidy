@@ -3,13 +3,12 @@ import multiprocessing
 import os
 from functools import partial
 from multiprocessing import Pool
-from multiprocessing.pool import ThreadPool
 from pathlib import Path
 from typing import List, Union, Tuple, Optional
 
 import numpy as np
 import pyproj
-from ipyleaflet import Map, Polyline, Marker, Icon, FullScreenControl, ScaleControl, basemap_to_tiles
+from ipyleaflet import Map, Polyline, Marker, Icon, FullScreenControl, ScaleControl, TileLayer
 from ipywidgets import HTML
 from tqdm.auto import tqdm
 
@@ -299,26 +298,25 @@ class Campaign:
             else:
                 raise ValueError("Cant determine geographic center of campaign, enter manually using 'center' argument")
 
-        open_street_map_bw = dict(
+        open_street_map_bw = TileLayer(
             url='https://{s}.tiles.wmflabs.org/bw-mapnik/{z}/{x}/{y}.png',
             max_zoom=19,
             name="OpenStreetMap BW"
         )
 
-        open_railway_map = dict(
+        open_railway_map = TileLayer(
             url='https://{s}.tiles.openrailwaymap.org/standard/{z}/{x}/{y}.png',
             max_zoom=19,
             attribution='<a href="https://www.openstreetmap.org/copyright">© OpenStreetMap contributors</a>, Style: <a href="http://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA 2.0</a> <a href="http://www.openrailwaymap.org/">OpenRailwayMap</a> and OpenStreetMap',
             name='OpenRailwayMap'
         )
 
-        m = Map(center=center, zoom=12, scroll_wheel_zoom=True, basemap=basemap_to_tiles(open_street_map_bw))
+        m = Map(center=center, zoom=12, scroll_wheel_zoom=True, basemap=open_street_map_bw)
         m.add_control(ScaleControl(position='bottomleft'))
         m.add_control(FullScreenControl())
 
         # Add map
-        osm_layer = basemap_to_tiles(open_railway_map)
-        m.add_layer(osm_layer)
+        m.add_layer(open_railway_map)
 
         # Plot GPS point for each measurement and OSM Tracks
         m = self.add_osm_routes_to_map(m)

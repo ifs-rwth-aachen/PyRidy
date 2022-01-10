@@ -8,7 +8,7 @@ from typing import Optional, List, Dict, Tuple
 
 import numpy as np
 import pandas as pd
-from ipyleaflet import Map, basemap_to_tiles, ScaleControl, FullScreenControl, Polyline, Icon, Marker, Circle
+from ipyleaflet import Map, ScaleControl, FullScreenControl, Polyline, Icon, Marker, Circle, TileLayer
 from ipywidgets import HTML
 from pandas.io.sql import DatabaseError as PandasDatabaseError
 
@@ -229,13 +229,13 @@ class RDYFile:
 
             color = generate_random_color("HEX")
 
-            open_street_map_bw = dict(
+            open_street_map_bw = TileLayer(
                 url='https://{s}.tiles.wmflabs.org/bw-mapnik/{z}/{x}/{y}.png',
                 max_zoom=19,
                 name="OpenStreetMap BW"
             )
 
-            open_railway_map = dict(
+            open_railway_map = TileLayer(
                 url='https://{s}.tiles.openrailwaymap.org/standard/{z}/{x}/{y}.png',
                 max_zoom=19,
                 attribution='<a href="https://www.openstreetmap.org/copyright">© OpenStreetMap contributors</a>, Style: <a href="http://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA 2.0</a> <a href="http://www.openrailwaymap.org/">OpenRailwayMap</a> and OpenStreetMap',
@@ -245,14 +245,13 @@ class RDYFile:
             m = Map(center=self.determine_track_center()[::-1],
                     zoom=12,
                     scroll_wheel_zoom=True,
-                    basemap=basemap_to_tiles(open_street_map_bw))
+                    basemap=open_street_map_bw)
 
             m.add_control(ScaleControl(position='bottomleft'))
             m.add_control(FullScreenControl())
 
             # Add map
-            osm_layer = basemap_to_tiles(open_railway_map)
-            m.add_layer(osm_layer)
+            m.add_layer(open_railway_map)
 
             file_polyline = Polyline(locations=coords, color=color, fill=False, weight=4, dash_array='10, 10')
             m.add_layer(file_polyline)
