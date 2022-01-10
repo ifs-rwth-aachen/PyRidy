@@ -17,6 +17,12 @@ def test_pyridy_campaign_manager(my_campaign):
     assert True
 
 
+def test_loading_files_wo_mp(my_campaign, caplog):
+    caplog.set_level(logging.DEBUG)
+    my_campaign.import_folder("files", use_multiprocessing=False)
+    assert len(my_campaign) == 11
+
+
 def test_loading_files(my_campaign, caplog):
     caplog.set_level(logging.DEBUG)
     my_campaign.import_folder("files")
@@ -107,9 +113,7 @@ def test_get_sub_series_names(my_campaign, caplog):
 
 def test_load_additional_osm_data(my_campaign, caplog):
     caplog.set_level(logging.DEBUG)
-    my_campaign.import_folder("files/sqlite/osm_mapping_test",
-                              download_osm_region=True,
-                              railway_types=["tram"],
+    my_campaign.import_folder("files/sqlite/osm_mapping_test", download_osm_region=True, railway_types=["tram"],
                               osm_recurse_type="<")
     assert True
 

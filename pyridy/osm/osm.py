@@ -83,9 +83,7 @@ class OSMRegion:
         track_query = """(node[""" + "railway" + """=""" + railway_type + """](""" + str(self.lat_sw) + """,""" + str(
             self.lon_sw) + """,""" + str(self.lat_ne) + """,""" + str(self.lon_ne) + """);
                          way[""" + "railway" + """=""" + railway_type + """](""" + str(self.lat_sw) + """,""" + str(
-            self.lon_sw) + """,""" + str(self.lat_ne) + """,""" + str(self.lon_ne) + """);
-                         relation[""" + "railway" + """=""" + railway_type + """](""" + str(
-            self.lat_sw) + """,""" + str(self.lon_sw) + """,""" + str(self.lat_ne) + """,""" + str(self.lon_ne) + """););
+            self.lon_sw) + """,""" + str(self.lat_ne) + """,""" + str(self.lon_ne) + """););
                          (._;>;);
                          out body;
                       """
@@ -138,11 +136,12 @@ class OSMRegion:
                         rel_way_ids = [mem.ref for mem in rel.members if
                                        type(mem) == overpy.RelationWay and not mem.role]
 
-                        rel_ways = [w for w in trk_result.result.ways if w.id in rel_way_ids]
+                        if trk_result.result.ways:
+                            rel_ways = [w for w in trk_result.result.ways if w.id in rel_way_ids]
 
-                        sort_order = {id: idx for id, idx in zip(rel_way_ids, range(len(rel_way_ids)))}
-                        rel_ways.sort(key=lambda w: sort_order[w.id])
-                        self.railway_lines.append(OSMRailwayLine(rel.id, rel_ways, rel.tags, rel.members))
+                            sort_order = {id: idx for id, idx in zip(rel_way_ids, range(len(rel_way_ids)))}
+                            rel_ways.sort(key=lambda w: sort_order[w.id])
+                            self.railway_lines.append(OSMRailwayLine(rel.id, rel_ways, rel.tags, rel.members))
 
                 if trk_result.result:
                     for n in trk_result.result.nodes:

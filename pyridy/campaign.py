@@ -1,5 +1,9 @@
 import logging
+import multiprocessing
 import os
+from functools import partial
+from multiprocessing import Pool
+from multiprocessing.pool import ThreadPool
 from pathlib import Path
 from typing import List, Union, Tuple, Optional
 
@@ -42,7 +46,7 @@ class Campaign:
             Strips timezone from timestamps as np.datetime64 does not support timezones
         cutoff: bool, default: True
             If True, cutoffs the measurements precisely to the timestamp when the measurement was started, respectively
-            stopped. By default Ridy measurement files can contain several seconds of measurements from before/after
+            stopped. By default, Ridy measurement files can contain several seconds of measurements from before/after
             the button press
         lat_sw: float
             South west Latitude of the campaign, if the geographic extent is not given via arguments, the library tries
@@ -83,7 +87,10 @@ class Campaign:
         self.cutoff = cutoff
 
         if folder:
-            self.import_folder(self.folder, recursive, exclude)
+            self.import_folder(self.folder, recursive, exclude,
+                               cutoff=self.cutoff,
+                               sync_method=self.sync_method,
+                               strip_timezone=self.strip_timezone)
 
         if not self.lat_sw or not self.lat_ne or not self.lon_sw or not self.lon_ne:
             self.determine_geographic_extent()
@@ -193,12 +200,12 @@ class Campaign:
                 end_message = HTML()
                 start_message.value = "<p>Start:</p><p>" \
                                       + str(f.name or '') + "</p><p>" \
-                                      + str(f.device.manufacturer) + "; " \
-                                      + str(f.device.model) + "</p>"
+                                      + str(getattr(f.device, "manufacturer", "")) + "; " \
+                                      + str(getattr(f.device, "model", "")) + "</p>"
                 end_message.value = "<p>End:</p><p>" \
                                     + str(f.name or '') + "</p><p>" \
-                                    + str(f.device.manufacturer or '') + "; " \
-                                    + str(f.device.model or '') + "</p>"
+                                    + str(getattr(f.device, "manufacturer", "")) + "; " \
+                                    + str(getattr(f.device, "model", "")) + "</p>"
 
                 start_marker.popup = start_message
                 end_marker.popup = end_message
@@ -382,15 +389,25 @@ class Campaign:
         else:
             logger.warning("Cant filter OSM Region, because no OSM data is None")
 
-    def import_files(self, paths: Union[list, str] = None, sync_method: str = None,
-                     det_geo_extent: bool = True, download_osm_region: bool = False,
-                     filter_osm_region: bool = False, railway_types: Union[list, str] = None,
+    def import_files(self, file_paths: Union[list, str] = None,
+                     sync_method: str = None,
+                     cutoff: bool = True,
+                     strip_timezone: bool = True,
+                     det_geo_extent: bool = True,
+                     use_multiprocessing: bool = False,
+                     download_osm_region: bool = False,
+                     filter_osm_region: bool = False,
+                     railway_types: Union[list, str] = None,
                      osm_recurse_type: Optional[str] = None):
         """ Import files into the campaign
 
         Parameters
         ----------
-        paths: str or list of str
+        strip_timezone: bool, default: True
+            If True, strips timezone from timestamp arrays
+        cutoff: bool, default: True
+            If True, cutoffs measurement precisely to timestamp when the measurement was started respectively stopped
+        file_paths: str or list of str
             Individual file paths of the files that should be imported
         sync_method: str
             Method to use for timestamp syncing
@@ -404,23 +421,36 @@ class Campaign:
             Railway types to be downloaded via the Overpass API
         osm_recurse_type : str
             Recurse type to be used when querying OSM data using the overpass API
+        use_multiprocessing : bool, default: True
+            If True, uses multiprocessing to import Ridy files
         """
         if osm_recurse_type:
             self.osm_recurse_type = osm_recurse_type
 
-        if type(paths) == str:
-            paths = [paths]
-        elif type(paths) == list:
+        if type(file_paths) == str:
+            file_paths = [file_paths]
+        elif type(file_paths) == list:
             pass
         else:
             raise TypeError("paths argument must be list of str or str")
 
-        for p in tqdm(paths):
-            if sync_method:
-                self.sync_method = sync_method
-                self.files.append(RDYFile(p, sync_method=sync_method))
-            else:
-                self.files.append(RDYFile(p, sync_method=self.sync_method))
+        if use_multiprocessing:
+            with Pool(multiprocessing.cpu_count()) as p:
+                files = list(tqdm(p.imap(partial(RDYFile,
+                                                 sync_method=sync_method,
+                                                 strip_timezone=strip_timezone,
+                                                 cutoff=cutoff), file_paths)))
+                for f in files:
+                    self.files.append(f)
+        else:
+            for p in tqdm(file_paths):
+                self.files.append(RDYFile(path=p,
+                                          sync_method=sync_method,
+                                          strip_timezone=strip_timezone,
+                                          cutoff=cutoff))
+
+        if osm_recurse_type:
+            self.osm_recurse_type = osm_recurse_type
 
         if det_geo_extent:
             self.determine_geographic_extent()
@@ -432,11 +462,7 @@ class Campaign:
                 self.filter_osm_region()
 
     def import_folder(self, folder: Union[list, str] = None, recursive: bool = True, exclude: Union[list, str] = None,
-                      sync_method: str = None, strip_timezone: bool = None, cutoff: bool = True,
-                      det_geo_extent: bool = True, download_osm_region: bool = False,
-                      filter_osm_region: bool = False,
-                      railway_types: Union[list, str] = None,
-                      osm_recurse_type: Optional[str] = None):
+                      **kwargs):
         """ Imports folder(s) into the campaign
 
         Parameters
@@ -447,26 +473,7 @@ class Campaign:
             Flag if folders should be imported recursively, i.e., whether subfolders should also be searched
         exclude: str or list of str
             Folder(s) or file(s) that should be excluded while importing
-        sync_method:
-            Method for timestamp syncing
-        strip_timezone: bool, default: True
-            If True, strips timezone from timestamp arrays
-        cutoff: bool, default: True
-            If True, cutoffs measurement precisely to timestamp when the measurement was started respectively stopped
-        det_geo_extent: bool: default: True
-            If True, tries to automatically determine the geographic extent of the imported files via their GPS tracks
-        download_osm_region: bool, default: True
-            If True, downloads OSM Data via the Overpass API
-        filter_osm_region: bool, default: False
-            If True, removes railway elements that are not close to the GPS tracks
-        railway_types: str or list of str
-            Railway types to be downloaded via the Overpass API
-        osm_recurse_type : str
-            Recurse type to be used when querying OSM data using the overpass API
         """
-        if osm_recurse_type:
-            self.osm_recurse_type = osm_recurse_type
-
         if exclude is None:
             exclude = []
         elif type(exclude) == str:
@@ -505,28 +512,4 @@ class Campaign:
 
                 pass
 
-        for p in tqdm(file_paths):
-            if sync_method:
-                self.sync_method = sync_method
-                if strip_timezone is not None:
-                    self.files.append(RDYFile(path=p, sync_method=sync_method, strip_timezone=strip_timezone,
-                                              cutoff=cutoff))
-                else:
-                    self.files.append(RDYFile(path=p, sync_method=sync_method, strip_timezone=self.strip_timezone,
-                                              cutoff=cutoff))
-            else:
-                if strip_timezone is not None:
-                    self.files.append(RDYFile(path=p, sync_method=self.sync_method, strip_timezone=strip_timezone,
-                                              cutoff=cutoff))
-                else:
-                    self.files.append(RDYFile(path=p, sync_method=self.sync_method, strip_timezone=self.strip_timezone,
-                                              cutoff=cutoff))
-
-        if det_geo_extent:
-            self.determine_geographic_extent()
-
-        if download_osm_region:
-            self.osm_region = OSMRegion(lat_sw=self.lat_sw, lon_sw=self.lon_sw, lat_ne=self.lat_ne, lon_ne=self.lon_ne,
-                                        desired_railway_types=railway_types, recurse=self.osm_recurse_type)
-            if filter_osm_region:
-                self.filter_osm_region()
+        self.import_files(file_paths, **kwargs)

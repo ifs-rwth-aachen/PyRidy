@@ -24,7 +24,8 @@ logger = logging.getLogger(__name__)
 
 class RDYFile:
     def __init__(self, path: str = "", sync_method: str = None, cutoff: bool = True,
-                 timedelta_unit: str = 'timedelta64[ns]', strip_timezone: bool = True, name=""):
+                 timedelta_unit: str = 'timedelta64[ns]',
+                 strip_timezone: bool = True, name=""):
         """
 
         Parameters
@@ -57,8 +58,6 @@ class RDYFile:
         self.cutoff = cutoff
         self.timedelta_unit = timedelta_unit
         self.strip_timezone = strip_timezone
-
-        self.db_con: Optional[Connection] = None
 
         # Ridy App Info
         self.ridy_version: Optional[str] = None
@@ -282,13 +281,13 @@ class RDYFile:
             end_message = HTML()
             start_message.value = "<p>Start:</p><p>" + self.name + "</p><p>" \
                                   + str(time[0] or 'n/a') + "</p><p>" \
-                                  + str(self.device.manufacturer or 'n/a') + "; " \
-                                  + str(self.device.model or 'n/a') + "</p>"
+                                  + str(getattr(self.device, "manufacturer", "n/a")) + "; " \
+                                  + str(getattr(self.device, "model", "n/a")) + "</p>"
 
             end_message.value = "<p>End:</p><p>" + self.name + "</p><p>" \
                                 + str(time[-1] or 'n/a') + "</p><p>" \
-                                + str(self.device.manufacturer or 'n/a') + "; " \
-                                + str(self.device.model or 'n/a') + "</p>"
+                                + str(getattr(self.device, "manufacturer", "n/a")) + "; " \
+                                + str(getattr(self.device, "model", "n/a")) + "</p>"
 
             start_marker.popup = start_message
             end_marker.popup = end_message
@@ -603,15 +602,15 @@ class RDYFile:
             pass
 
         elif self.extension == ".sqlite":
-            self.db_con = sqlite3.connect(path)
+            db_con = sqlite3.connect(path)
 
             try:
-                info: Dict = dict(pd.read_sql_query("SELECT * from measurement_information_table", self.db_con))
+                info: Dict = dict(pd.read_sql_query("SELECT * from measurement_information_table", db_con))
             except (DatabaseError, PandasDatabaseError) as e:
                 logger.error(e)
+                # Older files can contain wrong table name
                 try:
-                    info = dict(pd.read_sql_query("SELECT * from measurment_information_table",
-                                                  self.db_con))  # Older files can contain wrong table name
+                    info = dict(pd.read_sql_query("SELECT * from measurment_information_table", db_con))
                 except (DatabaseError, PandasDatabaseError) as e:
                     logger.error(
                         "DatabaseError occurred when accessing measurement_information_table, file: %s" % self.name)
@@ -619,7 +618,7 @@ class RDYFile:
                     info = {}
 
             try:
-                sensor_df = pd.read_sql_query("SELECT * from sensor_descriptions_table", self.db_con)
+                sensor_df = pd.read_sql_query("SELECT * from sensor_descriptions_table", db_con)
                 for _, row in sensor_df.iterrows():
                     self.sensors.append(Sensor(**dict(row)))
             except (DatabaseError, PandasDatabaseError) as e:
@@ -628,7 +627,7 @@ class RDYFile:
                 logger.error(e)
 
             try:
-                device_df = pd.read_sql_query("SELECT * from device_information_table", self.db_con)
+                device_df = pd.read_sql_query("SELECT * from device_information_table", db_con)
                 self.device = Device(**dict(device_df))
             except (DatabaseError, PandasDatabaseError) as e:
                 logger.error("DatabaseError occurred when accessing device_information_table, file: %s" % self.name)
@@ -695,7 +694,7 @@ class RDYFile:
 
             # Measurements
             try:
-                acc_df = pd.read_sql_query("SELECT * from acc_measurements_table", self.db_con)
+                acc_df = pd.read_sql_query("SELECT * from acc_measurements_table", db_con)
                 self.measurements[AccelerationSeries] = AccelerationSeries(rdy_format_version=self.rdy_format_version,
                                                                            **dict(acc_df))
             except (DatabaseError, PandasDatabaseError) as e:
@@ -703,7 +702,7 @@ class RDYFile:
                 logger.error(e)
 
             try:
-                acc_uncal_df = pd.read_sql_query("SELECT * from acc_uncal_measurements_table", self.db_con)
+                acc_uncal_df = pd.read_sql_query("SELECT * from acc_uncal_measurements_table", db_con)
                 self.measurements[AccelerationUncalibratedSeries] = AccelerationUncalibratedSeries(
                     rdy_format_version=self.rdy_format_version, **dict(acc_uncal_df))
             except (DatabaseError, PandasDatabaseError) as e:
@@ -711,7 +710,7 @@ class RDYFile:
                 logger.error(e)
 
             try:
-                lin_acc_df = pd.read_sql_query("SELECT * from lin_acc_measurements_table", self.db_con)
+                lin_acc_df = pd.read_sql_query("SELECT * from lin_acc_measurements_table", db_con)
                 self.measurements[LinearAccelerationSeries] = LinearAccelerationSeries(
                     rdy_format_version=self.rdy_format_version,
                     **dict(lin_acc_df))
@@ -721,7 +720,7 @@ class RDYFile:
                 logger.error(e)
 
             try:
-                mag_df = pd.read_sql_query("SELECT * from mag_measurements_table", self.db_con)
+                mag_df = pd.read_sql_query("SELECT * from mag_measurements_table", db_con)
                 self.measurements[MagnetometerSeries] = MagnetometerSeries(rdy_format_version=self.rdy_format_version,
                                                                            **dict(mag_df))
             except (DatabaseError, PandasDatabaseError) as e:
@@ -729,7 +728,7 @@ class RDYFile:
                 logger.error(e)
 
             try:
-                mag_uncal_df = pd.read_sql_query("SELECT * from mag_uncal_measurements_table", self.db_con)
+                mag_uncal_df = pd.read_sql_query("SELECT * from mag_uncal_measurements_table", db_con)
                 self.measurements[MagnetometerUncalibratedSeries] = MagnetometerUncalibratedSeries(
                     rdy_format_version=self.rdy_format_version, **dict(mag_uncal_df))
             except (DatabaseError, PandasDatabaseError) as e:
@@ -737,7 +736,7 @@ class RDYFile:
                 logger.error(e)
 
             try:
-                orient_df = pd.read_sql_query("SELECT * from orient_measurements_table", self.db_con)
+                orient_df = pd.read_sql_query("SELECT * from orient_measurements_table", db_con)
                 self.measurements[OrientationSeries] = OrientationSeries(rdy_format_version=self.rdy_format_version,
                                                                          **dict(orient_df))
             except (DatabaseError, PandasDatabaseError) as e:
@@ -746,7 +745,7 @@ class RDYFile:
                 logger.error(e)
 
             try:
-                gyro_df = pd.read_sql_query("SELECT * from gyro_measurements_table", self.db_con)
+                gyro_df = pd.read_sql_query("SELECT * from gyro_measurements_table", db_con)
                 self.measurements[GyroSeries] = GyroSeries(rdy_format_version=self.rdy_format_version,
                                                            **dict(gyro_df))
             except (DatabaseError, PandasDatabaseError) as e:
@@ -754,7 +753,7 @@ class RDYFile:
                 logger.error(e)
 
             try:
-                gyro_uncal_df = pd.read_sql_query("SELECT * from gyro_uncal_measurements_table", self.db_con)
+                gyro_uncal_df = pd.read_sql_query("SELECT * from gyro_uncal_measurements_table", db_con)
                 self.measurements[GyroUncalibratedSeries] = GyroUncalibratedSeries(
                     rdy_format_version=self.rdy_format_version, **dict(gyro_uncal_df))
             except (DatabaseError, PandasDatabaseError) as e:
@@ -763,7 +762,7 @@ class RDYFile:
                 logger.error(e)
 
             try:
-                rot_df = pd.read_sql_query("SELECT * from rot_measurements_table", self.db_con)
+                rot_df = pd.read_sql_query("SELECT * from rot_measurements_table", db_con)
                 self.measurements[RotationSeries] = RotationSeries(rdy_format_version=self.rdy_format_version,
                                                                    **dict(rot_df))
             except (DatabaseError, PandasDatabaseError) as e:
@@ -771,7 +770,7 @@ class RDYFile:
                 logger.error(e)
 
             try:
-                gps_df = pd.read_sql_query("SELECT * from gps_measurements_table", self.db_con)
+                gps_df = pd.read_sql_query("SELECT * from gps_measurements_table", db_con)
                 self.measurements[GPSSeries] = GPSSeries(rdy_format_version=self.rdy_format_version,
                                                          **dict(gps_df))
             except (DatabaseError, PandasDatabaseError) as e:
@@ -779,7 +778,7 @@ class RDYFile:
                 logger.error(e)
 
             try:
-                gnss_df = pd.read_sql_query("SELECT * from gnss_measurement_table", self.db_con)
+                gnss_df = pd.read_sql_query("SELECT * from gnss_measurement_table", db_con)
                 self.measurements[GNSSMeasurementSeries] = GNSSMeasurementSeries(
                     rdy_format_version=self.rdy_format_version, **dict(gnss_df))
             except (DatabaseError, PandasDatabaseError) as e:
@@ -787,7 +786,7 @@ class RDYFile:
                 logger.error(e)
 
             try:
-                gnss_clock_df = pd.read_sql_query("SELECT * from gnss_clock_measurement_table", self.db_con)
+                gnss_clock_df = pd.read_sql_query("SELECT * from gnss_clock_measurement_table", db_con)
                 self.measurements[GNSSClockMeasurementSeries] = GNSSClockMeasurementSeries(
                     rdy_format_version=self.rdy_format_version, **dict(gnss_clock_df))
             except (DatabaseError, PandasDatabaseError) as e:
@@ -795,7 +794,7 @@ class RDYFile:
                 logger.error(e)
 
             try:
-                nmea_df = pd.read_sql_query("SELECT * from nmea_messages_table", self.db_con)
+                nmea_df = pd.read_sql_query("SELECT * from nmea_messages_table", db_con)
                 self.measurements[NMEAMessageSeries] = NMEAMessageSeries(
                     rdy_format_version=self.rdy_format_version, **dict(nmea_df))
             except (DatabaseError, PandasDatabaseError) as e:
@@ -803,7 +802,7 @@ class RDYFile:
                 logger.error(e)
 
             try:
-                pressure_df = pd.read_sql_query("SELECT * from pressure_measurements_table", self.db_con)
+                pressure_df = pd.read_sql_query("SELECT * from pressure_measurements_table", db_con)
                 self.measurements[PressureSeries] = PressureSeries(rdy_format_version=self.rdy_format_version,
                                                                    **dict(pressure_df))
             except (DatabaseError, PandasDatabaseError) as e:
@@ -812,7 +811,7 @@ class RDYFile:
                 logger.error(e)
 
             try:
-                temperature_df = pd.read_sql_query("SELECT * from temperature_measurements_table", self.db_con)
+                temperature_df = pd.read_sql_query("SELECT * from temperature_measurements_table", db_con)
                 self.measurements[TemperatureSeries] = TemperatureSeries(rdy_format_version=self.rdy_format_version,
                                                                          **dict(temperature_df))
             except (DatabaseError, PandasDatabaseError) as e:
@@ -821,7 +820,7 @@ class RDYFile:
                 logger.error(e)
 
             try:
-                humidity_df = pd.read_sql_query("SELECT * from humidity_measurements_table", self.db_con)
+                humidity_df = pd.read_sql_query("SELECT * from humidity_measurements_table", db_con)
                 self.measurements[HumiditySeries] = HumiditySeries(rdy_format_version=self.rdy_format_version,
                                                                    **dict(humidity_df))
             except (DatabaseError, PandasDatabaseError) as e:
@@ -830,7 +829,7 @@ class RDYFile:
                 logger.error(e)
 
             try:
-                light_df = pd.read_sql_query("SELECT * from light_measurements_table", self.db_con)
+                light_df = pd.read_sql_query("SELECT * from light_measurements_table", db_con)
                 self.measurements[LightSeries] = LightSeries(rdy_format_version=self.rdy_format_version,
                                                              **dict(light_df))
             except (DatabaseError, PandasDatabaseError) as e:
@@ -838,7 +837,7 @@ class RDYFile:
                 logger.error(e)
 
             try:
-                wz_df = pd.read_sql_query("SELECT * from wz_measurements_table", self.db_con)
+                wz_df = pd.read_sql_query("SELECT * from wz_measurements_table", db_con)
                 self.measurements[WzSeries] = WzSeries(rdy_format_version=self.rdy_format_version,
                                                        **dict(wz_df))
             except (DatabaseError, PandasDatabaseError) as e:
@@ -846,8 +845,7 @@ class RDYFile:
                 logger.error(e)
 
             try:
-                subjective_comfort_df = pd.read_sql_query("SELECT * from subjective_comfort_measurements_table",
-                                                          self.db_con)
+                subjective_comfort_df = pd.read_sql_query("SELECT * from subjective_comfort_measurements_table", db_con)
                 self.measurements[SubjectiveComfortSeries] = SubjectiveComfortSeries(
                     rdy_format_version=self.rdy_format_version,
                     **dict(subjective_comfort_df))
@@ -856,7 +854,7 @@ class RDYFile:
                     "DatabaseError occurred when accessing subjective_comfort_measurements_table, file: %s" % self.name)
                 logger.error(e)
 
-            self.db_con.close()
+            db_con.close()
 
             if self.cutoff:
                 for m in self.measurements.values():

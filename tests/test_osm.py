@@ -12,9 +12,7 @@ def my_campaign():
 
 def test_get_switches_for_railway_line(my_campaign, caplog):
     caplog.set_level(logging.DEBUG)
-    my_campaign.import_folder("files/sqlite/osm_mapping_test",
-                              download_osm_region=True,
-                              railway_types=["tram"],
+    my_campaign.import_folder("files/sqlite/osm_mapping_test", download_osm_region=True, railway_types=["tram"],
                               osm_recurse_type="<")
 
     rw_line = my_campaign.osm_region.railway_lines[0]
