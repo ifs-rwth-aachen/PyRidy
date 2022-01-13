@@ -8,7 +8,7 @@ from typing import Optional, List, Dict, Tuple
 
 import numpy as np
 import pandas as pd
-from ipyleaflet import Map, ScaleControl, FullScreenControl, Polyline, Icon, Marker, Circle, TileLayer
+from ipyleaflet import Map, ScaleControl, FullScreenControl, Polyline, Icon, Marker, Circle, TileLayer, LayerGroup
 from ipywidgets import HTML
 from pandas.io.sql import DatabaseError as PandasDatabaseError
 
@@ -295,6 +295,7 @@ class RDYFile:
             m.add_layer(end_marker)
 
             if show_hor_acc:
+                circles = []
                 for c, h in zip(coords, hor_acc):
                     circle = Circle()
                     circle.location = (c[0], c[1])
@@ -304,7 +305,10 @@ class RDYFile:
                     circle.weight = 3
                     circle.fill_opacity = 0.1
 
-                    m.add_layer(circle)
+                    circles.append(circle)
+
+                l_circles = LayerGroup(layers=circles)
+                m.add_layer(l_circles)
 
             return m
 
