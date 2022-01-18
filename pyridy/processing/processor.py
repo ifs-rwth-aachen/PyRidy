@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 class PostProcessor:
     def __init__(self, campaign: Campaign, thres_lo: float = 0.15, thres_hi: float = 0.25, v_thres: float = 1.0,
                  sampling_period: str = "1000ms", method="acc"):
-        self.colors = []  # Used colors
+        self._colors = []  # Used colors
         self.campaign = campaign
 
         self.con_proc = ConditionProcessor(thres_lo, thres_hi, v_thres, sampling_period)
@@ -56,8 +56,8 @@ class PostProcessor:
         return m
 
     def add_osm_routes_to_map(self, m: Map) -> Map:
-        if self.campaign.osm_region:
-            for line in self.campaign.osm_region.railway_lines:
+        if self.campaign.osm:
+            for line in self.campaign.osm.railway_lines:
                 coords = line.to_ipyleaflet()
                 file_polyline = Polyline(locations=coords, color=line.color, fill=False, weight=4)
                 m.add_layer(file_polyline)
@@ -139,8 +139,8 @@ class PostProcessor:
         for f in files:
             while True:
                 color = generate_random_color("HEX")
-                if color not in self.colors:
-                    self.colors.append(color)
+                if color not in self._colors:
+                    self._colors.append(color)
                     break
                 else:
                     continue

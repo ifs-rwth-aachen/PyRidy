@@ -1,4 +1,5 @@
 import datetime
+import itertools
 import json
 import logging
 import os
@@ -6,12 +7,18 @@ import sqlite3
 from sqlite3 import Connection, DatabaseError
 from typing import Optional, List, Dict, Tuple
 
+import networkx as nx
 import numpy as np
 import pandas as pd
 from ipyleaflet import Map, ScaleControl, FullScreenControl, Polyline, Icon, Marker, Circle, TileLayer, LayerGroup
 from ipywidgets import HTML
 from pandas.io.sql import DatabaseError as PandasDatabaseError
+from scipy.spatial import KDTree
+from scipy.stats import norm
 
+from pyridy import config
+from pyridy.osm import OSM
+from pyridy.osm.utils import is_point_within_line_projection, project_point_onto_line
 from pyridy.utils import Sensor, AccelerationSeries, LinearAccelerationSeries, MagnetometerSeries, OrientationSeries, \
     GyroSeries, RotationSeries, GPSSeries, PressureSeries, HumiditySeries, TemperatureSeries, WzSeries, LightSeries, \
     SubjectiveComfortSeries, AccelerationUncalibratedSeries, MagnetometerUncalibratedSeries, GyroUncalibratedSeries, \
@@ -106,6 +113,11 @@ class RDYFile:
                              WzSeries: WzSeries(),
                              SubjectiveComfortSeries: SubjectiveComfortSeries()}
 
+        # OSM Data (set by Campaign)
+        self.osm: Optional[OSM] = None
+        self.matched_nodes = []  # Nodes from Map Matching
+        self.matched_ways = []  # Ways from Map Matching
+
         if self.path:
             self.load_file(self.path)
 
@@ -136,6 +148,84 @@ class RDYFile:
         return "Filename: %s, T0: %s, Duration: %s" % (self.name,
                                                        str(self.t0),
                                                        str(datetime.timedelta(seconds=self.duration)))
+
+    def _do_candidate_search(self, osm_xy: np.ndarray, track_xy: np.ndarray, hor_acc: np.ndarray):
+        """ Internal method to search for candidate edges for map matching
+
+        """
+        # Find the closest coordinates using KDTrees
+        kd_tree_osm = KDTree(osm_xy)
+        kd_tree_track = KDTree(track_xy)
+
+        # Indices of OSM nodes that are close to each respective GPS point within radius r
+        indices = kd_tree_track.query_ball_tree(kd_tree_osm, r=100)
+
+        f_indices = list(itertools.chain(*[idxs for idxs in indices]))  # Flattened indices from kd-tree results
+        u_indices = list(set(f_indices))  # Unique indices
+        c_nodes = [self.osm.nodes[i].id for i in u_indices]  # Candidate nodes based on found indices
+
+        c_dict = {}  # Dict with node candidates for each GPS coord
+        edges = []  # Candidate edges with emission probabilities
+
+        # Perform search for node candidate on all GPS coords
+        for i, idxs in enumerate(indices):
+            # Get unique ways based on indices
+            c_ways = list(set(list(itertools.chain(*[self.osm.nodes[idx].ways for idx in idxs]))))
+
+            # Find candidate line segments
+            c_segs = []
+            for w in c_ways:
+                n = w.nodes
+                segs = []  # List of suitable line segments
+
+                for n1, n2 in zip(n, n[1:]):
+                    x1, y1 = n1.attributes["x"], n1.attributes["y"]
+                    x2, y2 = n2.attributes["x"], n2.attributes["y"]
+
+                    # Only take those line segment into consideration where the perpendicular projection
+                    # of the GPS coords lies inside the line segment
+                    b = is_point_within_line_projection(line=[[x1, y1], [x2, y2]], point=track_xy[i])
+                    if b:
+                        # Point of orthogonal intersection
+                        p, d = project_point_onto_line(line=[[x1, y1], [x2, y2]], point=track_xy[i])
+                        if d < hor_acc[i]:
+                            p_lon, p_lat = self.osm.utm_proj(p[0], p[1], inverse=True)
+                            segs.append([d, p_lon, p_lat, n1, n2, w.id, None, i])
+
+                if segs:
+                    segs = np.array(segs)
+                    i_min = np.argmin(
+                        segs[:, 0])  # Select candidate line segment based on smallest perpendicular distance
+                    n1, n2 = segs[i_min, 3], segs[i_min, 4]
+
+                    e1 = list(self.osm.G.edges(n1.id, keys=True))
+                    e2 = list(self.osm.G.edges(n2.id, keys=True))
+
+                    inter = list(set(e1).intersection(e2))
+                    if len(inter) == 0:  # TODO
+                        c_seg_e = e1[0]
+                    else:
+                        c_seg_e = inter[0]
+
+                    c_seg = segs[i_min]
+                    c_segs.append(c_seg)
+
+                    edges.append([c_seg_e, hor_acc[i], c_seg[0]])
+
+            c_dict[i] = {"c_ways": c_ways, "c_segs": c_segs}
+
+        # Calculate emission probabilities for each edge candidate
+        edges = np.array(edges, dtype='object')
+        e_probs = norm.pdf(edges[:, 2].astype(float), np.zeros(len(edges)), edges[:, 1].astype(float))
+
+        c_edges = {}
+        for i, e_prob in enumerate(e_probs):
+            if edges[i][0] not in c_edges:
+                c_edges[edges[i][0]] = {"e_prob": [e_prob]}
+            else:
+                c_edges[edges[i][0]]["e_prob"].append(e_prob)
+
+        return c_dict, c_edges
 
     def _synchronize(self):
         """ Internal method that synchronizes the timestamps to a given sync timestamp
@@ -229,52 +319,22 @@ class RDYFile:
 
             color = generate_random_color("HEX")
 
-            open_street_map_bw = TileLayer(
-                url='https://{s}.tiles.wmflabs.org/bw-mapnik/{z}/{x}/{y}.png',
-                max_zoom=19,
-                name="OpenStreetMap BW"
-            )
-
-            open_railway_map = TileLayer(
-                url='https://{s}.tiles.openrailwaymap.org/standard/{z}/{x}/{y}.png',
-                max_zoom=19,
-                attribution='<a href="https://www.openstreetmap.org/copyright">© OpenStreetMap contributors</a>, Style: <a href="http://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA 2.0</a> <a href="http://www.openrailwaymap.org/">OpenRailwayMap</a> and OpenStreetMap',
-                name='OpenRailwayMap'
-            )
-
             m = Map(center=self.determine_track_center()[::-1],
                     zoom=12,
                     scroll_wheel_zoom=True,
-                    basemap=open_street_map_bw)
+                    basemap=config.OPEN_STREET_MAP_BW)
 
             m.add_control(ScaleControl(position='bottomleft'))
             m.add_control(FullScreenControl())
 
             # Add map
-            m.add_layer(open_railway_map)
+            m.add_layer(config.OPEN_RAILWAY_MAP)
 
             file_polyline = Polyline(locations=coords, color=color, fill=False, weight=4, dash_array='10, 10')
             m.add_layer(file_polyline)
 
-            # Add Start/End markers
-            start_icon = Icon(
-                icon_url='https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png',
-                shadow_url='https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
-                icon_size=[25, 41],
-                icon_anchor=[12, 41],
-                popup_anchor=[1, -34],
-                shadow_size=[41, 41])
-
-            end_icon = Icon(
-                icon_url='https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png',
-                shadow_url='https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
-                icon_size=[25, 41],
-                icon_anchor=[12, 41],
-                popup_anchor=[1, -34],
-                shadow_size=[41, 41])
-
-            start_marker = Marker(location=tuple(coords[0]), draggable=False, icon=start_icon)
-            end_marker = Marker(location=tuple(coords[-1]), draggable=False, icon=end_icon)
+            start_marker = Marker(location=tuple(coords[0]), draggable=False, icon=config.START_ICON)
+            end_marker = Marker(location=tuple(coords[-1]), draggable=False, icon=config.END_ICON)
 
             start_message = HTML()
             end_message = HTML()
@@ -336,6 +396,69 @@ class RDYFile:
             logging.info("Geographic center of track: Lon: %s, Lat: %s" % (str(center_lon), str(center_lat)))
 
             return center_lon, center_lat
+
+    def do_map_matching(self, v_thres: float = 1):
+        """ Performs map matching of the GPS track to closest OSM nodes/ways
+
+        Parameters
+        ----------
+        v_thres: float
+            Speed threshold, GPS points measured with a velocity below v_thres [m/s] will not be considered
+
+        Returns
+        -------
+
+        """
+        if self.osm:
+            # Prepare data
+            gps_coords = self.measurements[GPSSeries]
+            lon = gps_coords.lon[gps_coords.speed > v_thres]
+            lat = gps_coords.lat[gps_coords.speed > v_thres]
+            hor_acc = gps_coords.hor_acc[gps_coords.speed > v_thres]
+
+            n_gps = len(lon)
+
+            x, y = self.osm.utm_proj(lon, lat)
+
+            track_xy = np.vstack([x, y]).T
+            osm_xy = self.osm.get_coords(frmt="xy")
+
+            c_dict, c_edges = self._do_candidate_search(osm_xy, track_xy, hor_acc)
+
+            # Initialize edge weights
+            for e in self.osm.G.edges:
+                self.osm.G.edges[e]["c_weight"] = 1
+
+            for k in c_edges.keys():
+                self.osm.G.edges[k]["c_weight"] = 1 / (1 + sum(c_edges[k]["e_prob"]))
+
+            # Perform map matching
+            s_n = None
+            for i in range(n_gps):
+                if len(c_dict[i]["c_segs"]) > 0:
+                    s_n = c_dict[i]["c_segs"][np.array(c_dict[i]["c_segs"])[:, 0].argmin()][3].id
+                    break
+
+            e_n = None
+            for i in reversed(range(n_gps)):
+                if len(c_dict[i]["c_segs"]) > 0:
+                    e_n = c_dict[i]["c_segs"][np.array(c_dict[i]["c_segs"])[:, 0].argmin()][4].id
+                    break
+
+            if not s_n or not e_n:
+                logger.warning("(%s) Map matching failed, no start or end node found!" % self.name)
+            else:
+                # Use Dijkstra's shortest path to perform map matching, but use a weighting based on emission
+                # probabilities instead of node distances
+                m_n_ids = nx.shortest_path(self.osm.G, source=s_n, target=e_n, weight="c_weight")  # Matched node ids
+                self.matched_nodes = [self.osm.node_dict[n] for n in m_n_ids]  # Matched nodes
+
+                m_w_ids = [self.osm.G[n1][n2][0]["way_id"] for n1, n2 in zip(m_n_ids, m_n_ids[1:])]
+                self.matched_ways = list(set([self.osm.way_dict[w_id] for w_id in m_w_ids]))  # Mapped Ways
+
+        else:
+            logger.warning("(%s) Can't do map matching since no file contains no OSM data" % self.name)
+        pass
 
     def get_integrity_report(self):
         """ Returns a dict that contains information which measurement types are available in the file

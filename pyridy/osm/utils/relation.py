@@ -1,4 +1,5 @@
 import itertools
+import logging
 import math
 from typing import List, Tuple
 
@@ -8,6 +9,8 @@ import pyproj
 from geopy.distance import geodesic
 
 from pyridy.osm.utils import bspline
+
+logger = logging.getLogger(__name__)
 
 
 class OSMRelation:
@@ -282,3 +285,16 @@ class OSMRelation:
             self.s = [el + value for el in self.s]
 
         self._offset = value
+
+    def to_ipyleaflef(self) -> List[list]:
+        """
+
+        Returns
+        -------
+
+        """
+        if self.nodes:
+            logger.warning("Relation has no nodes!")
+            return [[n.lat, n.lon] for n in self.nodes]
+        else:
+            return [[]]

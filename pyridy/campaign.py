@@ -12,8 +12,9 @@ from ipyleaflet import Map, Polyline, Marker, Icon, FullScreenControl, ScaleCont
 from ipywidgets import HTML
 from tqdm.auto import tqdm
 
+from . import config
 from .file import RDYFile
-from .osm import OSMRegion, OSMRailwaySwitch, OSMRailwaySignal, OSMLevelCrossing
+from .osm import OSM, OSMRailwaySwitch, OSMRailwaySignal, OSMLevelCrossing
 from .osm.utils import project_point_onto_line, is_point_within_line_projection
 from .utils import GPSSeries
 from .utils.tools import generate_random_color
@@ -74,8 +75,9 @@ class Campaign:
         self.lat_sw, self.lon_sw = lat_sw, lon_sw
         self.lat_ne, self.lon_ne = lat_ne, lon_ne
 
-        self.osm_region = None
+        self.osm = None
         self.osm_recurse_type = osm_recurse_type
+        self.osm_mappings = {}  # Map Matching results for each file
 
         if sync_method is not None and sync_method not in ["timestamp", "device_time", "gps_time", "ntp_time"]:
             raise ValueError(
@@ -95,10 +97,10 @@ class Campaign:
             self.determine_geographic_extent()
 
         if download_osm_region:
-            self.osm_region = OSMRegion(lat_sw=self.lat_sw, lon_sw=self.lon_sw, lat_ne=self.lat_ne, lon_ne=self.lon_ne,
-                                        desired_railway_types=railway_types, recurse=self.osm_recurse_type)
-            if filter_osm_region:
-                self.filter_osm_region()
+            self.osm = OSM(lat_sw=self.lat_sw, lon_sw=self.lon_sw, lat_ne=self.lat_ne, lon_ne=self.lon_ne,
+                           desired_railway_types=railway_types, recurse=self.osm_recurse_type)
+        else:
+            self.osm = None
 
     def __call__(self, name):
         results = list(filter(lambda file: file.name == name, self.files))
@@ -112,6 +114,17 @@ class Campaign:
 
     def __len__(self):
         return len(self.files)
+
+    @property
+    def osm(self):
+        return self._osm
+
+    @osm.setter
+    def osm(self, value):
+        for f in self:
+            f.osm = value
+
+        self._osm = value
 
     def add_tracks_to_map(self, m: Map) -> Map:
         """ Add all GPS tracks from the campaign files to a Map
@@ -227,8 +240,8 @@ class Campaign:
         Map
 
         """
-        if self.osm_region:
-            for line in self.osm_region.railway_lines:
+        if self.osm:
+            for line in self.osm.railway_lines:
                 coords = line.to_ipyleaflet()
                 file_polyline = Polyline(locations=coords, color=line.color, fill=False, weight=4)
                 m.add_layer(file_polyline)
@@ -251,8 +264,8 @@ class Campaign:
             Map containing railway elements
 
         """
-        if self.osm_region:
-            for el in self.osm_region.railway_elements:
+        if self.osm:
+            for el in self.osm.railway_elements:
                 if type(el) == OSMRailwaySwitch:
                     icon = Icon(
                         icon_url='https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-black.png',
@@ -298,25 +311,12 @@ class Campaign:
             else:
                 raise ValueError("Cant determine geographic center of campaign, enter manually using 'center' argument")
 
-        open_street_map_bw = TileLayer(
-            url='https://{s}.tiles.wmflabs.org/bw-mapnik/{z}/{x}/{y}.png',
-            max_zoom=19,
-            name="OpenStreetMap BW"
-        )
-
-        open_railway_map = TileLayer(
-            url='https://{s}.tiles.openrailwaymap.org/standard/{z}/{x}/{y}.png',
-            max_zoom=19,
-            attribution='<a href="https://www.openstreetmap.org/copyright">© OpenStreetMap contributors</a>, Style: <a href="http://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA 2.0</a> <a href="http://www.openrailwaymap.org/">OpenRailwayMap</a> and OpenStreetMap',
-            name='OpenRailwayMap'
-        )
-
-        m = Map(center=center, zoom=12, scroll_wheel_zoom=True, basemap=open_street_map_bw)
+        m = Map(center=center, zoom=12, scroll_wheel_zoom=True, basemap=config.OPEN_STREET_MAP_BW)
         m.add_control(ScaleControl(position='bottomleft'))
         m.add_control(FullScreenControl())
 
         # Add map
-        m.add_layer(open_railway_map)
+        m.add_layer(config.OPEN_RAILWAY_MAP)
 
         # Plot GPS point for each measurement and OSM Tracks
         m = self.add_osm_routes_to_map(m)
@@ -352,40 +352,6 @@ class Campaign:
         self.lon_ne = max(max_lons) if max_lons else None
         logging.info("Geographic boundaries of measurement campaign: Lat SW: %s, Lon SW: %s, Lat NE: %s, Lon NE: %s"
                      % (str(self.lat_sw), str(self.lon_sw), str(self.lat_ne), str(self.lon_ne)))
-
-    def filter_osm_region(self, d_min: float = 10.0):
-        """ Remove railway elements that are not with d_min perpendicular distance to the GPS track
-
-        Parameters
-        ----------
-        d_min: float, default: 10.0
-            Distance in meters that any railway element can have at maximum to any GPS track in the campaign
-        """
-        proj = pyproj.Proj(proj='utm', zone=32, ellps='WGS84', preserve_units=True)
-
-        if self.osm_region:
-            mask = [False] * len(self.osm_region.railway_elements)
-            for f in self:
-                gps_coords = f.measurements[GPSSeries]
-                track_xy = np.vstack([proj(gps_coords.lon, gps_coords.lat)]).T
-
-                for i, el in enumerate(tqdm(self.osm_region.railway_elements)):
-                    if mask[i]:
-                        continue
-                    else:
-                        for p1, p2 in zip(track_xy, track_xy[1:]):
-                            if not np.array_equal(p1, p2):
-                                el_x, el_y = proj(el.lon, el.lat)
-                                d = project_point_onto_line(np.array([p1, p2]), np.array([el_x, el_y]))
-                                b = is_point_within_line_projection(np.array([p1, p2]), np.array([el_x, el_y]))
-                                if b and d <= d_min:
-                                    mask[i] = True
-                                    break
-
-            # Remove all railway elements where condition is not met
-            self.osm_region.railway_elements = [el for i, el in enumerate(self.osm_region.railway_elements) if mask[i]]
-        else:
-            logger.warning("Cant filter OSM Region, because no OSM data is None")
 
     def import_files(self, file_paths: Union[list, str] = None,
                      sync_method: str = None,
@@ -454,10 +420,8 @@ class Campaign:
             self.determine_geographic_extent()
 
         if download_osm_region:
-            self.osm_region = OSMRegion(lat_sw=self.lat_sw, lon_sw=self.lon_sw, lat_ne=self.lat_ne, lon_ne=self.lon_ne,
-                                        desired_railway_types=railway_types, recurse=self.osm_recurse_type)
-            if filter_osm_region:
-                self.filter_osm_region()
+            self.osm = OSM(lat_sw=self.lat_sw, lon_sw=self.lon_sw, lat_ne=self.lat_ne, lon_ne=self.lon_ne,
+                           desired_railway_types=railway_types, recurse=self.osm_recurse_type)
 
     def import_folder(self, folder: Union[list, str] = None, recursive: bool = True, exclude: Union[list, str] = None,
                       **kwargs):

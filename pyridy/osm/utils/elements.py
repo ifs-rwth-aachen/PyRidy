@@ -47,6 +47,22 @@ class OSMLevelCrossing(OSMRailwayElement):
         return "Level Crossing at (%s, %s)" % (self.lon, self.lat)
 
 
+class OSMRailwayMilestone(OSMRailwayElement):
+    def __init__(self, n: overpy.Node):
+        """ Class representing railway milestones (turnouts)
+
+        Parameters
+        ----------
+        n: overpy.Node
+            OpenStreetMap node retrieved using Overpy
+        """
+        super(OSMRailwayMilestone, self).__init__(n)
+        self.position = float(n.tags.get("railway:position", "-1"))
+
+    def __repr__(self):
+        return "Milestone at (%s, %s): %.3f" % (self.lon, self.lat, self.position)
+
+
 class OSMRailwaySignal(OSMRailwayElement):
     def __init__(self, n: overpy.Node):
         """ Class representing railway signals

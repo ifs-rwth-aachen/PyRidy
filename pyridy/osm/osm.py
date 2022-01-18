@@ -6,18 +6,21 @@ import warnings
 from itertools import chain
 from typing import List, Union
 
+import networkx as nx
+import numpy as np
 import overpy
+import pyproj
 from overpy import Result
 from tqdm.auto import tqdm
 
 from pyridy.osm.utils import QueryResult, OSMLevelCrossing, OSMRailwaySwitch, OSMRailwaySignal, OSMRailwayLine, \
-    OSMRailwayElement
+    OSMRailwayElement, OSMRailwayMilestone
 from pyridy.utils.tools import internet
 
 logger = logging.getLogger(__name__)
 
 
-class OSMRegion:
+class OSM:
     supported_railway_types = ["rail", "tram", "subway", "light_rail"]
 
     def __init__(self, lon_sw: float, lat_sw: float, lon_ne: float, lat_ne: float,
@@ -31,10 +34,10 @@ class OSMRegion:
         else:
             if type(desired_railway_types) == list:
                 for desired in desired_railway_types:
-                    if desired not in OSMRegion.supported_railway_types:
+                    if desired not in OSM.supported_railway_types:
                         raise ValueError("Your desired railway type %s is not supported" % desired)
             elif type(desired_railway_types) == str:
-                if desired_railway_types not in OSMRegion.supported_railway_types:
+                if desired_railway_types not in OSM.supported_railway_types:
                     raise ValueError("Your desired railway type %s is not supported" % desired_railway_types)
             else:
                 raise ValueError("desired_railway_types must be list or str")
@@ -56,8 +59,16 @@ class OSMRegion:
         self.lon_ne = lon_ne
         self.lat_ne = lat_ne
 
+        self.utm_proj = pyproj.Proj(proj='utm', zone=32, ellps='WGS84', preserve_units=True)
+        self.geod = pyproj.Geod(ellps='WGS84')
+
         self.desired_railway_types = desired_railway_types
+
+        self.nodes: List[overpy.Node, overpy.RelationNode] = []
+        self.node_dict = {}
+
         self.ways: List[overpy.Way, overpy.RelationWay] = []
+        self.way_dict = {}
 
         self.railway_lines: List[OSMRailwayLine] = []
         self.railway_elements: List[OSMRailwayElement] = []
@@ -65,8 +76,19 @@ class OSMRegion:
         self.query_results = {rw_type: {"track_query": QueryResult,
                                         "route_query": QueryResult} for rw_type in self.desired_railway_types}
 
+        self.G = nx.MultiGraph()
+
         if download:
             self.download_track_data(recurse=recurse)
+
+            # Add nodes
+            self.G.add_nodes_from([(n.id, n.__dict__) for n in self.nodes])
+
+            # Add edges, use node distances as weight
+            for w in self.ways:
+                edges = [(n1.id, n2.id, self.geod.inv(float(n1.lon), float(n1.lat), float(n2.lon), float(n2.lat))[2])
+                         for n1, n2 in zip(w.nodes, w.nodes[1:])]
+                self.G.add_weighted_edges_from(edges, weight="d", way_id=w.id)
 
         logger.info("Initialized region: %f, %f (SW), %f, %f (NE)" % (self.lon_sw,
                                                                       self.lat_sw,
@@ -77,7 +99,7 @@ class OSMRegion:
         if recurse not in [">", ">>", "<", "<<"]:
             raise ValueError("recurse type %s not supported" % recurse)
 
-        if railway_type not in OSMRegion.supported_railway_types:
+        if railway_type not in OSM.supported_railway_types:
             raise ValueError("The desired railway type %s is not supported" % railway_type)
 
         track_query = """(node[""" + "railway" + """=""" + railway_type + """](""" + str(self.lat_sw) + """,""" + str(
@@ -89,17 +111,6 @@ class OSMRegion:
                       """
         if railway_type == "rail":  # Railway routes use train instead of rail
             railway_type = "train"
-
-        # route_query = """(node[""" + "route" + """=""" + railway_type + """](""" + str(self.lat_sw) + """,""" + str(
-        #     self.lon_sw) + """,""" + str(self.lat_ne) + """,""" + str(self.lon_ne) + """);
-        #                  way[""" + "route" + """=""" + railway_type + """](""" + str(self.lat_sw) + """,""" + str(
-        #     self.lon_sw) + """,""" + str(self.lat_ne) + """,""" + str(self.lon_ne) + """);
-        #                  relation[""" + "route" + """=""" + railway_type + """](""" + str(self.lat_sw) + """,""" + str(
-        #     self.lon_sw) + """,""" + str(self.lat_ne) + """,""" + str(self.lon_ne) + """);
-        #                  );
-        #                  (._;>;);
-        #                  out body;
-        #               """
 
         route_query = """(relation[""" + "route" + """=""" + railway_type + """](""" + str(self.lat_sw) + """,""" \
                       + str(self.lon_sw) + """,""" + str(self.lat_ne) + """,""" + str(self.lon_ne) + """);
@@ -136,15 +147,18 @@ class OSMRegion:
                         rel_way_ids = [mem.ref for mem in rel.members if
                                        type(mem) == overpy.RelationWay and not mem.role]
 
-                        if trk_result.result.ways:
+                        if trk_result.result:
                             rel_ways = [w for w in trk_result.result.ways if w.id in rel_way_ids]
 
-                            sort_order = {id: idx for id, idx in zip(rel_way_ids, range(len(rel_way_ids)))}
+                            sort_order = {w_id: idx for w_id, idx in zip(rel_way_ids, range(len(rel_way_ids)))}
                             rel_ways.sort(key=lambda w: sort_order[w.id])
                             self.railway_lines.append(OSMRailwayLine(rel.id, rel_ways, rel.tags, rel.members))
 
                 if trk_result.result:
                     for n in trk_result.result.nodes:
+                        if n not in self.nodes:
+                            self.nodes.append(n)
+
                         if "railway" in n.tags:
                             if n.tags["railway"] == "level_crossing":
                                 self.railway_elements.append(OSMLevelCrossing(n))
@@ -152,8 +166,24 @@ class OSMRegion:
                                 self.railway_elements.append(OSMRailwaySignal(n))
                             elif n.tags["railway"] == "switch":
                                 self.railway_elements.append(OSMRailwaySwitch(n))
+                            elif n.tags["railway"] == "milestone":
+                                self.railway_elements.append(OSMRailwayMilestone(n))
                             else:
                                 pass
+
+                    for w in trk_result.result.ways:
+                        if w not in self.ways:
+                            self.ways.append(w)
+
+                    # Create dictionaries for easy node/way access
+                    self.node_dict = {n.id: n for n in self.nodes}  # Dict that returns node based on node id
+                    self.way_dict = {w.id: w for w in self.ways}  # Dict that returns way based on way id
+
+                    # Add XY coordinate to each node
+                    osm_xy = self.get_coords(frmt="xy")
+                    for i, xy in enumerate(osm_xy):
+                        self.nodes[i].attributes["x"] = xy[0]
+                        self.nodes[i].attributes["y"] = xy[1]
         else:
             logger.warning("Cant download OSM data because of not internet connection")
 
@@ -167,6 +197,8 @@ class OSMRegion:
                 return result
             except overpy.exception.OverpassTooManyRequests as e:
                 logger.warning("OverpassTooManyRequest, retrying".format(e))
+            except overpy.exception.OverpassRuntimeError as e:
+                logger.warning("OverpassRuntimeError, retrying".format(e))
             except overpy.exception.OverpassGatewayTimeout as e:
                 logger.warning("OverpassTooManyRequest, retrying".format(e))
             except overpy.exception.OverpassBadRequest as e:
@@ -184,6 +216,8 @@ class OSMRegion:
                 return result
             except overpy.exception.OverpassTooManyRequests as e:
                 logger.warning("OverpassTooManyRequest, retrying".format(e))
+            except overpy.exception.OverpassRuntimeError as e:
+                logger.warning("OverpassRuntimeError, retrying".format(e))
             except overpy.exception.OverpassGatewayTimeout as e:
                 logger.warning("OverpassTooManyRequest, retrying".format(e))
             except overpy.exception.OverpassBadRequest as e:
@@ -212,6 +246,32 @@ class OSMRegion:
                     ways.append(way)
 
         return ways
+
+    def get_coords(self, frmt: str = "lon/lat") -> np.ndarray:
+        """ Get the coordinates in lon/lat format for all nodes
+
+        Parameters
+        ----------
+            frmt: str, default: lon/lat
+                Format in which the coordinates are being returned. Can be lon/lat or x/y
+
+        Returns
+        -------
+            np.ndarray
+        """
+        if frmt not in ["lon/lat", "xy"]:
+            raise ValueError("fmrt must be lon/lat or xy")
+
+        if self.nodes:
+            if frmt == "lon/lat":
+                return np.array([[float(n.lon), float(n.lat)] for n in self.nodes])
+            else:
+                lat_lon_coords = np.array([[float(n.lon), float(n.lat)] for n in self.nodes])
+                x, y = self.utm_proj(lat_lon_coords[:, 0], lat_lon_coords[:, 1])
+                return np.vstack([x, y]).T
+        else:
+            logger.warning("No nodes get coordinates of!")
+            return np.array([])
 
     def get_switches(self) -> List[OSMRailwayElement]:
         """ Returns a list of railway switches found in the downloaded OSM region
@@ -252,6 +312,15 @@ class OSMRegion:
             list
         """
         return [el for el in self.railway_elements if type(el) == OSMRailwaySignal]
+
+    def get_milestones(self) -> List[OSMRailwayElement]:
+        """ Returns a list of railway milestones found in the downloaded OSM region
+
+        Returns
+        -------
+            list
+        """
+        return [el for el in self.railway_elements if type(el) == OSMRailwayMilestone]
 
     def get_level_crossings(self) -> List[OSMRailwayElement]:
         """ Returns a list of railway level crossings found in the downloaded OSM region
