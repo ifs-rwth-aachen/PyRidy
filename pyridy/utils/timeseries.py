@@ -187,6 +187,7 @@ class TimeSeries(ABC):
             if method == "timestamp":
                 if self._time[0] == 0:
                     logger.info("Timeseries already starts at 0, timestamp syncing not appropriate")
+                    self.time = self._time.astype(timedelta_unit)
                 else:
                     if sync_timestamp:
                         self.time = (self._time - sync_timestamp).astype(timedelta_unit)

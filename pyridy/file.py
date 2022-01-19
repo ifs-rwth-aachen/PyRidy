@@ -4,7 +4,7 @@ import json
 import logging
 import os
 import sqlite3
-from sqlite3 import Connection, DatabaseError
+from sqlite3 import DatabaseError
 from typing import Optional, List, Dict, Tuple
 
 import networkx as nx
@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 
 
 class RDYFile:
-    def __init__(self, path: str = "", sync_method: str = None, cutoff: bool = True,
+    def __init__(self, path: str = "", sync_method: str = "timestamp", cutoff: bool = True,
                  timedelta_unit: str = 'timedelta64[ns]',
                  strip_timezone: bool = True, name=""):
         """
@@ -159,10 +159,6 @@ class RDYFile:
 
         # Indices of OSM nodes that are close to each respective GPS point within radius r
         indices = kd_tree_track.query_ball_tree(kd_tree_osm, r=100)
-
-        f_indices = list(itertools.chain(*[idxs for idxs in indices]))  # Flattened indices from kd-tree results
-        u_indices = list(set(f_indices))  # Unique indices
-        c_nodes = [self.osm.nodes[i].id for i in u_indices]  # Candidate nodes based on found indices
 
         c_dict = {}  # Dict with node candidates for each GPS coord
         edges = []  # Candidate edges with emission probabilities

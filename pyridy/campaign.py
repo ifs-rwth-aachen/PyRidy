@@ -6,16 +6,13 @@ from multiprocessing import Pool
 from pathlib import Path
 from typing import List, Union, Tuple, Optional
 
-import numpy as np
-import pyproj
-from ipyleaflet import Map, Polyline, Marker, Icon, FullScreenControl, ScaleControl, TileLayer
+from ipyleaflet import Map, Polyline, Marker, Icon, FullScreenControl, ScaleControl
 from ipywidgets import HTML
 from tqdm.auto import tqdm
 
 from . import config
 from .file import RDYFile
 from .osm import OSM, OSMRailwaySwitch, OSMRailwaySignal, OSMLevelCrossing
-from .osm.utils import project_point_onto_line, is_point_within_line_projection
 from .utils import GPSSeries
 from .utils.tools import generate_random_color
 
@@ -24,9 +21,9 @@ logger = logging.getLogger(__name__)
 
 class Campaign:
     def __init__(self, name="", folder: Union[list, str] = None, recursive=True, exclude: Union[list, str] = None,
-                 sync_method: str = None, strip_timezone: bool = True, cutoff: bool = True, lat_sw: float = None,
+                 sync_method: str = "timestamp", strip_timezone: bool = True, cutoff: bool = True, lat_sw: float = None,
                  lon_sw: float = None, lat_ne: float = None, lon_ne: float = None,
-                 download_osm_region: bool = False, map_matching: bool = False, osm_recurse_type: str = ">",
+                 download_osm_data: bool = False, map_matching: bool = False, osm_recurse_type: str = ">",
                  railway_types: Union[list, str] = None):
         """
 
@@ -57,7 +54,7 @@ class Campaign:
             North east latitude of the campaign
         lon_ne: float
             North east longitude of the campaign
-        download_osm_region: bool, default: False
+        download_osm_data: bool, default: False
             If True download OSM data via the Overpass API
         map_matching: bool, default: False
             If True removes tries to match GPS track of each file to most reasonable OSM nodes
@@ -88,6 +85,8 @@ class Campaign:
         self.strip_timezone = strip_timezone
         self.cutoff = cutoff
 
+        self.results = {}  # Dictionary for Post Processing Results
+
         if folder:
             self.import_folder(self.folder, recursive, exclude,
                                cutoff=self.cutoff,
@@ -97,7 +96,7 @@ class Campaign:
         if not self.lat_sw or not self.lat_ne or not self.lon_sw or not self.lon_ne:
             self.determine_geographic_extent()
 
-        if download_osm_region:
+        if download_osm_data:
             self.osm = OSM(lat_sw=self.lat_sw, lon_sw=self.lon_sw, lat_ne=self.lat_ne, lon_ne=self.lon_ne,
                            desired_railway_types=railway_types, recurse=self.osm_recurse_type)
         else:
@@ -357,7 +356,7 @@ class Campaign:
                      % (str(self.lat_sw), str(self.lon_sw), str(self.lat_ne), str(self.lon_ne)))
 
     def import_files(self, file_paths: Union[list, str] = None,
-                     sync_method: str = None,
+                     sync_method: str = "timestamp",
                      cutoff: bool = True,
                      strip_timezone: bool = True,
                      det_geo_extent: bool = True,

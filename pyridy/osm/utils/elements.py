@@ -57,7 +57,7 @@ class OSMRailwayMilestone(OSMRailwayElement):
             OpenStreetMap node retrieved using Overpy
         """
         super(OSMRailwayMilestone, self).__init__(n)
-        self.position = float(n.tags.get("railway:position", "-1"))
+        self.position = float(n.tags.get("railway:position", "-1").replace(",", "."))
 
     def __repr__(self):
         return "Milestone at (%s, %s): %.3f" % (self.lon, self.lat, self.position)
