@@ -26,7 +26,7 @@ class Campaign:
     def __init__(self, name="", folder: Union[list, str] = None, recursive=True, exclude: Union[list, str] = None,
                  sync_method: str = None, strip_timezone: bool = True, cutoff: bool = True, lat_sw: float = None,
                  lon_sw: float = None, lat_ne: float = None, lon_ne: float = None,
-                 download_osm_region: bool = False, filter_osm_region: bool = False, osm_recurse_type: str = ">",
+                 download_osm_region: bool = False, map_matching: bool = False, osm_recurse_type: str = ">",
                  railway_types: Union[list, str] = None):
         """
 
@@ -59,8 +59,8 @@ class Campaign:
             North east longitude of the campaign
         download_osm_region: bool, default: False
             If True download OSM data via the Overpass API
-        filter_osm_region: bool, default: False
-            If True removes railway elements that are not close to the GPS Tracks of the campaign
+        map_matching: bool, default: False
+            If True removes tries to match GPS track of each file to most reasonable OSM nodes
         railway_types: list or list of str
             Railway type to be downloaded from OSM, e.g., "rail", "subway", "tram" or "light_rail"
         osm_recurse_type : str
@@ -78,6 +78,7 @@ class Campaign:
         self.osm = None
         self.osm_recurse_type = osm_recurse_type
         self.osm_mappings = {}  # Map Matching results for each file
+        self.map_matching = map_matching
 
         if sync_method is not None and sync_method not in ["timestamp", "device_time", "gps_time", "ntp_time"]:
             raise ValueError(
@@ -123,6 +124,8 @@ class Campaign:
     def osm(self, value):
         for f in self:
             f.osm = value
+            if self.map_matching:
+                f.do_map_matching()
 
         self._osm = value
 
@@ -360,7 +363,6 @@ class Campaign:
                      det_geo_extent: bool = True,
                      use_multiprocessing: bool = False,
                      download_osm_region: bool = False,
-                     filter_osm_region: bool = False,
                      railway_types: Union[list, str] = None,
                      osm_recurse_type: Optional[str] = None):
         """ Import files into the campaign
@@ -379,8 +381,6 @@ class Campaign:
             If True, determine the geographic extent of the imported files
         download_osm_region: bool, default: False
             If True, download OSM Data via the Overpass API
-        filter_osm_region: bool, default: False
-            If True, removes railway elements that are not close to the GPS tracks
         railway_types: str or list of str
             Railway types to be downloaded via the Overpass API
         osm_recurse_type : str

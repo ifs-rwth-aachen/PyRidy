@@ -455,7 +455,8 @@ class RDYFile:
 
                 m_w_ids = [self.osm.G[n1][n2][0]["way_id"] for n1, n2 in zip(m_n_ids, m_n_ids[1:])]
                 self.matched_ways = list(set([self.osm.way_dict[w_id] for w_id in m_w_ids]))  # Mapped Ways
-
+                logger.info("(%s) Found %d nodes that match the files GPS track!" % (self.name,
+                                                                                     len(self.matched_nodes)))
         else:
             logger.warning("(%s) Can't do map matching since no file contains no OSM data" % self.name)
         pass
