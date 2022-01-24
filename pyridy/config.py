@@ -1,6 +1,12 @@
 from ipyleaflet import Icon, TileLayer
 
 # Maps
+OPEN_STREET_MAP_DE = TileLayer(
+    url='https://{s}.tile.openstreetmap.de/${z}/${x}/${y}.png',
+    max_zoom=19,
+    name="OpenStreetMap"
+)
+
 OPEN_STREET_MAP_BW = TileLayer(
     url='https://{s}.tiles.wmflabs.org/bw-mapnik/{z}/{x}/{y}.png',
     max_zoom=19,

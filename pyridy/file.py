@@ -211,15 +211,16 @@ class RDYFile:
             c_dict[i] = {"c_ways": c_ways, "c_segs": c_segs}
 
         # Calculate emission probabilities for each edge candidate
-        edges = np.array(edges, dtype='object')
-        e_probs = norm.pdf(edges[:, 2].astype(float), np.zeros(len(edges)), edges[:, 1].astype(float))
-
         c_edges = {}
-        for i, e_prob in enumerate(e_probs):
-            if edges[i][0] not in c_edges:
-                c_edges[edges[i][0]] = {"e_prob": [e_prob]}
-            else:
-                c_edges[edges[i][0]]["e_prob"].append(e_prob)
+        if edges:
+            edges = np.array(edges, dtype='object')
+            e_probs = norm.pdf(edges[:, 2].astype(float), np.zeros(len(edges)), edges[:, 1].astype(float))
+
+            for i, e_prob in enumerate(e_probs):
+                if edges[i][0] not in c_edges:
+                    c_edges[edges[i][0]] = {"e_prob": [e_prob]}
+                else:
+                    c_edges[edges[i][0]]["e_prob"].append(e_prob)
 
         return c_dict, c_edges
 
@@ -318,7 +319,7 @@ class RDYFile:
             m = Map(center=self.determine_track_center()[::-1],
                     zoom=12,
                     scroll_wheel_zoom=True,
-                    basemap=config.OPEN_STREET_MAP_BW)
+                    basemap=config.OPEN_STREET_MAP_DE)
 
             m.add_control(ScaleControl(position='bottomleft'))
             m.add_control(FullScreenControl())

@@ -313,7 +313,7 @@ class Campaign:
             else:
                 raise ValueError("Cant determine geographic center of campaign, enter manually using 'center' argument")
 
-        m = Map(center=center, zoom=12, scroll_wheel_zoom=True, basemap=config.OPEN_STREET_MAP_BW)
+        m = Map(center=center, zoom=12, scroll_wheel_zoom=True, basemap=config.OPEN_STREET_MAP_DE)
         m.add_control(ScaleControl(position='bottomleft'))
         m.add_control(FullScreenControl())
 
