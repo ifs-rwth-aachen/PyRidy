@@ -394,11 +394,16 @@ class RDYFile:
 
             return center_lon, center_lat
 
-    def do_map_matching(self, v_thres: float = 1, algorithm: str = "pyridy"):
+    def do_map_matching(self, v_thres: float = 1, algorithm: str = "pyridy", alpha: int = 1.0, beta: int = 1.0):
         """ Performs map matching of the GPS track to closest OSM nodes/ways
 
         Parameters
         ----------
+        alpha: float, default: 1.0
+            Weighting Parameter for the Map Matching Algorithm. Alpha represents the default lange of an edge in the
+            Graph
+        beta: float, default: 1.0
+            Beta is a scaling factor for the emission probabilities.
         algorithm: str, default: pyridy
             Algorithm to be used, can be "pyridy" or "nx". The pyridy algorithm also incorporates how switches
             can be transited
@@ -430,10 +435,10 @@ class RDYFile:
 
             # Initialize edge weights
             for e in self.osm.G.edges:
-                self.osm.G.edges[e]["c_weight"] = 1
+                self.osm.G.edges[e]["c_weight"] = 1*alpha
 
             for k in c_edges.keys():
-                self.osm.G.edges[k]["c_weight"] = 1 / (1 + sum(c_edges[k]["e_prob"]))
+                self.osm.G.edges[k]["c_weight"] = 1 / (1 + beta*sum(c_edges[k]["e_prob"]))
 
             # Perform map matching
             s_n = None
@@ -453,7 +458,12 @@ class RDYFile:
             else:
                 # Use Dijkstra's shortest path to perform map matching, but use a weighting based on emission
                 # probabilities instead of node distances
-                m_n_ids = nx.shortest_path(self.osm.G, source=s_n, target=e_n, weight="c_weight")  # Matched node ids
+                if algorithm == 'pyridy':
+                    # Matched node ids
+                    _, _, m_n_ids = self.osm.get_shortest_path(source=s_n, target=e_n, weight="c_weight")
+                else:
+                    m_n_ids = nx.shortest_path(self.osm.G, source=s_n, target=e_n, weight="c_weight")
+
                 self.matched_nodes = [self.osm.node_dict[n] for n in m_n_ids]  # Matched nodes
 
                 m_w_ids = [self.osm.G[n1][n2][0]["way_id"] for n1, n2 in zip(m_n_ids, m_n_ids[1:])]
