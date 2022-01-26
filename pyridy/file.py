@@ -394,11 +394,14 @@ class RDYFile:
 
             return center_lon, center_lat
 
-    def do_map_matching(self, v_thres: float = 1):
+    def do_map_matching(self, v_thres: float = 1, algorithm: str = "pyridy"):
         """ Performs map matching of the GPS track to closest OSM nodes/ways
 
         Parameters
         ----------
+        algorithm: str, default: pyridy
+            Algorithm to be used, can be "pyridy" or "nx". The pyridy algorithm also incorporates how switches
+            can be transited
         v_thres: float
             Speed threshold, GPS points measured with a velocity below v_thres [m/s] will not be considered
 
@@ -406,6 +409,9 @@ class RDYFile:
         -------
 
         """
+        if algorithm not in ["nx", "pyridy"]:
+            raise ValueError("(%s) Algorithm must be either nx or pyridy, not %s" % (self.name, algorithm))
+
         if self.osm:
             # Prepare data
             gps_coords = self.measurements[GPSSeries]

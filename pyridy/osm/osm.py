@@ -12,6 +12,7 @@ import networkx as nx
 import numpy as np
 import overpy
 import pyproj
+from heapdict import heapdict
 from overpy import Result
 from tqdm.auto import tqdm
 
@@ -270,6 +271,87 @@ class OSM:
             nodes.append(self.query_results[railway_type]["route_query"].result.nodes)
 
         return list(chain.from_iterable(nodes))
+
+    def get_shortest_path(self, source: int, target: int, weight: str, method="dijkstra"):
+        dist = {n: np.inf for n in self.G.nodes}
+        prev = {n: None for n in self.G.nodes}
+
+        if method == "dijkstra":
+            dist[source] = 0
+
+            Q = heapdict()
+            for v in self.G.nodes:
+                Q[v] = dist[v]
+
+            while Q:
+                u = Q.popitem()[0]
+
+                if u == target:
+                    break
+
+                u_is_switch = True if self.G.nodes[u]['tags'].get('railway') == 'switch' else False
+
+                for v in set(self.G.adj[u]).intersection(set(Q.keys())):  # Neighbors of u that are still in Q
+                    if u_is_switch:
+                        u_prev = prev[u]
+                        allowed = True if (u_prev, u, v) in self.G.nodes[u]['attributes'].get('allowed_transits',
+                                                                                              []) else False
+                    else:
+                        allowed = True
+
+                    alt = dist[u] + self.G[u][v][0][weight]
+                    if allowed and alt < dist[v]:
+                        dist[v] = alt
+                        prev[v] = u
+                        Q[v] = alt
+
+        elif method == 'A*':
+            s_lon, s_lat = float(self.G.nodes[source]['lon']), float(self.G.nodes[source]['lat'])
+            t_lon, t_lat = float(self.G.nodes[target]['lon']), float(self.G.nodes[target]['lat'])
+
+            dist[source] = 0 + self.geod.inv(s_lon, s_lat, t_lon, t_lat)[2]
+
+            Q = heapdict()
+            for v in self.G.nodes:
+                Q[v] = dist[v]
+
+            while Q:
+                u = Q.popitem()[0]
+
+                if u == target:
+                    break
+
+                u_is_switch = True if self.G.nodes[u]['tags'].get('railway') == 'switch' else False
+
+                for v in set(self.G.adj[u]).intersection(set(Q.keys())):  # Neighbors of u that are still in Q
+                    v_lon, v_lat = float(self.G.nodes[v]['lon']), float(self.G.nodes[v]['lat'])
+
+                    if u_is_switch:
+                        u_prev = prev[u]
+                        allowed = True if (u_prev, u, v) in self.G.nodes[u]['attributes'].get('allowed_transits',
+                                                                                         []) else False
+                    else:
+                        allowed = True
+
+                    alt = dist[u] + self.G[u][v][0][weight] + self.geod.inv(v_lon, v_lat, t_lon, t_lat)[2]
+                    if allowed and alt < dist[v]:
+                        dist[v] = alt
+                        prev[v] = u
+                        Q[v] = alt
+        else:
+            raise ValueError("Method not supported")
+
+        S = []  # Shortest path sequence
+        u = target
+
+        if prev[u] or u == source:
+            while u:
+                S.append(u)
+                u = prev[u]
+
+        S.reverse()
+
+        return dist, prev, S
 
     def search_osm_result(self, way_ids: List[int], railway_type="tram"):
         ways = []
