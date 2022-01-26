@@ -6,6 +6,32 @@ import scipy.interpolate as si
 from numpy.linalg import norm
 
 
+def calc_unit_vector(v: Union[list, np.ndarray]) -> np.ndarray:
+    """ Returns the unit vector of the given vector v
+
+    Parameters
+    ----------
+    v : array_like
+        Vector of which the unit vector should be calculated
+    """
+    return v / np.linalg.norm(v)
+
+
+def calc_angle_between(v1: Union[list, np.ndarray], v2: Union[list, np.ndarray]) -> np.ndarray:
+    """ Returns the angle in radians between vectors v1 and v2
+
+    Parameters
+    ----------
+    v1 : array_like
+        First vector
+    v2 : array_like
+        Second vector
+    """
+    v1_u = calc_unit_vector(v1)
+    v2_u = calc_unit_vector(v2)
+    return np.arccos(np.clip(np.dot(v1_u, v2_u), -1.0, 1.0))
+
+
 def bspline(cv, n=10000, degree=3, periodic=False):
     """ Calculate n samples on a bspline
 

@@ -90,6 +90,7 @@ class OSMRailwaySwitch(OSMRailwayElement):
             OpenStreetMap node retrieved using Overpy
         """
         super(OSMRailwaySwitch, self).__init__(n)
+        self.allowed_transits = []  # List of triples in form of (neighbor 1, switch id, neighbor 2)
 
     def __repr__(self):
         return "Switch at (%s, %s)" % (self.lon, self.lat)

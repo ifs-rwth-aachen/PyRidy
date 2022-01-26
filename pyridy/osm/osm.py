@@ -1,4 +1,6 @@
+import itertools
 import logging.config
+import math
 import re
 import socket
 import time
@@ -14,7 +16,7 @@ from overpy import Result
 from tqdm.auto import tqdm
 
 from pyridy.osm.utils import QueryResult, OSMLevelCrossing, OSMRailwaySwitch, OSMRailwaySignal, OSMRailwayLine, \
-    OSMRailwayElement, OSMRailwayMilestone
+    OSMRailwayElement, OSMRailwayMilestone, calc_angle_between
 from pyridy.utils.tools import internet
 
 logger = logging.getLogger(__name__)
@@ -81,7 +83,7 @@ class OSM:
         if download:
             self.download_track_data(recurse=recurse)
 
-            # Add nodes
+            # Add nodes to Graph
             self.G.add_nodes_from([(n.id, n.__dict__) for n in self.nodes])
 
             # Add edges, use node distances as weight
@@ -89,6 +91,8 @@ class OSM:
                 edges = [(n1.id, n2.id, self.geod.inv(float(n1.lon), float(n1.lat), float(n2.lon), float(n2.lat))[2])
                          for n1, n2 in zip(w.nodes, w.nodes[1:])]
                 self.G.add_weighted_edges_from(edges, weight="d", way_id=w.id)
+
+            self._check_allowed_switch_transits()
 
         logger.info("Initialized region: %f, %f (SW), %f, %f (NE)" % (self.lon_sw,
                                                                       self.lat_sw,
@@ -120,6 +124,36 @@ class OSM:
                       """
 
         return track_query, route_query
+
+    def _check_allowed_switch_transits(self):
+        """ Checks in what ways a switch can be transited, i.e. what combination of neighbouring nodes are allowed
+
+        """
+        if not len(self.G.nodes):
+            raise ValueError("Can't determine allowed switch transits if Graph G has no nodes")
+
+        for sw in self.get_switches():
+            sw_x, sw_y = self.utm_proj(sw.lon, sw.lat)
+            sw_nbs = list(self.G.adj[sw.id])
+
+            allowed_transits = []
+            for n1, n2 in itertools.product(sw_nbs, repeat=2):
+                if n1 == n2:
+                    continue
+                else:
+                    n1_x, n1_y = self.G.nodes[n1]['attributes'].get('x', 0), self.G.nodes[n1]['attributes'].get('y', 0)
+                    n2_x, n2_y = self.G.nodes[n2]['attributes'].get('x', 0), self.G.nodes[n2]['attributes'].get('y', 0)
+
+                    v1 = [n1_x - sw_x, n1_y - sw_y]
+                    v2 = [n2_x - sw_x, n2_y - sw_y]
+
+                    ang = calc_angle_between(v1, v2)
+                    if ang > math.pi/2:
+                        allowed_transits.append((n1, sw.id, n2))
+
+            sw.allowed_transits = allowed_transits
+            self.G.nodes[sw.id]['attributes']['allowed_transits'] = allowed_transits
+        pass
 
     def download_track_data(self, railway_type: Union[List, str] = None, recurse: str = ">"):
         if recurse not in [">", ">>", "<", "<<"]:
