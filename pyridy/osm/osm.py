@@ -265,6 +265,12 @@ class OSM:
             return None
 
     def get_all_route_nodes(self) -> list:
+        """ Retrieves a list of nodes part of any relation/route
+
+        Returns
+        -------
+        List[overpy.node]
+        """
         nodes = []
 
         for railway_type in self.desired_railway_types:
@@ -272,7 +278,26 @@ class OSM:
 
         return list(chain.from_iterable(nodes))
 
-    def get_shortest_path(self, source: int, target: int, weight: str, method="dijkstra"):
+    def get_shortest_path(self, source: int, target: int, weight: str, method="dijkstra") -> List[int]:
+        """ Calculates the shortest path between a source and target node. Also considers how switches can be transited
+        Based on: https://en.wikipedia.org/wiki/Dijkstra
+
+        Parameters
+        ----------
+        source: int
+            ID of source node
+        target: int
+            ID of target node
+        weight: str
+            Weight to be used for shortest path calculation, e.g. the length of the edges
+        method: str
+            Can be 'dijkstra' or 'A*'
+
+        Returns
+        -------
+        List[int]
+            List of node ids that represent the shortest path between source and target
+        """
         dist = {n: np.inf for n in self.G.nodes}
         prev = {n: None for n in self.G.nodes}
 
