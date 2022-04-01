@@ -83,9 +83,10 @@ class TimeSeries(ABC):
 
                 self._timedelta: np.ndarray = np.diff(self._time)
             else:
-                logger.info("Cannot cutoff series if series is empty or series already starts at 0")
+                logger.info("Cannot cutoff series if timeseries is empty or series already starts at 0")
         else:
-            logger.warning("timestamp_when_started and/or timestamp_when_stopped are None")
+            logger.warning("Cannot cutoff timeseries, series timestamp_when_started "
+                           "and/or timestamp_when_stopped are None")
 
         pass
 
@@ -167,7 +168,7 @@ class TimeSeries(ABC):
         Parameters
         ----------
         method: str
-            Sync method, must be either "timestamp", "device_time", "gps_time" or "ntp_time".
+            Sync method, must be either "timestamp", "seconds", "device_time", "gps_time" or "ntp_time".
         sync_timestamp: int
             Timestamp used to synchronize timeseries
         sync_time: np.datetime64
@@ -186,15 +187,24 @@ class TimeSeries(ABC):
         if not np.array_equal(self._time, np.array(None)) and len(self._time) > 0:
             if method == "timestamp":
                 if self._time[0] == 0:
-                    logger.info("Timeseries already starts at 0, timestamp syncing not appropriate")
+                    logger.info("Timeseries already starts at 0, cant sync with t0")
                     self.time = self._time.astype(timedelta_unit)
                 else:
                     if sync_timestamp:
                         self.time = (self._time - sync_timestamp).astype(timedelta_unit)
                     else:
-                        logger.warning("sync_timestamp is None, using first timestamp for timeseries syncing")
+                        logger.warning("sync_timestamp is None, using first timestamp syncing")
                         self.time = (self._time - self._time[0]).astype(timedelta_unit)
-
+            elif method == "seconds":
+                if self._time[0] == 0:
+                    logger.info("Timeseries already starts at 0, cant sync with t0, only converting to seconds")
+                    self.time = self._time.astype(timedelta_unit) / np.timedelta64(1, "s")
+                else:
+                    if sync_timestamp:
+                        self.time = (self._time - sync_timestamp).astype(timedelta_unit) / np.timedelta64(1, "s")
+                    else:
+                        logger.warning("sync_timestamp is None, using first timestamp syncing")
+                        self.time = (self._time - self._time[0]).astype(timedelta_unit) / np.timedelta64(1, "s")
             elif method == "device_time":
                 if self._time[0] == 0:
                     logger.info("Timeseries already starts at 0, timestamp syncing not appropriate")

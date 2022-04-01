@@ -5,12 +5,32 @@ import matplotlib.pyplot as plt
 import pytest
 
 import pyridy
-from pyridy.utils import AccelerationSeries, LinearAccelerationSeries, GPSSeries
+from pyridy.utils import AccelerationSeries, LinearAccelerationSeries, GPSSeries, GNSSMeasurementSeries
 
 
 @pytest.fixture
 def my_campaign():
     return pyridy.Campaign()
+
+
+@pytest.fixture
+def my_partial_campaign():
+    return pyridy.Campaign(series=[AccelerationSeries, GPSSeries])
+
+
+def test_campaign():
+    pyridy.Campaign()
+    assert True
+
+
+def test_partial_campaign():
+    pyridy.Campaign(series=[AccelerationSeries])
+
+    pyridy.Campaign(series=[AccelerationSeries, GNSSMeasurementSeries])
+
+    pyridy.Campaign(series=AccelerationSeries)
+
+    assert True
 
 
 def test_pyridy_campaign_manager(my_campaign):
@@ -27,6 +47,12 @@ def test_loading_files(my_campaign, caplog):
     caplog.set_level(logging.DEBUG)
     my_campaign.import_folder("files")
     assert len(my_campaign) == 11
+
+
+def test_loading_files_partial_series(my_partial_campaign, caplog):
+    caplog.set_level(logging.DEBUG)
+    my_partial_campaign.import_folder("files")
+    assert len(my_partial_campaign) == 11
 
 
 def test_exclude_file(my_campaign, caplog):

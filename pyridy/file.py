@@ -5,7 +5,7 @@ import logging
 import os
 import sqlite3
 from sqlite3 import DatabaseError
-from typing import Optional, List, Dict, Tuple
+from typing import Optional, List, Dict, Tuple, Union, Type
 
 import networkx as nx
 import numpy as np
@@ -22,7 +22,7 @@ from pyridy.osm.utils import is_point_within_line_projection, project_point_onto
 from pyridy.utils import Sensor, AccelerationSeries, LinearAccelerationSeries, MagnetometerSeries, OrientationSeries, \
     GyroSeries, RotationSeries, GPSSeries, PressureSeries, HumiditySeries, TemperatureSeries, WzSeries, LightSeries, \
     SubjectiveComfortSeries, AccelerationUncalibratedSeries, MagnetometerUncalibratedSeries, GyroUncalibratedSeries, \
-    GNSSClockMeasurementSeries, GNSSMeasurementSeries, NMEAMessageSeries
+    GNSSClockMeasurementSeries, GNSSMeasurementSeries, NMEAMessageSeries, TimeSeries
 from pyridy.utils.device import Device
 from pyridy.utils.tools import generate_random_color
 
@@ -32,7 +32,9 @@ logger = logging.getLogger(__name__)
 class RDYFile:
     def __init__(self, path: str = "", sync_method: str = "timestamp", cutoff: bool = True,
                  timedelta_unit: str = 'timedelta64[ns]',
-                 strip_timezone: bool = True, name=""):
+                 strip_timezone: bool = True,
+                 name="",
+                 series: Union[List[Type[TimeSeries]], Type[TimeSeries]] = None):
         """
 
         Parameters
@@ -57,9 +59,26 @@ class RDYFile:
         self.name: Optional[str] = name
         self.extension: Optional[str] = ""
 
-        if sync_method is not None and sync_method not in ["timestamp", "device_time", "gps_time", "ntp_time"]:
+        # Sanity check if series is arg is valid
+        if series:
+            if type(series) is list:
+                for s in series:
+                    if not issubclass(s, TimeSeries):
+                        raise ValueError("%s in %s is not a TimeSeries!" % (type(s), list(series)))
+                self._series = series
+            elif issubclass(series, TimeSeries):
+                self._series = [series]
+                pass
+            else:
+                raise ValueError("series argument must be list of TimeSeries or TimeSeries! not %s" % type(series))
+        else:
+            self._series = None
+
+        if sync_method is not None and sync_method not in ["timestamp", "seconds", "device_time", "gps_time",
+                                                           "ntp_time"]:
             raise ValueError(
-                "synchronize argument must 'timestamp', 'device_time', 'gps_time' or 'ntp_time' not %s" % sync_method)
+                "synchronize argument must 'timestamp', 'seconds','device_time', 'gps_time' or 'ntp_time' not %s" %
+                sync_method)
 
         self.sync_method = sync_method
         self.cutoff = cutoff
@@ -230,7 +249,12 @@ class RDYFile:
         """
         if self.sync_method == "timestamp":
             for m in self.measurements.values():
-                m.synchronize("timestamp", self.timestamp_when_started, timedelta_unit=self.timedelta_unit)
+                m.synchronize("timestamp", self.timestamp_when_started,
+                              timedelta_unit=self.timedelta_unit)
+        elif self.sync_method == 'seconds':
+            for m in self.measurements.values():
+                m.synchronize("seconds", self.timestamp_when_started,
+                              timedelta_unit=self.timedelta_unit)
         elif self.sync_method == "device_time":
             if self.t0:
                 for m in self.measurements.values():
@@ -624,122 +648,141 @@ class RDYFile:
             else:
                 logger.info("No sensor descriptions in file: %s" % self.name)
 
-            if "acc_series" in rdy:
-                self.measurements[AccelerationSeries] = AccelerationSeries(rdy_format_version=self.rdy_format_version,
-                                                                           **rdy['acc_series'])
-            else:
-                logger.info("No Acceleration Series in file: %s" % self.name)
+            if (self._series is not None and AccelerationSeries in self._series) or self._series is None:
+                if "acc_series" in rdy:
+                    self.measurements[AccelerationSeries] = \
+                        AccelerationSeries(rdy_format_version=self.rdy_format_version, **rdy['acc_series'])
+                else:
+                    logger.info("No Acceleration Series in file: %s" % self.name)
 
-            if "acc_uncal_series" in rdy:
-                self.measurements[AccelerationUncalibratedSeries] = AccelerationUncalibratedSeries(
-                    rdy_format_version=self.rdy_format_version, **rdy['acc_uncal_series'])
-            else:
-                logger.info("No uncalibrated Acceleration Series in file: %s" % self.name)
+            if (self._series is not None and AccelerationUncalibratedSeries in self._series) or self._series is None:
+                if "acc_uncal_series" in rdy:
+                    self.measurements[AccelerationUncalibratedSeries] = AccelerationUncalibratedSeries(
+                        rdy_format_version=self.rdy_format_version, **rdy['acc_uncal_series'])
+                else:
+                    logger.info("No uncalibrated Acceleration Series in file: %s" % self.name)
 
-            if "lin_acc_series" in rdy:
-                self.measurements[LinearAccelerationSeries] = LinearAccelerationSeries(
-                    rdy_format_version=self.rdy_format_version,
-                    **rdy['lin_acc_series'])
-            else:
-                logger.info("No Linear Acceleration Series in file: %s" % self.name)
+            if (self._series is not None and LinearAccelerationSeries in self._series) or self._series is None:
+                if "lin_acc_series" in rdy:
+                    self.measurements[LinearAccelerationSeries] = LinearAccelerationSeries(
+                        rdy_format_version=self.rdy_format_version,
+                        **rdy['lin_acc_series'])
+                else:
+                    logger.info("No Linear Acceleration Series in file: %s" % self.name)
 
-            if "mag_series" in rdy:
-                self.measurements[MagnetometerSeries] = MagnetometerSeries(rdy_format_version=self.rdy_format_version,
-                                                                           **rdy['mag_series'])
-            else:
-                logger.info("No Magnetometer Series in file: %s" % self.name)
+            if (self._series is not None and MagnetometerSeries in self._series) or self._series is None:
+                if "mag_series" in rdy:
+                    self.measurements[MagnetometerSeries] = \
+                        MagnetometerSeries(rdy_format_version=self.rdy_format_version, **rdy['mag_series'])
+                else:
+                    logger.info("No Magnetometer Series in file: %s" % self.name)
 
-            if "mag_uncal_series" in rdy:
-                self.measurements[MagnetometerUncalibratedSeries] = MagnetometerUncalibratedSeries(
-                    rdy_format_version=self.rdy_format_version, **rdy['mag_uncal_series'])
-            else:
-                logger.info("No uncalibrated Magnetometer Series in file: %s" % self.name)
+            if (self._series is not None and MagnetometerUncalibratedSeries in self._series) or self._series is None:
+                if "mag_uncal_series" in rdy:
+                    self.measurements[MagnetometerUncalibratedSeries] = MagnetometerUncalibratedSeries(
+                        rdy_format_version=self.rdy_format_version, **rdy['mag_uncal_series'])
+                else:
+                    logger.info("No uncalibrated Magnetometer Series in file: %s" % self.name)
 
-            if "orient_series" in rdy:
-                self.measurements[OrientationSeries] = OrientationSeries(rdy_format_version=self.rdy_format_version,
-                                                                         **rdy['orient_series'])
-            else:
-                logger.info("No Orientation Series in file: %s" % self.name)
+            if (self._series is not None and OrientationSeries in self._series) or self._series is None:
+                if "orient_series" in rdy:
+                    self.measurements[OrientationSeries] = OrientationSeries(rdy_format_version=self.rdy_format_version,
+                                                                             **rdy['orient_series'])
+                else:
+                    logger.info("No Orientation Series in file: %s" % self.name)
 
-            if "gyro_series" in rdy:
-                self.measurements[GyroSeries] = GyroSeries(rdy_format_version=self.rdy_format_version,
-                                                           **rdy['gyro_series'])
-            else:
-                logger.info("No Gyro Series in file: %s" % self.name)
+            if (self._series is not None and GyroSeries in self._series) or self._series is None:
+                if "gyro_series" in rdy:
+                    self.measurements[GyroSeries] = GyroSeries(rdy_format_version=self.rdy_format_version,
+                                                               **rdy['gyro_series'])
+                else:
+                    logger.info("No Gyro Series in file: %s" % self.name)
 
-            if "gyro_uncal_series" in rdy:
-                self.measurements[GyroUncalibratedSeries] = GyroUncalibratedSeries(
-                    rdy_format_version=self.rdy_format_version, **rdy['gyro_uncal_series'])
-            else:
-                logger.info("No uncalibrated Gyro Series in file: %s" % self.name)
+            if (self._series is not None and GyroUncalibratedSeries in self._series) or self._series is None:
+                if "gyro_uncal_series" in rdy:
+                    self.measurements[GyroUncalibratedSeries] = GyroUncalibratedSeries(
+                        rdy_format_version=self.rdy_format_version, **rdy['gyro_uncal_series'])
+                else:
+                    logger.info("No uncalibrated Gyro Series in file: %s" % self.name)
 
-            if "rot_series" in rdy:
-                self.measurements[RotationSeries] = RotationSeries(rdy_format_version=self.rdy_format_version,
-                                                                   **rdy['rot_series'])
-            else:
-                logger.info("No Rotation Series in file: %s" % self.name)
+            if (self._series is not None and RotationSeries in self._series) or self._series is None:
+                if "rot_series" in rdy:
+                    self.measurements[RotationSeries] = RotationSeries(rdy_format_version=self.rdy_format_version,
+                                                                       **rdy['rot_series'])
+                else:
+                    logger.info("No Rotation Series in file: %s" % self.name)
 
-            if "gps_series" in rdy:
-                self.measurements[GPSSeries] = GPSSeries(rdy_format_version=self.rdy_format_version,
-                                                         **rdy['gps_series'])
-            else:
-                logger.info("No GPS Series in file: %s" % self.name)
+            if (self._series is not None and GPSSeries in self._series) or self._series is None:
+                if "gps_series" in rdy:
+                    self.measurements[GPSSeries] = GPSSeries(rdy_format_version=self.rdy_format_version,
+                                                             **rdy['gps_series'])
+                else:
+                    logger.info("No GPS Series in file: %s" % self.name)
 
-            if "gnss_series" in rdy:
-                self.measurements[GNSSMeasurementSeries] = GNSSMeasurementSeries(
-                    rdy_format_version=self.rdy_format_version, **rdy['gnss_series'])
-            else:
-                logger.info("No GPS Series in file: %s" % self.name)
+            if (self._series is not None and GNSSMeasurementSeries in self._series) or self._series is None:
+                if "gnss_series" in rdy:
+                    self.measurements[GNSSMeasurementSeries] = GNSSMeasurementSeries(
+                        rdy_format_version=self.rdy_format_version, **rdy['gnss_series'])
+                else:
+                    logger.info("No GPS Series in file: %s" % self.name)
 
-            if "gnss_clock_series" in rdy:
-                self.measurements[GNSSClockMeasurementSeries] = GNSSClockMeasurementSeries(
-                    rdy_format_version=self.rdy_format_version, **rdy['gnss_clock_series'])
-            else:
-                logger.info("No GNSS Clock Series in file: %s" % self.name)
+            if (self._series is not None and GNSSClockMeasurementSeries in self._series) or self._series is None:
+                if "gnss_clock_series" in rdy:
+                    self.measurements[GNSSClockMeasurementSeries] = GNSSClockMeasurementSeries(
+                        rdy_format_version=self.rdy_format_version, **rdy['gnss_clock_series'])
+                else:
+                    logger.info("No GNSS Clock Series in file: %s" % self.name)
 
-            if "nmea_series" in rdy:
-                self.measurements[NMEAMessageSeries] = NMEAMessageSeries(
-                    rdy_format_version=self.rdy_format_version, **rdy['nmea_series'])
-            else:
-                logger.info("No GPS Series in file: %s" % self.name)
+            if (self._series is not None and NMEAMessageSeries in self._series) or self._series is None:
+                if "nmea_series" in rdy:
+                    self.measurements[NMEAMessageSeries] = NMEAMessageSeries(
+                        rdy_format_version=self.rdy_format_version, **rdy['nmea_series'])
+                else:
+                    logger.info("No GPS Series in file: %s" % self.name)
 
-            if "pressure_series" in rdy:
-                self.measurements[PressureSeries] = PressureSeries(rdy_format_version=self.rdy_format_version,
-                                                                   **rdy['pressure_series'])
-            else:
-                logger.info("No Pressure Series in file: %s" % self.name)
+            if (self._series is not None and PressureSeries in self._series) or self._series is None:
+                if "pressure_series" in rdy:
+                    self.measurements[PressureSeries] = PressureSeries(rdy_format_version=self.rdy_format_version,
+                                                                       **rdy['pressure_series'])
+                else:
+                    logger.info("No Pressure Series in file: %s" % self.name)
 
-            if "temperature_series" in rdy:
-                self.measurements[TemperatureSeries] = TemperatureSeries(rdy_format_version=self.rdy_format_version,
-                                                                         **rdy['temperature_series'])
-            else:
-                logger.info("No Temperature Series in file: %s" % self.name)
+            if (self._series is not None and TemperatureSeries in self._series) or self._series is None:
+                if "temperature_series" in rdy:
+                    self.measurements[TemperatureSeries] = TemperatureSeries(rdy_format_version=self.rdy_format_version,
+                                                                             **rdy['temperature_series'])
+                else:
+                    logger.info("No Temperature Series in file: %s" % self.name)
 
-            if "humidity_series" in rdy:
-                self.measurements[HumiditySeries] = HumiditySeries(rdy_format_version=self.rdy_format_version,
-                                                                   **rdy['humidity_series'])
-            else:
-                logger.info("No Humidity Series in file: %s" % self.name)
+            if (self._series is not None and HumiditySeries in self._series) or self._series is None:
+                if "humidity_series" in rdy:
+                    self.measurements[HumiditySeries] = HumiditySeries(rdy_format_version=self.rdy_format_version,
+                                                                       **rdy['humidity_series'])
+                else:
+                    logger.info("No Humidity Series in file: %s" % self.name)
 
-            if "light_series" in rdy:
-                self.measurements[LightSeries] = LightSeries(rdy_format_version=self.rdy_format_version,
-                                                             **rdy['light_series'])
-            else:
-                logger.info("No Light Series in file: %s" % self.name)
+            if (self._series is not None and LightSeries in self._series) or self._series is None:
+                if "light_series" in rdy:
+                    self.measurements[LightSeries] = LightSeries(rdy_format_version=self.rdy_format_version,
+                                                                 **rdy['light_series'])
+                else:
+                    logger.info("No Light Series in file: %s" % self.name)
 
-            if "wz_series" in rdy:
-                self.measurements[WzSeries] = WzSeries(rdy_format_version=self.rdy_format_version,
-                                                       **rdy['wz_series'])
-            else:
-                logger.info("No Wz Series in file: %s" % self.name)
+            if (self._series is not None and WzSeries in self._series) or self._series is None:
+                if "wz_series" in rdy:
+                    self.measurements[WzSeries] = WzSeries(rdy_format_version=self.rdy_format_version,
+                                                           **rdy['wz_series'])
+                else:
+                    logger.info("No Wz Series in file: %s" % self.name)
 
-            if "subjective_comfort_series" in rdy:
-                self.measurements[SubjectiveComfortSeries] = SubjectiveComfortSeries(
-                    rdy_format_version=self.rdy_format_version,
-                    **rdy['subjective_comfort_series'])
-            else:
-                logger.info("No Subjective Comfort Series in file: %s" % self.name)
-            pass
+            if (self._series is not None and SubjectiveComfortSeries in self._series) or self._series is None:
+                if "subjective_comfort_series" in rdy:
+                    self.measurements[SubjectiveComfortSeries] = SubjectiveComfortSeries(
+                        rdy_format_version=self.rdy_format_version,
+                        **rdy['subjective_comfort_series'])
+                else:
+                    logger.info("No Subjective Comfort Series in file: %s" % self.name)
+                pass
 
         elif self.extension == ".sqlite":
             db_con = sqlite3.connect(path)
@@ -833,166 +876,185 @@ class RDYFile:
                     self.ntp_date_time = np.datetime64(info['ntp_date_time'].iloc[-1])
 
             # Measurements
-            try:
-                acc_df = pd.read_sql_query("SELECT * from acc_measurements_table", db_con)
-                self.measurements[AccelerationSeries] = AccelerationSeries(rdy_format_version=self.rdy_format_version,
-                                                                           **dict(acc_df))
-            except (DatabaseError, PandasDatabaseError) as e:
-                logger.error("DatabaseError occurred when accessing acc_measurements_table, file: %s" % self.name)
-                logger.error(e)
+            if (self._series is not None and AccelerationSeries in self._series) or self._series is None:
+                try:
+                    acc_df = pd.read_sql_query("SELECT * from acc_measurements_table", db_con)
+                    self.measurements[AccelerationSeries] = \
+                        AccelerationSeries(rdy_format_version=self.rdy_format_version, **dict(acc_df))
+                except (DatabaseError, PandasDatabaseError) as e:
+                    logger.error("DatabaseError occurred when accessing acc_measurements_table, file: %s" % self.name)
+                    logger.error(e)
 
-            try:
-                acc_uncal_df = pd.read_sql_query("SELECT * from acc_uncal_measurements_table", db_con)
-                self.measurements[AccelerationUncalibratedSeries] = AccelerationUncalibratedSeries(
-                    rdy_format_version=self.rdy_format_version, **dict(acc_uncal_df))
-            except (DatabaseError, PandasDatabaseError) as e:
-                logger.error("DatabaseError occurred when accessing acc_uncal_measurements_table, file: %s" % self.name)
-                logger.error(e)
+            if (self._series is not None and AccelerationUncalibratedSeries in self._series) or self._series is None:
+                try:
+                    acc_uncal_df = pd.read_sql_query("SELECT * from acc_uncal_measurements_table", db_con)
+                    self.measurements[AccelerationUncalibratedSeries] = AccelerationUncalibratedSeries(
+                        rdy_format_version=self.rdy_format_version, **dict(acc_uncal_df))
+                except (DatabaseError, PandasDatabaseError) as e:
+                    logger.error("DatabaseError occurred when accessing acc_uncal_measurements_table, file: %s" % self.name)
+                    logger.error(e)
 
-            try:
-                lin_acc_df = pd.read_sql_query("SELECT * from lin_acc_measurements_table", db_con)
-                self.measurements[LinearAccelerationSeries] = LinearAccelerationSeries(
-                    rdy_format_version=self.rdy_format_version,
-                    **dict(lin_acc_df))
-            except (DatabaseError, PandasDatabaseError) as e:
-                logger.error(
-                    "DatabaseError occurred when accessing lin_acc_measurements_table, file: %s" % self.name)
-                logger.error(e)
+            if (self._series is not None and LinearAccelerationSeries in self._series) or self._series is None:
+                try:
+                    lin_acc_df = pd.read_sql_query("SELECT * from lin_acc_measurements_table", db_con)
+                    self.measurements[LinearAccelerationSeries] = LinearAccelerationSeries(
+                        rdy_format_version=self.rdy_format_version,
+                        **dict(lin_acc_df))
+                except (DatabaseError, PandasDatabaseError) as e:
+                    logger.error(
+                        "DatabaseError occurred when accessing lin_acc_measurements_table, file: %s" % self.name)
+                    logger.error(e)
 
-            try:
-                mag_df = pd.read_sql_query("SELECT * from mag_measurements_table", db_con)
-                self.measurements[MagnetometerSeries] = MagnetometerSeries(rdy_format_version=self.rdy_format_version,
-                                                                           **dict(mag_df))
-            except (DatabaseError, PandasDatabaseError) as e:
-                logger.error("DatabaseError occurred when accessing mag_measurements_table, file: %s" % self.name)
-                logger.error(e)
+            if (self._series is not None and MagnetometerSeries in self._series) or self._series is None:
+                try:
+                    mag_df = pd.read_sql_query("SELECT * from mag_measurements_table", db_con)
+                    self.measurements[MagnetometerSeries] = MagnetometerSeries(rdy_format_version=self.rdy_format_version,
+                                                                               **dict(mag_df))
+                except (DatabaseError, PandasDatabaseError) as e:
+                    logger.error("DatabaseError occurred when accessing mag_measurements_table, file: %s" % self.name)
+                    logger.error(e)
 
-            try:
-                mag_uncal_df = pd.read_sql_query("SELECT * from mag_uncal_measurements_table", db_con)
-                self.measurements[MagnetometerUncalibratedSeries] = MagnetometerUncalibratedSeries(
-                    rdy_format_version=self.rdy_format_version, **dict(mag_uncal_df))
-            except (DatabaseError, PandasDatabaseError) as e:
-                logger.error("DatabaseError occurred when accessing mag_uncal_measurements_table, file: %s" % self.name)
-                logger.error(e)
+            if (self._series is not None and MagnetometerUncalibratedSeries in self._series) or self._series is None:
+                try:
+                    mag_uncal_df = pd.read_sql_query("SELECT * from mag_uncal_measurements_table", db_con)
+                    self.measurements[MagnetometerUncalibratedSeries] = MagnetometerUncalibratedSeries(
+                        rdy_format_version=self.rdy_format_version, **dict(mag_uncal_df))
+                except (DatabaseError, PandasDatabaseError) as e:
+                    logger.error("DatabaseError occurred when accessing mag_uncal_measurements_table, file: %s" % self.name)
+                    logger.error(e)
 
-            try:
-                orient_df = pd.read_sql_query("SELECT * from orient_measurements_table", db_con)
-                self.measurements[OrientationSeries] = OrientationSeries(rdy_format_version=self.rdy_format_version,
-                                                                         **dict(orient_df))
-            except (DatabaseError, PandasDatabaseError) as e:
-                logger.error(
-                    "DatabaseError occurred when accessing orient_measurements_table, file: %s" % self.name)
-                logger.error(e)
+            if (self._series is not None and OrientationSeries in self._series) or self._series is None:
+                try:
+                    orient_df = pd.read_sql_query("SELECT * from orient_measurements_table", db_con)
+                    self.measurements[OrientationSeries] = OrientationSeries(rdy_format_version=self.rdy_format_version,
+                                                                             **dict(orient_df))
+                except (DatabaseError, PandasDatabaseError) as e:
+                    logger.error(
+                        "DatabaseError occurred when accessing orient_measurements_table, file: %s" % self.name)
+                    logger.error(e)
 
-            try:
-                gyro_df = pd.read_sql_query("SELECT * from gyro_measurements_table", db_con)
-                self.measurements[GyroSeries] = GyroSeries(rdy_format_version=self.rdy_format_version,
-                                                           **dict(gyro_df))
-            except (DatabaseError, PandasDatabaseError) as e:
-                logger.error("DatabaseError occurred when accessing gyro_measurements_table, file: %s" % self.name)
-                logger.error(e)
+            if (self._series is not None and GyroSeries in self._series) or self._series is None:
+                try:
+                    gyro_df = pd.read_sql_query("SELECT * from gyro_measurements_table", db_con)
+                    self.measurements[GyroSeries] = GyroSeries(rdy_format_version=self.rdy_format_version,
+                                                               **dict(gyro_df))
+                except (DatabaseError, PandasDatabaseError) as e:
+                    logger.error("DatabaseError occurred when accessing gyro_measurements_table, file: %s" % self.name)
+                    logger.error(e)
 
-            try:
-                gyro_uncal_df = pd.read_sql_query("SELECT * from gyro_uncal_measurements_table", db_con)
-                self.measurements[GyroUncalibratedSeries] = GyroUncalibratedSeries(
-                    rdy_format_version=self.rdy_format_version, **dict(gyro_uncal_df))
-            except (DatabaseError, PandasDatabaseError) as e:
-                logger.error(
-                    "DatabaseError occurred when accessing gyro_uncal_measurements_table, file: %s" % self.name)
-                logger.error(e)
+            if (self._series is not None and GyroUncalibratedSeries in self._series) or self._series is None:
+                try:
+                    gyro_uncal_df = pd.read_sql_query("SELECT * from gyro_uncal_measurements_table", db_con)
+                    self.measurements[GyroUncalibratedSeries] = GyroUncalibratedSeries(
+                        rdy_format_version=self.rdy_format_version, **dict(gyro_uncal_df))
+                except (DatabaseError, PandasDatabaseError) as e:
+                    logger.error(
+                        "DatabaseError occurred when accessing gyro_uncal_measurements_table, file: %s" % self.name)
+                    logger.error(e)
 
-            try:
-                rot_df = pd.read_sql_query("SELECT * from rot_measurements_table", db_con)
-                self.measurements[RotationSeries] = RotationSeries(rdy_format_version=self.rdy_format_version,
-                                                                   **dict(rot_df))
-            except (DatabaseError, PandasDatabaseError) as e:
-                logger.error("DatabaseError occurred when accessing rot_measurements_table, file: %s" % self.name)
-                logger.error(e)
+            if (self._series is not None and RotationSeries in self._series) or self._series is None:
+                try:
+                    rot_df = pd.read_sql_query("SELECT * from rot_measurements_table", db_con)
+                    self.measurements[RotationSeries] = RotationSeries(rdy_format_version=self.rdy_format_version,
+                                                                       **dict(rot_df))
+                except (DatabaseError, PandasDatabaseError) as e:
+                    logger.error("DatabaseError occurred when accessing rot_measurements_table, file: %s" % self.name)
+                    logger.error(e)
 
-            try:
-                gps_df = pd.read_sql_query("SELECT * from gps_measurements_table", db_con)
-                self.measurements[GPSSeries] = GPSSeries(rdy_format_version=self.rdy_format_version,
-                                                         **dict(gps_df))
-            except (DatabaseError, PandasDatabaseError) as e:
-                logger.error("DatabaseError occurred when accessing gps_measurements_table, file: %s" % self.name)
-                logger.error(e)
+            if (self._series is not None and GPSSeries in self._series) or self._series is None:
+                try:
+                    gps_df = pd.read_sql_query("SELECT * from gps_measurements_table", db_con)
+                    self.measurements[GPSSeries] = GPSSeries(rdy_format_version=self.rdy_format_version,
+                                                             **dict(gps_df))
+                except (DatabaseError, PandasDatabaseError) as e:
+                    logger.error("DatabaseError occurred when accessing gps_measurements_table, file: %s" % self.name)
+                    logger.error(e)
 
-            try:
-                gnss_df = pd.read_sql_query("SELECT * from gnss_measurement_table", db_con)
-                self.measurements[GNSSMeasurementSeries] = GNSSMeasurementSeries(
-                    rdy_format_version=self.rdy_format_version, **dict(gnss_df))
-            except (DatabaseError, PandasDatabaseError) as e:
-                logger.error("DatabaseError occurred when accessing gnss_measurement_table, file: %s" % self.name)
-                logger.error(e)
+            if (self._series is not None and GNSSMeasurementSeries in self._series) or self._series is None:
+                try:
+                    gnss_df = pd.read_sql_query("SELECT * from gnss_measurement_table", db_con)
+                    self.measurements[GNSSMeasurementSeries] = GNSSMeasurementSeries(
+                        rdy_format_version=self.rdy_format_version, **dict(gnss_df))
+                except (DatabaseError, PandasDatabaseError) as e:
+                    logger.error("DatabaseError occurred when accessing gnss_measurement_table, file: %s" % self.name)
+                    logger.error(e)
 
-            try:
-                gnss_clock_df = pd.read_sql_query("SELECT * from gnss_clock_measurement_table", db_con)
-                self.measurements[GNSSClockMeasurementSeries] = GNSSClockMeasurementSeries(
-                    rdy_format_version=self.rdy_format_version, **dict(gnss_clock_df))
-            except (DatabaseError, PandasDatabaseError) as e:
-                logger.error("DatabaseError occurred when accessing gnss_clock_measurement_table, file: %s" % self.name)
-                logger.error(e)
+            if (self._series is not None and GNSSClockMeasurementSeries in self._series) or self._series is None:
+                try:
+                    gnss_clock_df = pd.read_sql_query("SELECT * from gnss_clock_measurement_table", db_con)
+                    self.measurements[GNSSClockMeasurementSeries] = GNSSClockMeasurementSeries(
+                        rdy_format_version=self.rdy_format_version, **dict(gnss_clock_df))
+                except (DatabaseError, PandasDatabaseError) as e:
+                    logger.error("DatabaseError occurred when accessing gnss_clock_measurement_table, file: %s" % self.name)
+                    logger.error(e)
 
-            try:
-                nmea_df = pd.read_sql_query("SELECT * from nmea_messages_table", db_con)
-                self.measurements[NMEAMessageSeries] = NMEAMessageSeries(
-                    rdy_format_version=self.rdy_format_version, **dict(nmea_df))
-            except (DatabaseError, PandasDatabaseError) as e:
-                logger.error("DatabaseError occurred when accessing nmea_messages_table, file: %s" % self.name)
-                logger.error(e)
+            if (self._series is not None and NMEAMessageSeries in self._series) or self._series is None:
+                try:
+                    nmea_df = pd.read_sql_query("SELECT * from nmea_messages_table", db_con)
+                    self.measurements[NMEAMessageSeries] = NMEAMessageSeries(
+                        rdy_format_version=self.rdy_format_version, **dict(nmea_df))
+                except (DatabaseError, PandasDatabaseError) as e:
+                    logger.error("DatabaseError occurred when accessing nmea_messages_table, file: %s" % self.name)
+                    logger.error(e)
 
-            try:
-                pressure_df = pd.read_sql_query("SELECT * from pressure_measurements_table", db_con)
-                self.measurements[PressureSeries] = PressureSeries(rdy_format_version=self.rdy_format_version,
-                                                                   **dict(pressure_df))
-            except (DatabaseError, PandasDatabaseError) as e:
-                logger.error(
-                    "DatabaseError occurred when accessing pressure_measurements_table, file: %s" % self.name)
-                logger.error(e)
+            if (self._series is not None and PressureSeries in self._series) or self._series is None:
+                try:
+                    pressure_df = pd.read_sql_query("SELECT * from pressure_measurements_table", db_con)
+                    self.measurements[PressureSeries] = PressureSeries(rdy_format_version=self.rdy_format_version,
+                                                                       **dict(pressure_df))
+                except (DatabaseError, PandasDatabaseError) as e:
+                    logger.error(
+                        "DatabaseError occurred when accessing pressure_measurements_table, file: %s" % self.name)
+                    logger.error(e)
 
-            try:
-                temperature_df = pd.read_sql_query("SELECT * from temperature_measurements_table", db_con)
-                self.measurements[TemperatureSeries] = TemperatureSeries(rdy_format_version=self.rdy_format_version,
-                                                                         **dict(temperature_df))
-            except (DatabaseError, PandasDatabaseError) as e:
-                logger.error(
-                    "DatabaseError occurred when accessing temperature_measurements_table, file: %s" % self.name)
-                logger.error(e)
+            if (self._series is not None and TemperatureSeries in self._series) or self._series is None:
+                try:
+                    temperature_df = pd.read_sql_query("SELECT * from temperature_measurements_table", db_con)
+                    self.measurements[TemperatureSeries] = TemperatureSeries(rdy_format_version=self.rdy_format_version,
+                                                                             **dict(temperature_df))
+                except (DatabaseError, PandasDatabaseError) as e:
+                    logger.error(
+                        "DatabaseError occurred when accessing temperature_measurements_table, file: %s" % self.name)
+                    logger.error(e)
 
-            try:
-                humidity_df = pd.read_sql_query("SELECT * from humidity_measurements_table", db_con)
-                self.measurements[HumiditySeries] = HumiditySeries(rdy_format_version=self.rdy_format_version,
-                                                                   **dict(humidity_df))
-            except (DatabaseError, PandasDatabaseError) as e:
-                logger.error(
-                    "DatabaseError occurred when accessing humidity_measurements_table, file: %s" % self.name)
-                logger.error(e)
+            if (self._series is not None and HumiditySeries in self._series) or self._series is None:
+                try:
+                    humidity_df = pd.read_sql_query("SELECT * from humidity_measurements_table", db_con)
+                    self.measurements[HumiditySeries] = HumiditySeries(rdy_format_version=self.rdy_format_version,
+                                                                       **dict(humidity_df))
+                except (DatabaseError, PandasDatabaseError) as e:
+                    logger.error(
+                        "DatabaseError occurred when accessing humidity_measurements_table, file: %s" % self.name)
+                    logger.error(e)
 
-            try:
-                light_df = pd.read_sql_query("SELECT * from light_measurements_table", db_con)
-                self.measurements[LightSeries] = LightSeries(rdy_format_version=self.rdy_format_version,
-                                                             **dict(light_df))
-            except (DatabaseError, PandasDatabaseError) as e:
-                logger.error("DatabaseError occurred when accessing light_measurements_table, file: %s" % self.name)
-                logger.error(e)
+            if (self._series is not None and LightSeries in self._series) or self._series is None:
+                try:
+                    light_df = pd.read_sql_query("SELECT * from light_measurements_table", db_con)
+                    self.measurements[LightSeries] = LightSeries(rdy_format_version=self.rdy_format_version,
+                                                                 **dict(light_df))
+                except (DatabaseError, PandasDatabaseError) as e:
+                    logger.error("DatabaseError occurred when accessing light_measurements_table, file: %s" % self.name)
+                    logger.error(e)
 
-            try:
-                wz_df = pd.read_sql_query("SELECT * from wz_measurements_table", db_con)
-                self.measurements[WzSeries] = WzSeries(rdy_format_version=self.rdy_format_version,
-                                                       **dict(wz_df))
-            except (DatabaseError, PandasDatabaseError) as e:
-                logger.error("DatabaseError occurred when accessing wz_measurements_table, file: %s" % self.name)
-                logger.error(e)
+            if (self._series is not None and WzSeries in self._series) or self._series is None:
+                try:
+                    wz_df = pd.read_sql_query("SELECT * from wz_measurements_table", db_con)
+                    self.measurements[WzSeries] = WzSeries(rdy_format_version=self.rdy_format_version,
+                                                           **dict(wz_df))
+                except (DatabaseError, PandasDatabaseError) as e:
+                    logger.error("DatabaseError occurred when accessing wz_measurements_table, file: %s" % self.name)
+                    logger.error(e)
 
-            try:
-                subjective_comfort_df = pd.read_sql_query("SELECT * from subjective_comfort_measurements_table", db_con)
-                self.measurements[SubjectiveComfortSeries] = SubjectiveComfortSeries(
-                    rdy_format_version=self.rdy_format_version,
-                    **dict(subjective_comfort_df))
-            except (DatabaseError, PandasDatabaseError) as e:
-                logger.error(
-                    "DatabaseError occurred when accessing subjective_comfort_measurements_table, file: %s" % self.name)
-                logger.error(e)
+            if (self._series is not None and SubjectiveComfortSeries in self._series) or self._series is None:
+                try:
+                    subjective_comfort_df = pd.read_sql_query("SELECT * from subjective_comfort_measurements_table", db_con)
+                    self.measurements[SubjectiveComfortSeries] = SubjectiveComfortSeries(
+                        rdy_format_version=self.rdy_format_version,
+                        **dict(subjective_comfort_df))
+                except (DatabaseError, PandasDatabaseError) as e:
+                    logger.error(
+                        "DatabaseError occurred when accessing subjective_comfort_measurements_table, file: %s" % self.name)
+                    logger.error(e)
 
             db_con.close()
 

@@ -4,7 +4,7 @@ import os
 from functools import partial
 from multiprocessing import Pool
 from pathlib import Path
-from typing import List, Union, Tuple, Optional
+from typing import List, Union, Tuple, Optional, TypeVar, Type
 
 from ipyleaflet import Map, Polyline, Marker, Icon, FullScreenControl, ScaleControl
 from ipywidgets import HTML
@@ -13,18 +13,22 @@ from tqdm.auto import tqdm
 from . import config
 from .file import RDYFile
 from .osm import OSM, OSMRailwaySwitch, OSMRailwaySignal, OSMLevelCrossing
-from .utils import GPSSeries
+from .utils import GPSSeries, TimeSeries
 from .utils.tools import generate_random_color
 
 logger = logging.getLogger(__name__)
+TimeSeriesType = TypeVar('TimeSeriesType', bound='TimeSeries')
 
 
 class Campaign:
     def __init__(self, name="", folder: Union[list, str] = None, recursive=True, exclude: Union[list, str] = None,
-                 sync_method: str = "timestamp", strip_timezone: bool = True, cutoff: bool = True, lat_sw: float = None,
+                 sync_method: str = "timestamp",
+                 timedelta_unit: str = 'timedelta64[ns]',
+                 strip_timezone: bool = True, cutoff: bool = True, lat_sw: float = None,
                  lon_sw: float = None, lat_ne: float = None, lon_ne: float = None,
                  download_osm_data: bool = False, map_matching: bool = False, osm_recurse_type: str = ">",
-                 railway_types: Union[list, str] = None):
+                 railway_types: Union[list, str] = None,
+                 series: Union[List[Type[TimeSeries]], Type[TimeSeries]] = None):
         """
 
         Parameters
@@ -62,8 +66,9 @@ class Campaign:
             Railway type to be downloaded from OSM, e.g., "rail", "subway", "tram" or "light_rail"
         osm_recurse_type : str
             Recurse type to be used when querying OSM data using the overpass API
+        series: list or TimeSeries
+            Classes of TimeSeries to load, if None all TimeSeries of each file will be imported
         """
-
         self._colors = []  # Used colors
 
         self.folder = folder
@@ -77,11 +82,29 @@ class Campaign:
         self.osm_mappings = {}  # Map Matching results for each file
         self.map_matching = map_matching
 
-        if sync_method is not None and sync_method not in ["timestamp", "device_time", "gps_time", "ntp_time"]:
+        # Sanity check if series is arg is valid
+        if series:
+            if type(series) is list:
+                for s in series:
+                    if not issubclass(s, TimeSeries):
+                        raise ValueError("%s in %s is not a TimeSeries!" % (type(s), list(series)))
+                self._series = series
+            elif issubclass(series, TimeSeries):
+                self._series = [series]
+                pass
+            else:
+                raise ValueError("series argument must be list of TimeSeries or TimeSeries! not %s" % type(series))
+        else:
+            self._series = None
+
+        if sync_method is not None and sync_method not in ["timestamp", "seconds", "device_time", "gps_time",
+                                                           "ntp_time"]:
             raise ValueError(
-                "synchronize argument must 'timestamp', 'device_time', 'gps_time' or 'ntp_time' not %s" % sync_method)
+                "synchronize argument must 'timestamp', 'seconds', 'device_time', 'gps_time' or 'ntp_time' not %s" %
+                sync_method)
 
         self.sync_method = sync_method
+        self.timedelta_unit = timedelta_unit # Only relevant for timestamp sync method
         self.strip_timezone = strip_timezone
         self.cutoff = cutoff
 
@@ -91,6 +114,7 @@ class Campaign:
             self.import_folder(self.folder, recursive, exclude,
                                cutoff=self.cutoff,
                                sync_method=self.sync_method,
+                               timedelta_unit=self.timedelta_unit,
                                strip_timezone=self.strip_timezone)
 
         if not self.lat_sw or not self.lat_ne or not self.lon_sw or not self.lon_ne:
@@ -357,6 +381,7 @@ class Campaign:
 
     def import_files(self, file_paths: Union[list, str] = None,
                      sync_method: str = "timestamp",
+                     timedelta_unit: str = 'timedelta64[ns]',
                      cutoff: bool = True,
                      strip_timezone: bool = True,
                      det_geo_extent: bool = True,
@@ -368,6 +393,8 @@ class Campaign:
 
         Parameters
         ----------
+        timedelta_unit: str , default: 'timedelta64[ns]'
+            Timedelta unit for timestamp sync method
         strip_timezone: bool, default: True
             If True, strips timezone from timestamp arrays
         cutoff: bool, default: True
@@ -402,15 +429,18 @@ class Campaign:
                 files = list(tqdm(p.imap(partial(RDYFile,
                                                  sync_method=sync_method,
                                                  strip_timezone=strip_timezone,
-                                                 cutoff=cutoff), file_paths)))
+                                                 cutoff=cutoff,
+                                                 series=self._series), file_paths)))
                 for f in files:
                     self.files.append(f)
         else:
             for p in tqdm(file_paths):
                 self.files.append(RDYFile(path=p,
                                           sync_method=sync_method,
+                                          timedelta_unit=timedelta_unit,
                                           strip_timezone=strip_timezone,
-                                          cutoff=cutoff))
+                                          cutoff=cutoff,
+                                          series=self._series))
 
         if osm_recurse_type:
             self.osm_recurse_type = osm_recurse_type
