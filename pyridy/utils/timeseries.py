@@ -18,8 +18,13 @@ class TimeSeries(ABC):
         kwargs
         """
         self.rdy_format_version = kwargs["rdy_format_version"]
+        self.filename = kwargs['filename']
         kwargs.pop("rdy_format_version")
+        kwargs.pop('filename')
         kwargs.pop("__class__")
+
+        if 'time' not in kwargs:
+            logger.warning('TimeSeries has no time!')
 
         for k, v in kwargs.items():  # Replaces None values arguments with empty lists
             if v is None and k != "rdy_format_version":
@@ -30,8 +35,9 @@ class TimeSeries(ABC):
                 else:
                     kwargs[k] = np.array(v)
 
-            if k != "time" and len(kwargs["time"]) > 0 and len(v) == 0:
-                kwargs[k] = np.zeros(len(kwargs["time"]))
+            if 'time' in kwargs and kwargs['time'] is not None and v is not None:
+                if k != "time" and 'time' in kwargs and len(kwargs["time"]) > 0 and len(v) == 0:
+                    kwargs[k] = np.zeros(len(kwargs["time"]))
 
         self.__dict__.update(kwargs)
 
@@ -50,10 +56,11 @@ class TimeSeries(ABC):
             return len(self.time)
 
     def __repr__(self):
-        return "Length: %d, Duration: %s, Mean sample rate: %.3f Hz" % (len(self._time),
-                                                                        str(datetime.timedelta(
-                                                                            seconds=self.get_duration())),
-                                                                        self.get_sample_rate())
+        return "(%s), Length: %d, Duration: %s, Mean sample rate: %.3f Hz" % (self.filename,
+                                                                              len(self._time),
+                                                                              str(datetime.timedelta(
+                                                                                  seconds=self.get_duration())),
+                                                                              self.get_sample_rate())
 
     def cutoff(self, timestamp_when_started: int, timestamp_when_stopped: int):
         """ Cuts off measurement values saved before/after the measurement was started/stopped
@@ -67,12 +74,13 @@ class TimeSeries(ABC):
         """
         if timestamp_when_started and timestamp_when_stopped:
             if timestamp_when_started >= timestamp_when_stopped:
-                raise ValueError("timestamp_when_stopped must be greater than timestamp_when_started")
+                raise ValueError("(%s) timestamp_when_stopped must be greater than timestamp_when_started" %
+                                 self.filename)
 
             if len(self.time) > 0 and self.time[0] != 0:
                 d = self.__dict__.copy()
 
-                for key in ["rdy_format_version"]:
+                for key in ["filename", "rdy_format_version"]:
                     d.pop(key)
 
                 t = d["time"]
@@ -83,9 +91,10 @@ class TimeSeries(ABC):
 
                 self._timedelta: np.ndarray = np.diff(self._time)
             else:
-                logger.info("Cannot cutoff series if timeseries is empty or series already starts at 0")
+                logger.info("(%s) Cannot cutoff %s if timeseries is empty or series already starts at 0"
+                            % (self.filename, type(self)))
         else:
-            logger.warning("Cannot cutoff timeseries, series timestamp_when_started "
+            logger.warning("(%s) Cannot cutoff %s, if timestamp_when_started " % (self.filename, type(self)) +
                            "and/or timestamp_when_stopped are None")
 
         pass
@@ -100,6 +109,7 @@ class TimeSeries(ABC):
         """
         d = self.__dict__.copy()
         d.pop("rdy_format_version")
+        d.pop("filename")
         d.pop("_timedelta")
         return pd.DataFrame(dict([(k, pd.Series(v)) for k, v in d.items()])).set_index("time")
 
@@ -112,7 +122,7 @@ class TimeSeries(ABC):
         """
         d = self.__dict__.copy()
 
-        for k in ["rdy_format_version", "time", "_time", "_timedelta"]:
+        for k in ["rdy_format_version", "time", "_time", "_timedelta", "filename"]:
             d.pop(k)
 
         return list(d.keys())
@@ -178,49 +188,59 @@ class TimeSeries(ABC):
         """
         if sync_timestamp and type(sync_timestamp) not in [int, np.int64]:
             raise ValueError(
-                "sync_timestamp must be integer for method %s, not %s" % (method, str(type(sync_timestamp))))
+                "(%s) sync_timestamp must be integer for method %s, not %s" % (self.filename,
+                                                                               method,
+                                                                               str(type(sync_timestamp))))
 
         if type(sync_time) != np.datetime64:
             raise ValueError(
-                "sync_time must be np.datetime64 for method %s, not %s" % (method, str(type(sync_timestamp))))
+                "(%s) sync_time must be np.datetime64 for method %s, not %s" % (self.filename,
+                                                                                method,
+                                                                                str(type(sync_timestamp))))
 
         if not np.array_equal(self._time, np.array(None)) and len(self._time) > 0:
             if method == "timestamp":
                 if self._time[0] == 0:
-                    logger.info("Timeseries already starts at 0, cant sync with t0")
+                    logger.info("(%s) %s already starts at 0, cant sync with t0" % (self.filename,
+                                                                                    type(self)))
                     self.time = self._time.astype(timedelta_unit)
                 else:
                     if sync_timestamp:
                         self.time = (self._time - sync_timestamp).astype(timedelta_unit)
                     else:
-                        logger.warning("sync_timestamp is None, using first timestamp syncing")
+                        logger.warning("(%s) sync_timestamp is None, using first timestamp syncing" % self.filename)
                         self.time = (self._time - self._time[0]).astype(timedelta_unit)
             elif method == "seconds":
                 if self._time[0] == 0:
-                    logger.info("Timeseries already starts at 0, cant sync with t0, only converting to seconds")
+                    logger.info("(%s) %s already starts at 0, cant sync with t0, only converting to seconds"
+                                % (self.filename, type(self)))
                     self.time = self._time.astype(timedelta_unit) / np.timedelta64(1, "s")
                 else:
                     if sync_timestamp:
                         self.time = (self._time - sync_timestamp).astype(timedelta_unit) / np.timedelta64(1, "s")
                     else:
-                        logger.warning("sync_timestamp is None, using first timestamp syncing")
+                        logger.warning("(%s) sync_timestamp is None, using first timestamp syncing" % self.filename)
                         self.time = (self._time - self._time[0]).astype(timedelta_unit) / np.timedelta64(1, "s")
             elif method == "device_time":
                 if self._time[0] == 0:
-                    logger.info("Timeseries already starts at 0, timestamp syncing not appropriate")
+                    logger.info("(%s) %s already starts at 0, timestamp syncing not appropriate"
+                                % (self.filename, type(self)))
+
                     self.time = self._time.astype(timedelta_unit) + sync_time
                 else:
                     self.time = (self._time - sync_timestamp).astype(timedelta_unit) + sync_time
             elif method == "gps_time" or method == "ntp_time":
                 if self._time[0] == 0:
-                    logger.info("Timeseries already starts at 0, cant sync to due to lack of proper timestamp")
+                    logger.info("(%s) %s already starts at 0, cant sync to due to lack of proper timestamp"
+                                % (self.filename, type(self)))
                 else:
                     self.time = (self._time - sync_timestamp).astype(timedelta_unit) + sync_time
                 pass
             else:
-                raise ValueError("Method %s not supported" % method)
+                raise ValueError("(%s) Method %s not supported" % (self.filename, method))
         else:
-            logger.info("Trying to synchronize timestamps on empty %s" % self.__class__.__name__)
+            logger.info("(%s) Trying to synchronize timestamps on empty %s" % (self.filename,
+                                                                               type(self)))
 
 
 class AccelerationSeries(TimeSeries):
@@ -228,7 +248,8 @@ class AccelerationSeries(TimeSeries):
                  acc_x: Union[list, np.ndarray] = None,
                  acc_y: Union[list, np.ndarray] = None,
                  acc_z: Union[list, np.ndarray] = None,
-                 rdy_format_version: float = None):
+                 rdy_format_version: float = None,
+                 filename: str = ""):
         """ Series containing acceleration values
         See https://developer.android.com/guide/topics/sensors/sensors_overview for more information
         on Android sensors
@@ -252,7 +273,8 @@ class AccelerationUncalibratedSeries(TimeSeries):
                  acc_uncal_x: Union[list, np.ndarray] = None,
                  acc_uncal_y: Union[list, np.ndarray] = None,
                  acc_uncal_z: Union[list, np.ndarray] = None,
-                 rdy_format_version: float = None):
+                 rdy_format_version: float = None,
+                 filename: str = ""):
         """ Series containing uncalibrated acceleration values
 
         Parameters
@@ -273,7 +295,9 @@ class LinearAccelerationSeries(TimeSeries):
                  lin_acc_x: Union[list, np.ndarray] = None,
                  lin_acc_y: Union[list, np.ndarray] = None,
                  lin_acc_z: Union[list, np.ndarray] = None,
-                 rdy_format_version: float = None, **kwargs):
+                 rdy_format_version: float = None,
+                 filename: str = "",
+                 **kwargs):
         """ Series containing linear acceleration values (i.e. without g)
 
         Parameters
@@ -309,7 +333,8 @@ class MagnetometerSeries(TimeSeries):
                  mag_x: Union[list, np.ndarray] = None,
                  mag_y: Union[list, np.ndarray] = None,
                  mag_z: Union[list, np.ndarray] = None,
-                 rdy_format_version: float = None):
+                 rdy_format_version: float = None,
+                 filename: str = ""):
         """ Series containing magnetic field values
 
         Parameters
@@ -330,7 +355,8 @@ class MagnetometerUncalibratedSeries(TimeSeries):
                  mag_uncal_x: Union[list, np.ndarray] = None,
                  mag_uncal_y: Union[list, np.ndarray] = None,
                  mag_uncal_z: Union[list, np.ndarray] = None,
-                 rdy_format_version: float = None):
+                 rdy_format_version: float = None,
+                 filename: str = ""):
         """ Series containing uncalibrated magnetic field values
 
         Parameters
@@ -351,7 +377,8 @@ class NMEAMessageSeries(TimeSeries):
                  time: Union[list, np.ndarray] = None,
                  utc_time: Union[list, np.ndarray] = None,
                  msg: Union[list, np.ndarray] = None,
-                 rdy_format_version: float = None):
+                 rdy_format_version: float = None,
+                 filename: str = ""):
         """ Series containing raw NMEA strings from GNSS chipset
         See https://www.wikiwand.com/en/NMEA_0183 for more information on NMEA messages
 
@@ -384,7 +411,8 @@ class GNSSClockMeasurementSeries(TimeSeries):
                  reference_constellation_type_for_isb: Union[list, np.ndarray] = None,
                  time_nanos: Union[list, np.ndarray] = None,
                  time_uncertainty_nanos: Union[list, np.ndarray] = None,
-                 rdy_format_version: float = None):
+                 rdy_format_version: float = None,
+                 filename: str = ""):
         """ Series containing raw GNSS clock values
         See https://developer.android.com/reference/android/location/GnssClock for more information on individual
         parameters
@@ -442,7 +470,8 @@ class GNSSMeasurementSeries(TimeSeries):
                  state: Union[list, np.ndarray] = None,
                  svid: Union[list, np.ndarray] = None,
                  time_offset_nanos: Union[list, np.ndarray] = None,
-                 rdy_format_version: float = None):
+                 rdy_format_version: float = None,
+                 filename: str = ""):
         """ Series containing raw GNSS measurements
         See https://developer.android.com/reference/android/location/GnssMeasurement for more information on
         specific values
@@ -487,7 +516,8 @@ class OrientationSeries(TimeSeries):
                  azimuth: Union[list, np.ndarray] = None,
                  pitch: Union[list, np.ndarray] = None,
                  roll: Union[list, np.ndarray] = None,
-                 rdy_format_version: float = None):
+                 rdy_format_version: float = None,
+                 filename: str = ""):
         """ Series containing orientation values
 
         Parameters
@@ -508,7 +538,8 @@ class GyroSeries(TimeSeries):
                  w_x: Union[list, np.ndarray] = None,
                  w_y: Union[list, np.ndarray] = None,
                  w_z: Union[list, np.ndarray] = None,
-                 rdy_format_version: float = None):
+                 rdy_format_version: float = None,
+                 filename: str = ""):
         """ Series containing gyro values
 
         Parameters
@@ -529,7 +560,8 @@ class GyroUncalibratedSeries(TimeSeries):
                  w_uncal_x: Union[list, np.ndarray] = None,
                  w_uncal_y: Union[list, np.ndarray] = None,
                  w_uncal_z: Union[list, np.ndarray] = None,
-                 rdy_format_version: float = None):
+                 rdy_format_version: float = None,
+                 filename: str = ""):
         """ Series containing uncalibrated gyro values
 
         Parameters
@@ -552,7 +584,8 @@ class RotationSeries(TimeSeries):
                  rot_z: Union[list, np.ndarray] = None,
                  cos_phi: Union[list, np.ndarray] = None,
                  heading_acc: Union[list, np.ndarray] = None,
-                 rdy_format_version: float = None):
+                 rdy_format_version: float = None,
+                 filename: str = ""):
         """ Series containing rotation values
 
         Parameters
@@ -582,7 +615,8 @@ class GPSSeries(TimeSeries):
                  bear_acc: Union[list, np.ndarray] = None,
                  speed_acc: Union[list, np.ndarray] = None,
                  utc_time: Union[list, np.ndarray] = None,
-                 rdy_format_version: float = None):
+                 rdy_format_version: float = None,
+                 filename: str = ""):
         """ Series containing GPS values
 
         Parameters
@@ -624,7 +658,8 @@ class GPSSeries(TimeSeries):
 class PressureSeries(TimeSeries):
     def __init__(self, time: Union[list, np.ndarray] = None,
                  pressure: Union[list, np.ndarray] = None,
-                 rdy_format_version: float = None):
+                 rdy_format_version: float = None,
+                 filename: str = ""):
         """
 
         Parameters
@@ -641,7 +676,8 @@ class PressureSeries(TimeSeries):
 class TemperatureSeries(TimeSeries):
     def __init__(self, time: Union[list, np.ndarray] = None,
                  temperature: Union[list, np.ndarray] = None,
-                 rdy_format_version: float = None):
+                 rdy_format_version: float = None,
+                 filename: str = ""):
         """
 
         Parameters
@@ -658,7 +694,8 @@ class TemperatureSeries(TimeSeries):
 class HumiditySeries(TimeSeries):
     def __init__(self, time: Union[list, np.ndarray] = None,
                  humidity: Union[list, np.ndarray] = None,
-                 rdy_format_version: float = None):
+                 rdy_format_version: float = None,
+                 filename: str = ""):
         """
 
         Parameters
@@ -675,7 +712,8 @@ class HumiditySeries(TimeSeries):
 class LightSeries(TimeSeries):
     def __init__(self, time: Union[list, np.ndarray] = None,
                  light: Union[list, np.ndarray] = None,
-                 rdy_format_version: float = None):
+                 rdy_format_version: float = None,
+                 filename: str = ""):
         """
 
         Parameters
@@ -694,7 +732,8 @@ class WzSeries(TimeSeries):
                  wz_x: Union[list, np.ndarray] = None,
                  wz_y: Union[list, np.ndarray] = None,
                  wz_z: Union[list, np.ndarray] = None,
-                 rdy_format_version: float = None):
+                 rdy_format_version: float = None,
+                 filename: str = ""):
         """
 
         Parameters
@@ -713,7 +752,8 @@ class WzSeries(TimeSeries):
 class SubjectiveComfortSeries(TimeSeries):
     def __init__(self, time: Union[list, np.ndarray] = None,
                  comfort: Union[list, np.ndarray] = None,
-                 rdy_format_version: float = None):
+                 rdy_format_version: float = None,
+                 filename: str = ""):
         """
 
         Parameters

@@ -56,6 +56,7 @@ class OSM:
 
         self.overpass_api = overpy.Overpass()
         self.overpass_api_alt = overpy.Overpass(url="https://overpass.kumi.systems/api/interpreter")
+        self.overpass_api_ifs = overpy.Overpass(url="http://134.130.76.80:12345/api/interpreter")
 
         self.lon_sw = lon_sw
         self.lat_sw = lat_sw
@@ -93,7 +94,10 @@ class OSM:
                          for n1, n2 in zip(w.nodes, w.nodes[1:])]
                 self.G.add_weighted_edges_from(edges, weight="d", way_id=w.id)
 
-            self._check_allowed_switch_transits()
+            if len(self.G.nodes) > 0:
+                self._check_allowed_switch_transits()
+            else:
+                logger.warning("Can't check allowed switch transits, because the Graph has no nodes!")
 
         logger.info("Initialized region: %f, %f (SW), %f, %f (NE)" % (self.lon_sw,
                                                                       self.lat_sw,
@@ -223,12 +227,31 @@ class OSM:
             logger.warning("Cant download OSM data because of not internet connection")
 
     def query_overpass(self, query: str, attempts: int = 3) -> Result:
-        for a in range(attempts):
+        if internet(host="134.130.76.80", port=12345):  # IFS internal Overpass instance
+            for a in range(attempts):
+                time.sleep(a)
+                try:
+                    logger.info("Trying to query OSM data, %d/%d tries" % (a, attempts))
+                    result = self.overpass_api_ifs.query(query)
+                    logger.info("Successfully queried OSM Data using IFS Overpass instance")
+                    return result
+                except overpy.exception.OverpassTooManyRequests as e:
+                    logger.warning("OverpassTooManyRequest, retrying".format(e))
+                except overpy.exception.OverpassRuntimeError as e:
+                    logger.warning("OverpassRuntimeError, retrying".format(e))
+                except overpy.exception.OverpassGatewayTimeout as e:
+                    logger.warning("OverpassTooManyRequest, retrying".format(e))
+                except overpy.exception.OverpassBadRequest as e:
+                    logger.warning("OverpassTooManyRequest, retrying".format(e))
+                except socket.timeout as e:
+                    logger.warning("Socket timeout, retrying".format(e))
+
+        for a in range(attempts): # Default Overpass instance
             time.sleep(a)
             try:
                 logger.info("Trying to query OSM data, %d/%d tries" % (a, attempts))
                 result = self.overpass_api.query(query)
-                logger.info("Successfully queried OSM Data")
+                logger.info("Successfully queried OSM Data using default Overpass instance")
                 return result
             except overpy.exception.OverpassTooManyRequests as e:
                 logger.warning("OverpassTooManyRequest, retrying".format(e))
@@ -247,7 +270,7 @@ class OSM:
             try:
                 logger.info("Trying to query OSM data, %d/%d tries" % (a, attempts))
                 result = self.overpass_api_alt.query(query)
-                logger.info("Successfully queried OSM Data")
+                logger.info("Successfully queried OSM Data using alternative IFS instance")
                 return result
             except overpy.exception.OverpassTooManyRequests as e:
                 logger.warning("OverpassTooManyRequest, retrying".format(e))
