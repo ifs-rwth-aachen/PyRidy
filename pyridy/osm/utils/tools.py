@@ -1,5 +1,6 @@
+import math
 from math import radians, cos, sin, asin, sqrt
-from typing import Union
+from typing import Union, List
 
 import numpy as np
 import scipy.interpolate as si
@@ -116,6 +117,71 @@ def project_point_onto_line(line: Union[np.ndarray, list], point: Union[np.ndarr
     p = p1 + n * np.dot(p3 - p1, n)
 
     return p, d
+
+
+def boxes_to_edges(boxes):
+    """
+    Source: https://stackoverflow.com/questions/4842613/merge-lists-that-share-common-elements
+
+        treat `l` as a Graph and returns it's edges
+        to_edges(['a','b','c','d']) -> [(a,b), (b,c),(c,d)]
+    """
+    it = iter(boxes)
+    last = next(it)
+
+    for current in it:
+        yield last, current
+        last = current
+
+
+def overlap(b1: List[float], b2: List[float], thres: float = .8) -> bool:
+    """ Check whether to bounding boxes have an overlap larger than thres
+        Each box must be of form x_min, y_min, x_max, y_max
+
+    Parameters
+    ----------
+    thres
+    b1
+    b2
+    """
+    a1 = abs(b1[2] - b1[0]) * abs(b1[3] - b1[1])
+    a2 = abs(b2[2] - b2[0]) * abs(b2[3] - b2[1])
+
+    if b2[0] > b1[2] or b2[1] > b1[3]:  # Boxes not overlapping
+        return False
+    else:
+        inter = (b1[2] - b2[0]) * (b1[3] - b2[1])
+
+        r1 = inter / a1 if a1 > 0 else -1.0
+        r2 = inter / a2 if a2 > 0 else -1.0
+
+        if r1 > thres or r2 > thres:
+            return True
+        else:
+            return False
+
+
+def iou(b1: List[float], b2: List[float]):
+    """ Calculates the Intersection over Union metric for two bounding boxes
+        Each box must be of form x_min, y_min, x_max, y_max
+
+    Parameters
+    ----------
+    b1
+    b2
+    """
+    a1 = abs(b1[2] - b1[0]) * abs(b1[3] - b1[1])
+    a2 = abs(b2[2] - b2[0]) * abs(b2[3] - b2[1])
+
+    if b2[0] > b1[2] or b2[1] > b1[3]:  # Boxes not overlapping
+        return 0.0
+    else:
+        inter = (b1[2] - b2[0]) * (b1[3] - b2[1])
+        union = a1 + a2 - inter
+
+        iou = inter / union if union > 0 else -1.0
+
+        return iou
 
 
 def is_point_within_line_projection(line: Union[np.ndarray, list], point: Union[np.ndarray, list]) -> bool:

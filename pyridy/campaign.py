@@ -1,32 +1,48 @@
+import itertools
+import json
 import logging
 import multiprocessing
 import os
 from functools import partial
 from multiprocessing import Pool
 from pathlib import Path
-from typing import List, Union, Tuple, Optional, TypeVar, Type
+from typing import List, Union, Tuple, Optional, Type
 
+import networkx as nx
+import numpy as np
 from ipyleaflet import Map, Polyline, Marker, Icon, FullScreenControl, ScaleControl
 from ipywidgets import HTML
+from matplotlib import pyplot as plt
+from matplotlib.patches import Rectangle
+from networkx import connected_components
 from tqdm.auto import tqdm
 
 from . import config
 from .file import RDYFile
 from .osm import OSM, OSMRailwaySwitch, OSMRailwaySignal, OSMLevelCrossing
+from .osm.utils import overlap, boxes_to_edges, iou
 from .utils import GPSSeries, TimeSeries
 from .utils.tools import generate_random_color
 
 logger = logging.getLogger(__name__)
-TimeSeriesType = TypeVar('TimeSeriesType', bound='TimeSeries')
 
 
 class Campaign:
-    def __init__(self, name="", folder: Union[list, str] = None, recursive=True, exclude: Union[list, str] = None,
+    def __init__(self, name="",
+                 folder: Union[list, str] = None,
+                 recursive=True,
+                 exclude: Union[list, str] = None,
                  sync_method: str = "timestamp",
                  timedelta_unit: str = 'timedelta64[ns]',
-                 strip_timezone: bool = True, cutoff: bool = True, lat_sw: float = None,
-                 lon_sw: float = None, lat_ne: float = None, lon_ne: float = None,
-                 download_osm_data: bool = False, map_matching: bool = False, osm_recurse_type: str = ">",
+                 strip_timezone: bool = True,
+                 cutoff: bool = True,
+                 lat_sw: float = None,
+                 lon_sw: float = None,
+                 lat_ne: float = None,
+                 lon_ne: float = None,
+                 download_osm_data: bool = False,
+                 map_matching: bool = False,
+                 osm_recurse_type: str = ">",
                  railway_types: Union[list, str] = None,
                  series: Union[List[Type[TimeSeries]], Type[TimeSeries]] = None):
         """
@@ -74,11 +90,17 @@ class Campaign:
         self.folder = folder
         self.name = name
         self.files: List[RDYFile] = []
+
+        # Geographic extent of campaign
         self.lat_sw, self.lon_sw = lat_sw, lon_sw
         self.lat_ne, self.lon_ne = lat_ne, lon_ne
 
+        self.bboxs = []
+        self.s_bboxs = []  # Simplified bounding boxes
+
         self.osm = None
         self.osm_recurse_type = osm_recurse_type
+        self.railway_types = railway_types
         self.osm_mappings = {}  # Map Matching results for each file
         self.map_matching = map_matching
 
@@ -121,13 +143,12 @@ class Campaign:
             self.determine_geographic_extent()
 
         if download_osm_data:
-            self.osm = OSM(lat_sw=self.lat_sw, lon_sw=self.lon_sw, lat_ne=self.lat_ne, lon_ne=self.lon_ne,
-                           desired_railway_types=railway_types, recurse=self.osm_recurse_type)
+            self.download_osm_data()
         else:
             self.osm = None
 
     def __call__(self, name):
-        results = list(filter(lambda file: file.name == name, self.files))
+        results = list(filter(lambda file: file.filename == name, self.files))
         if len(results) == 1:
             return results[0]
         else:
@@ -207,9 +228,7 @@ class Campaign:
             gps_series = f.measurements[GPSSeries]
             coords = gps_series.to_ipyleaflef()
 
-            if coords == [[]]:
-                logger.warning("Coordinates are empty in file: %s" % f.name)
-            else:
+            if coords != [[]]:
                 file_polyline = Polyline(locations=coords, color=color, fill=False, weight=4,
                                          dash_array='10, 10')
                 m.add_layer(file_polyline)
@@ -237,11 +256,11 @@ class Campaign:
                 start_message = HTML()
                 end_message = HTML()
                 start_message.value = "<p>Start:</p><p>" \
-                                      + str(f.name or '') + "</p><p>" \
+                                      + str(f.filename or '') + "</p><p>" \
                                       + str(getattr(f.device, "manufacturer", "")) + "; " \
                                       + str(getattr(f.device, "model", "")) + "</p>"
                 end_message.value = "<p>End:</p><p>" \
-                                    + str(f.name or '') + "</p><p>" \
+                                    + str(f.filename or '') + "</p><p>" \
                                     + str(getattr(f.device, "manufacturer", "")) + "; " \
                                     + str(getattr(f.device, "model", "")) + "</p>"
 
@@ -272,7 +291,7 @@ class Campaign:
                 file_polyline = Polyline(locations=coords, color=line.color, fill=False, weight=4)
                 m.add_layer(file_polyline)
         else:
-            logger.info("No OSM region downloaded!")
+            logger.warning("No OSM region downloaded!")
 
         return m
 
@@ -317,11 +336,14 @@ class Campaign:
         """
         self.files = []
 
-    def create_map(self, center: Tuple[float, float] = None, show_railway_elements=False) -> Map:
+    def create_map(self, center: Tuple[float, float] = None,
+                   show_gps_tracks=True,
+                   show_railway_elements=False) -> Map:
         """ Creates a ipyleaflet map showing the GPS tracks of measurement files
 
         Parameters
         ----------
+        show_gps_tracks
         center
         show_railway_elements
 
@@ -346,7 +368,9 @@ class Campaign:
 
         # Plot GPS point for each measurement and OSM Tracks
         m = self.add_osm_routes_to_map(m)
-        m = self.add_tracks_to_map(m)
+
+        if show_gps_tracks:
+            m = self.add_tracks_to_map(m)
 
         if show_railway_elements:
             m = self.add_osm_railway_elements_to_map(m)
@@ -379,6 +403,53 @@ class Campaign:
         logging.info("Geographic boundaries of measurement campaign: Lat SW: %s, Lon SW: %s, Lat NE: %s, Lon NE: %s"
                      % (str(self.lat_sw), str(self.lon_sw), str(self.lat_ne), str(self.lon_ne)))
 
+    def download_osm_data(self):
+        self.bboxs = [f.bbox for f in self.files if f.bbox]
+        self.s_bboxs = []  # Filtered bounding boxes
+
+        # Unify bounding boxes with a large overlap to reduce number of queries
+        # Cluster boxes by overlap
+        clusters = []
+        for b1, b2 in itertools.combinations(self.bboxs, 2):
+            if iou(b1, b2) > .99:
+                clusters.append([str(b1), str(b2)])
+
+        G = nx.Graph()
+        for c in clusters:
+            G.add_nodes_from(c)
+            G.add_edges_from(boxes_to_edges(c))
+
+        clusters = [list(c) for c in list(connected_components(G))]
+        # Convert boxes back to float
+        clusters = [[json.loads(b) for b in c] for c in clusters]
+
+        # Add boxes not part of any cluster
+        for b in self.bboxs:
+            if b not in list(itertools.chain.from_iterable(clusters)):
+                clusters.append([b])
+
+        # Simplify boxes
+        for c in clusters:
+            arr = np.array(c)
+            self.s_bboxs.append([arr[:, 0].min(), arr[:, 1].min(), arr[:, 2].max(), arr[:, 3].max()])
+
+        fig, ax = plt.subplots(1, figsize=(6, 6))
+        for b in self.bboxs:
+            ax.add_patch(Rectangle((b[0], b[1]), b[2] - b[0], b[3] - b[1], alpha=1, edgecolor='r', facecolor='none'))
+
+        for b in self.s_bboxs:
+            ax.add_patch(Rectangle((b[0], b[1]), b[2] - b[0], b[3] - b[1], alpha=1, edgecolor='g', facecolor='none'))
+
+        ax.grid()
+        ax.set_xlim([self.lon_sw, self.lon_ne])
+        ax.set_ylim([self.lat_sw, self.lat_ne])
+        plt.show()
+
+        if self.s_bboxs:
+            self.osm = OSM(bbox=self.s_bboxs, desired_railway_types=self.railway_types, recurse=self.osm_recurse_type)
+        else:
+            self.osm = OSM(bbox=self.bboxs, desired_railway_types=self.railway_types, recurse=self.osm_recurse_type)
+
     def import_files(self, file_paths: Union[list, str] = None,
                      sync_method: str = "timestamp",
                      timedelta_unit: str = 'timedelta64[ns]',
@@ -388,11 +459,13 @@ class Campaign:
                      use_multiprocessing: bool = False,
                      download_osm_region: bool = False,
                      railway_types: Union[list, str] = None,
-                     osm_recurse_type: Optional[str] = None):
+                     osm_recurse_type: Optional[str] = None,
+                     series: Union[List[Type[TimeSeries]], Type[TimeSeries]] = None):
         """ Import files into the campaign
 
         Parameters
         ----------
+        series
         timedelta_unit: str , default: 'timedelta64[ns]'
             Timedelta unit for timestamp sync method
         strip_timezone: bool, default: True
@@ -424,6 +497,21 @@ class Campaign:
         else:
             raise TypeError("paths argument must be list of str or str")
 
+        # Sanity check if series is arg is valid
+        if series:
+            if type(series) is list:
+                for s in series:
+                    if not issubclass(s, TimeSeries):
+                        raise ValueError("%s in %s is not a TimeSeries!" % (type(s), list(series)))
+                self._series = series
+            elif issubclass(series, TimeSeries):
+                self._series = [series]
+                pass
+            else:
+                raise ValueError("series argument must be list of TimeSeries or TimeSeries! not %s" % type(series))
+        else:
+            self._series = None
+
         if use_multiprocessing:
             with Pool(multiprocessing.cpu_count()) as p:
                 files = list(tqdm(p.imap(partial(RDYFile,
@@ -442,6 +530,8 @@ class Campaign:
                                           cutoff=cutoff,
                                           series=self._series))
 
+        self.railway_types = railway_types
+
         if osm_recurse_type:
             self.osm_recurse_type = osm_recurse_type
 
@@ -449,10 +539,11 @@ class Campaign:
             self.determine_geographic_extent()
 
         if download_osm_region:
-            self.osm = OSM(lat_sw=self.lat_sw, lon_sw=self.lon_sw, lat_ne=self.lat_ne, lon_ne=self.lon_ne,
-                           desired_railway_types=railway_types, recurse=self.osm_recurse_type)
+            self.download_osm_data()
 
-    def import_folder(self, folder: Union[list, str] = None, recursive: bool = True, exclude: Union[list, str] = None,
+    def import_folder(self, folder: Union[list, str] = None,
+                      recursive: bool = True,
+                      exclude: Union[list, str] = None,
                       **kwargs):
         """ Imports folder(s) into the campaign
 

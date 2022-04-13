@@ -36,3 +36,9 @@ END_ICON = Icon(
     icon_anchor=[12, 41],
     popup_anchor=[1, -34],
     shadow_size=[41, 41])
+
+# Options that can be altered by user
+options = {
+    "OSM_TIMEOUT": 180,
+    "OSM_RETRIES": 3
+}

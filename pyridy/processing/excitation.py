@@ -64,7 +64,7 @@ class ExcitationProcessor(PostProcessor):
         for f in tqdm(self.campaign):
             if len(f.measurements[LinearAccelerationSeries]) == 0:
                 logger.warning("(%s) LinearAccelerationSeries is empty, can't execute ExcitationProcessor on this file"
-                               % f.name)
+                               % f.filename)
                 continue
             else:
                 lin_acc_df = f.measurements[LinearAccelerationSeries].to_df()
@@ -74,7 +74,7 @@ class ExcitationProcessor(PostProcessor):
                     df = pd.concat([lin_acc_df, gps_df]).sort_index()
                 else:
                     logger.warning(
-                        "(%s) GPSSeries is empty, can't interpolate GPS values onto results" % f.name)
+                        "(%s) GPSSeries is empty, can't interpolate GPS values onto results" % f.filename)
                     df = lin_acc_df
 
                 df = df.resample(timedelta(seconds=1 / self.f_s)).mean().interpolate()
@@ -103,9 +103,9 @@ class ExcitationProcessor(PostProcessor):
                     df["lin_s_" + ax] = lin_s_hp
 
                 if ExcitationProcessor not in self.campaign.results:
-                    self.campaign.results[ExcitationProcessor] = {f.name: df}
+                    self.campaign.results[ExcitationProcessor] = {f.filename: df}
                 else:
-                    self.campaign.results[ExcitationProcessor][f.name] = df
+                    self.campaign.results[ExcitationProcessor][f.filename] = df
 
         params = self.__dict__.copy()
         params.pop("campaign")

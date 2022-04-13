@@ -91,11 +91,11 @@ class TimeSeries(ABC):
 
                 self._timedelta: np.ndarray = np.diff(self._time)
             else:
-                logger.info("(%s) Cannot cutoff %s if timeseries is empty or series already starts at 0"
-                            % (self.filename, type(self)))
+                logger.debug("(%s) Cannot cutoff %s if timeseries is empty or series already starts at 0" %
+                             (self.filename, self.__class__.__name__))
         else:
-            logger.warning("(%s) Cannot cutoff %s, if timestamp_when_started " % (self.filename, type(self)) +
-                           "and/or timestamp_when_stopped are None")
+            logger.debug("(%s) Cannot cutoff %s, if timestamp_when_started " % (self.filename, self.__class__.__name__)
+                         + "and/or timestamp_when_stopped are None")
 
         pass
 
@@ -201,46 +201,46 @@ class TimeSeries(ABC):
         if not np.array_equal(self._time, np.array(None)) and len(self._time) > 0:
             if method == "timestamp":
                 if self._time[0] == 0:
-                    logger.info("(%s) %s already starts at 0, cant sync with t0" % (self.filename,
-                                                                                    type(self)))
+                    logger.debug("(%s) %s already starts at 0, cant sync with t0" % (self.filename,
+                                                                                     self.__class__.__name__))
                     self.time = self._time.astype(timedelta_unit)
                 else:
                     if sync_timestamp:
                         self.time = (self._time - sync_timestamp).astype(timedelta_unit)
                     else:
-                        logger.warning("(%s) sync_timestamp is None, using first timestamp syncing" % self.filename)
+                        logger.debug("(%s) sync_timestamp is None, using first timestamp syncing" % self.filename)
                         self.time = (self._time - self._time[0]).astype(timedelta_unit)
             elif method == "seconds":
                 if self._time[0] == 0:
-                    logger.info("(%s) %s already starts at 0, cant sync with t0, only converting to seconds"
-                                % (self.filename, type(self)))
+                    logger.debug("(%s) %s already starts at 0, cant sync with t0, only converting to seconds"
+                                 % (self.filename, self.__class__.__name__))
                     self.time = self._time.astype(timedelta_unit) / np.timedelta64(1, "s")
                 else:
                     if sync_timestamp:
                         self.time = (self._time - sync_timestamp).astype(timedelta_unit) / np.timedelta64(1, "s")
                     else:
-                        logger.warning("(%s) sync_timestamp is None, using first timestamp syncing" % self.filename)
+                        logger.debug("(%s) sync_timestamp is None, using first timestamp syncing" % self.filename)
                         self.time = (self._time - self._time[0]).astype(timedelta_unit) / np.timedelta64(1, "s")
             elif method == "device_time":
                 if self._time[0] == 0:
-                    logger.info("(%s) %s already starts at 0, timestamp syncing not appropriate"
-                                % (self.filename, type(self)))
+                    logger.debug("(%s) %s already starts at 0, timestamp syncing not appropriate"
+                                 % (self.filename, self.__class__.__name__))
 
                     self.time = self._time.astype(timedelta_unit) + sync_time
                 else:
                     self.time = (self._time - sync_timestamp).astype(timedelta_unit) + sync_time
             elif method == "gps_time" or method == "ntp_time":
                 if self._time[0] == 0:
-                    logger.info("(%s) %s already starts at 0, cant sync to due to lack of proper timestamp"
-                                % (self.filename, type(self)))
+                    logger.debug("(%s) %s already starts at 0, cant sync to due to lack of proper timestamp"
+                                 % (self.filename, self.__class__.__name__))
                 else:
                     self.time = (self._time - sync_timestamp).astype(timedelta_unit) + sync_time
                 pass
             else:
                 raise ValueError("(%s) Method %s not supported" % (self.filename, method))
         else:
-            logger.info("(%s) Trying to synchronize timestamps on empty %s" % (self.filename,
-                                                                               type(self)))
+            logger.debug("(%s) Trying to synchronize timestamps on empty %s" % (self.filename,
+                                                                               self.__class__.__name__))
 
 
 class AccelerationSeries(TimeSeries):
@@ -646,10 +646,10 @@ class GPSSeries(TimeSeries):
 
         """
         if np.array_equal(self.lat, np.array(None)) and np.array_equal(self.lat, np.array(None)):
-            logger.warning("Coordinates are empty")
+            logger.warning("(%s) Coordinates are empty in GPSSeries" % self.filename)
             return [[]]
         elif len(self.lat) == 0 and len(self.lon) == 0:
-            logger.warning("Coordinates are empty")
+            logger.warning("(%s) Coordinates are empty in GPSSeries" % self.filename)
             return [[]]
         else:
             return [[lat, lon] for lat, lon in zip(self.lat, self.lon)]
