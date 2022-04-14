@@ -5,8 +5,10 @@ from typing import Optional, Union
 import numpy as np
 from ipyleaflet import Circle
 
+from pyridy import config
 
-def internet(host="8.8.8.8", port=53, timeout=3):
+
+def internet(host="8.8.8.8", port=53, timeout=None):
     """ Function that returns True if an internet connection is available, False if otherwise
 
     Based on https://stackoverflow.com/questions/3764291/how-can-i-see-if-theres-an-available-and-active-network-connection-in-python
@@ -24,6 +26,9 @@ def internet(host="8.8.8.8", port=53, timeout=3):
     -------
     bool
     """
+    if not timeout:
+        timeout = config.options["SOCKET_TIMEOUT"]
+
     try:
         socket.setdefaulttimeout(timeout)
         socket.socket(socket.AF_INET, socket.SOCK_STREAM).connect((host, port))

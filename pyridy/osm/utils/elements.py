@@ -1,9 +1,12 @@
+import logging
 from abc import ABC
 
 import overpy
 
 from pyridy.osm.utils import OSMRelation
 from pyridy.utils.tools import generate_random_color
+
+logger = logging.getLogger(__name__)
 
 
 class OSMRailwayElement(ABC):
@@ -57,7 +60,15 @@ class OSMRailwayMilestone(OSMRailwayElement):
             OpenStreetMap node retrieved using Overpy
         """
         super(OSMRailwayMilestone, self).__init__(n)
-        self.position = float(n.tags.get("railway:position", "-1").replace(",", "."))
+
+        pos = n.tags.get("railway:position", "-1").replace(",", ".").split("+")
+
+        try:
+            self.position = float(pos[0])
+        except ValueError:
+            logger.debug("Unusual milestone position format: %s" % n.tags.get("railway:position", ""))
+            self.position = None
+        self.addition = "" if len(pos) == 1 else pos[1]
 
     def __repr__(self):
         return "Milestone at (%s, %s): %.3f" % (self.lon, self.lat, self.position)

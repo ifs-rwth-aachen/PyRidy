@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 class OSM:
     supported_railway_types = ["rail", "tram", "subway", "light_rail"]
 
-    def __init__(self, bbox: List[Union[List, float]],
+    def __init__(self, bbox: List[Union[List, float, np.float64]],
                  desired_railway_types: Union[List, str] = None,
                  download: bool = True,
                  recurse: str = ">"):
@@ -47,7 +47,7 @@ class OSM:
         """
 
         # Sanity check for bbox argument
-        if type(bbox[0]) == float:
+        if (type(bbox[0]) == float) or (type(bbox[0]) == np.float64):
             self._check_bbox(bbox)
             self.bbox = [bbox]
         elif type(bbox[0]) == list:
@@ -211,8 +211,8 @@ class OSM:
     def _download_track_data(self):
         # Download data for all desired railway types
         if internet():
-            for b in tqdm(self.bbox):
-                logger.debug("Querying data for bounding box: %s" % str(b))
+            for i, b in tqdm(enumerate(self.bbox)):
+                logger.debug("Querying data for bounding box ( %d / %d): %s" % (i+1, len(self.bbox), str(b)))
                 for railway_type in tqdm(self.desired_railway_types):
                     # Create Overpass queries and try downloading them
                     logger.debug("Querying data for railway type: %s" % railway_type)

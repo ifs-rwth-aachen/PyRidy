@@ -94,6 +94,7 @@ class Campaign:
         # Geographic extent of campaign
         self.lat_sw, self.lon_sw = lat_sw, lon_sw
         self.lat_ne, self.lon_ne = lat_ne, lon_ne
+        self.extent = [self.lon_sw, self.lat_sw, self.lon_ne, self.lat_ne]
 
         self.bboxs = []
         self.s_bboxs = []  # Simplified bounding boxes
@@ -400,6 +401,9 @@ class Campaign:
         self.lat_ne = max(max_lats) if max_lats else None
         self.lon_sw = min(min_lons) if min_lons else None
         self.lon_ne = max(max_lons) if max_lons else None
+
+        self.extent = [self.lon_sw, self.lat_sw, self.lon_ne, self.lat_ne]
+
         logging.info("Geographic boundaries of measurement campaign: Lat SW: %s, Lon SW: %s, Lat NE: %s, Lon NE: %s"
                      % (str(self.lat_sw), str(self.lon_sw), str(self.lat_ne), str(self.lon_ne)))
 
@@ -411,7 +415,7 @@ class Campaign:
         # Cluster boxes by overlap
         clusters = []
         for b1, b2 in itertools.combinations(self.bboxs, 2):
-            if iou(b1, b2) > .99:
+            if iou(b1, b2) > .5:
                 clusters.append([str(b1), str(b2)])
 
         G = nx.Graph()
@@ -445,10 +449,13 @@ class Campaign:
         ax.set_ylim([self.lat_sw, self.lat_ne])
         plt.show()
 
-        if self.s_bboxs:
-            self.osm = OSM(bbox=self.s_bboxs, desired_railway_types=self.railway_types, recurse=self.osm_recurse_type)
+        if config.options["OSM_SINGLE_BOUNDING_BOX"]:
+            self.osm = OSM(bbox=self.extent, desired_railway_types=self.railway_types, recurse=self.osm_recurse_type)
         else:
-            self.osm = OSM(bbox=self.bboxs, desired_railway_types=self.railway_types, recurse=self.osm_recurse_type)
+            if config.options["OSM_BOUNDING_BOX_OPTIMIZATION"]:
+                self.osm = OSM(bbox=self.s_bboxs, desired_railway_types=self.railway_types, recurse=self.osm_recurse_type)
+            else:
+                self.osm = OSM(bbox=self.bboxs, desired_railway_types=self.railway_types, recurse=self.osm_recurse_type)
 
     def import_files(self, file_paths: Union[list, str] = None,
                      sync_method: str = "timestamp",

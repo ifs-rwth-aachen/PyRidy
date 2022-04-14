@@ -836,6 +836,7 @@ class RDYFile:
                 # Older files can contain wrong table name
                 try:
                     info = dict(pd.read_sql_query("SELECT * from measurment_information_table", db_con))
+                    logger.debug("(%s) Older file containing measu(rm)ent_information_table" % self.filename)
                 except (DatabaseError, PandasDatabaseError) as e:
                     logger.error(
                         "(%s) DatabaseError occurred when accessing measurement_information_table" % self.filename)

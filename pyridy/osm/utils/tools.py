@@ -170,18 +170,36 @@ def iou(b1: List[float], b2: List[float]):
     b1
     b2
     """
-    a1 = abs(b1[2] - b1[0]) * abs(b1[3] - b1[1])
-    a2 = abs(b2[2] - b2[0]) * abs(b2[3] - b2[1])
+    b1_x0, b1_y0 = b1[0], b1[1]
+    b1_x1, b1_y1 = b1[2], b1[3]
 
-    if b2[0] > b1[2] or b2[1] > b1[3]:  # Boxes not overlapping
+    b2_x0, b2_y0 = b2[0], b2[1]
+    b2_x1, b2_y1 = b2[2], b2[3]
+
+    b1_w = b1[2] - b1[0]
+    b1_h = b1[3] - b1[1]
+
+    b2_w = b2[2] - b2[0]
+    b2_h = b2[3] - b2[1]
+
+    a1 = abs(b1_w) * abs(b1_h)
+    a2 = abs(b2_w) * abs(b2_h)
+
+    x0 = max(min(b1_x0, b1_x1), min(b2_x0, b2_x1))
+    y0 = max(min(b1_y0, b1_y1), min(b2_y0, b2_y1))
+    x1 = min(max(b1_x0, b1_x1), max(b2_x0, b2_x1))
+    y1 = min(max(b1_y0, b1_y1), max(b2_y0, b2_y1))
+
+    if x1 < x0 or y1 < y0:
         return 0.0
-    else:
-        inter = (b1[2] - b2[0]) * (b1[3] - b2[1])
-        union = a1 + a2 - inter
 
-        iou = inter / union if union > 0 else -1.0
+    inter = (x1 - x0) * (y1 - y0)
+    union = a1 + a2 - inter
 
-        return iou
+    iou = inter / union if union > 0 else -1.0
+
+    assert 0.0 <= iou <= 1.0
+    return iou
 
 
 def is_point_within_line_projection(line: Union[np.ndarray, list], point: Union[np.ndarray, list]) -> bool:

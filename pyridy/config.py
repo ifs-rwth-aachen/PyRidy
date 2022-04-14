@@ -40,5 +40,8 @@ END_ICON = Icon(
 # Options that can be altered by user
 options = {
     "OSM_TIMEOUT": 180,
-    "OSM_RETRIES": 3
+    "OSM_RETRIES": 3,
+    "OSM_BOUNDING_BOX_OPTIMIZATION": True,
+    "OSM_SINGLE_BOUNDING_BOX": False,
+    "SOCKET_TIMEOUT": 300,
 }
