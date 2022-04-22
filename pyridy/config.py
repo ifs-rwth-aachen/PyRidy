@@ -1,4 +1,9 @@
+import pyproj
 from ipyleaflet import Icon, TileLayer
+
+# Projections
+proj = pyproj.Proj(proj='utm', zone=32, ellps='WGS84', preserve_units=True)
+geod = pyproj.Geod(ellps='WGS84')
 
 # Maps
 OPEN_STREET_MAP_DE = TileLayer(
@@ -42,6 +47,12 @@ options = {
     "OSM_TIMEOUT": 180,
     "OSM_RETRIES": 3,
     "OSM_BOUNDING_BOX_OPTIMIZATION": True,
+    "OSM_BOUNDING_BOX_SPLIT_IOU_THRES": .5,
     "OSM_SINGLE_BOUNDING_BOX": False,
     "SOCKET_TIMEOUT": 300,
+    "MAP_MATCHING_DEFAULT_ALGORITHM": "nx",
+    "MAP_MATCHING_V_THRES": 1.0,
+    "MAP_MATCHING_ALPHA": 1.0,
+    "MAP_MATCHING_BETA": 1.0,
+    "MAP_MATCHING_MIN_LINE_MATCH_RATIO": .2
 }

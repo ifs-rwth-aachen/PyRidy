@@ -142,6 +142,7 @@ class RDYFile:
         self.osm: Optional[OSM] = None
         self.matched_nodes = []  # Nodes from Map Matching
         self.matched_ways = []  # Ways from Map Matching
+        self.matched_line = None  # Matched Railway Line
 
         if self.path:
             self.load_file(self.path)
@@ -434,7 +435,10 @@ class RDYFile:
 
             return center_lon, center_lat
 
-    def do_map_matching(self, v_thres: float = 1, algorithm: str = "pyridy", alpha: int = 1.0, beta: int = 1.0):
+    def do_map_matching(self, v_thres: float = config.options["MAP_MATCHING_V_THRES"],
+                        algorithm: str = config.options["MAP_MATCHING_DEFAULT_ALGORITHM"],
+                        alpha: int = config.options["MAP_MATCHING_ALPHA"],
+                        beta: int = config.options["MAP_MATCHING_BETA"]):
         """ Performs map matching of the GPS track to closest OSM nodes/ways
 
         Parameters
@@ -444,10 +448,10 @@ class RDYFile:
             Graph
         beta: float, default: 1.0
             Beta is a scaling factor for the emission probabilities.
-        algorithm: str, default: pyridy
+        algorithm: str, default: nx
             Algorithm to be used, can be "pyridy" or "nx". The pyridy algorithm also incorporates how switches
             can be transited
-        v_thres: float
+        v_thres: float, default: 1.0
             Speed threshold, GPS points measured with a velocity below v_thres [m/s] will not be considered
 
         Returns
@@ -510,6 +514,23 @@ class RDYFile:
                 self.matched_ways = list(set([self.osm.way_dict[w_id] for w_id in m_w_ids]))  # Mapped Ways
                 logger.debug("(%s) Found %d nodes that match the files GPS track!" % (self.filename,
                                                                                       len(self.matched_nodes)))
+
+                if len(self.matched_nodes) > 0:
+                    m_ratios = [len(set(self.matched_nodes).intersection(line.nodes)) / len(self.matched_nodes) for line
+                                in
+                                self.osm.railway_lines if self]
+
+                    if max(m_ratios) > config.options["MAP_MATCHING_MIN_LINE_MATCH_RATIO"]:
+                        self.matched_line = self.osm.railway_lines[m_ratios.index(max(m_ratios))]
+                        logger.debug("(%s) Matched Railway Line: %s (%.f Match Ratio)" % (self.filename,
+                                                                                          self.matched_line.name,
+                                                                                          max(m_ratios)))
+                    else:
+                        logger.debug("(%s) Could not match map matching results to a specific railway line" %
+                                     self.filename)
+                else:
+                    logger.debug("(%s) Could not match map matching results to a specific railway line" %
+                                 self.filename)
         else:
             logger.warning("(%s) Can't do map matching since no file contains no OSM data" % self.filename)
         pass

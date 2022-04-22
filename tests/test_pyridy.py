@@ -10,6 +10,11 @@ from pyridy.utils import AccelerationSeries, LinearAccelerationSeries, GPSSeries
 
 
 @pytest.fixture
+def my_campaign():
+    return pyridy.Campaign()
+
+
+@pytest.fixture
 def my_partial_campaign():
     return pyridy.Campaign(series=[AccelerationSeries, GPSSeries])
 
@@ -131,14 +136,6 @@ def test_get_sub_series_names(my_campaign, caplog):
     my_campaign.import_folder("files/rdy/", recursive=False)
     sub_series_types = my_campaign[0].measurements[AccelerationSeries].get_sub_series_names()
     assert sub_series_types == ["acc_x", "acc_y", "acc_z"]
-
-
-def test_overpass_query():
-    overpass_api_ifs = overpy.Overpass(url="http://134.130.76.80:12345/api/interpreter")
-    q = """[timeout:300];(node[railway=rail](49.22454833984375,6.053347110748291,51.361244201660156,8.006976127624512);way[railway=rail](49.22454833984375,6.053347110748291,51.361244201660156,8.006976127624512););(._;>;);
-                             out body;"""
-    r = overpass_api_ifs.query(q)
-    assert True
 
 
 def test_osm_map_matching(my_campaign, caplog):

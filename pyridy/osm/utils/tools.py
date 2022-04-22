@@ -1,10 +1,12 @@
 import math
 from math import radians, cos, sin, asin, sqrt
-from typing import Union, List
+from typing import Union, List, Tuple
 
 import numpy as np
 import scipy.interpolate as si
 from numpy.linalg import norm
+
+from pyridy import config
 
 
 def calc_unit_vector(v: Union[list, np.ndarray]) -> np.ndarray:
@@ -31,6 +33,165 @@ def calc_angle_between(v1: Union[list, np.ndarray], v2: Union[list, np.ndarray])
     v1_u = calc_unit_vector(v1)
     v2_u = calc_unit_vector(v2)
     return np.arccos(np.clip(np.dot(v1_u, v2_u), -1.0, 1.0))
+
+
+def calc_curvature(x: List[float], y: List[float]) -> List[float]:
+    """ Calculates the Menger curvature for a set of coordinates
+
+    Parameters
+    ----------
+    x
+    y
+
+    Returns
+    -------
+    list
+    """
+    if len(x) != len(y):
+        raise ValueError("x and y have to be same length")
+
+    if len(x) > 0 and len(y) > 0:
+        c = [0]
+
+        for i in range(len(x)):
+            if not (i == 0 or i == len(x) - 1):
+                # Get three neighbored points
+                x1 = x[i - 1]
+                y1 = y[i - 1]
+
+                x2 = x[i]
+                y2 = y[i]
+
+                x3 = x[i + 1]
+                y3 = y[i + 1]
+
+                # Get distance between each of the points
+                s_a = math.sqrt((x1 - x2) ** 2 + (y1 - y2) ** 2)
+                s_b = math.sqrt((x2 - x3) ** 2 + (y2 - y3) ** 2)
+                s_c = math.sqrt((x3 - x1) ** 2 + (y3 - y1) ** 2)
+
+                s = (s_a + s_b + s_c) / 2
+                a = s * (s - s_a) * (s - s_b) * (s - s_c)
+
+                if a > 0:
+                    A = math.sqrt(a)
+                else:
+                    A = 0
+
+                # Calculate sign
+                dx12 = x2 - x1
+                dy12 = y2 - y1
+
+                dx23 = x3 - x2
+                dy23 = y3 - y2
+
+                sgn = np.sign(np.cross([dx12, dy12], [dx23, dy23]))
+
+                # Menger Curvature
+                res = sgn * 4 * A / (s_a * s_b * s_c)
+                if not math.isnan(res):
+                    c.append(res)
+                else:
+                    c.append(0.0)
+
+        c.append(0)
+        return c
+    else:
+        return []
+
+
+def calc_distance_from_xy(x: List[float], y: List[float]) -> Tuple[list, list]:
+    """ Computes distances between a set of x y coordinates as well as the total distance
+
+    Parameters
+    ----------
+    x
+    y
+
+    Returns
+    -------
+    Tuple
+        List containing total distance, list of pairwise distances
+    """
+    if len(x) != len(y):
+        raise ValueError("x and y have to be same length")
+
+    if x and y:
+        s = [0]
+        ds = []
+
+        for i in range(len(x)):
+            if i >= 1:
+                x1 = x[i - 1]
+                y1 = y[i - 1]
+
+                x2 = x[i]
+                y2 = y[1]
+
+                ds.append(math.sqrt((x1 - x2) ** 2 + (y1 - y2) ** 2))
+
+        # Integrate ds
+        s.extend(np.cumsum(ds))
+
+        return s, ds
+    else:
+        return [], []
+
+
+def calc_distance_from_lon_lat(lon: List[float], lat: List[float]):
+    """ Computes pairwise and total distance using geodesic distance of individual lat/lon coordinates
+
+    Parameters
+    ----------
+    lon: list
+    lat: list
+
+    Returns
+    -------
+    list, list
+    """
+    if len(lon) != len(lat):
+        raise ValueError("x and y have to be same length")
+
+    if lon and lat:
+        s = [0]
+        ds = []
+
+        for i in range(len(lon)):
+            if i >= 1:
+                ds.append(config.geod.inv(lon[i - 1], lat[i - 1], lon[i], lat[i])[2])
+
+        # Integrate ds
+        s.extend(np.cumsum(ds))
+
+        return s, ds
+    else:
+        return [], []
+
+
+def convert_lon_lat_to_xy(lon: List[float], lat: List[float], adjust_zero_point: bool = False):
+    """ Convert lon/lat coordinates to a metric coordinate system. The first coordinate is used for zero-point in
+    the metric coordinate system
+
+    Parameters
+    ----------
+    adjust_zero_point: bool
+        If True, first coordinate will be 0,0
+    lon: list[float]
+    lat: list[float]
+
+    Returns
+    -------
+    list, list
+    """
+    if lon and lat:
+        x, y = config.proj(lon, lat)
+        if adjust_zero_point:
+            return [el - x[0] for el in x], [el - y[0] for el in y]
+        else:
+            return x, y
+    else:
+        return [], []
 
 
 def bspline(cv, n=10000, degree=3, periodic=False):

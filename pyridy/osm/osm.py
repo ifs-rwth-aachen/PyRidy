@@ -236,7 +236,7 @@ class OSM:
                                 sort_order = {w_id: idx for w_id, idx in zip(rel_way_ids, range(len(rel_way_ids)))}
                                 rel_ways.sort(key=lambda w: sort_order[w.id])
 
-                                railway_line = OSMRailwayLine(rel.id, rel_ways, rel.tags, rel.members)
+                                railway_line = OSMRailwayLine(relation=rel, ways=rel_ways)
                                 if railway_line not in self.railway_lines:
                                     self.railway_lines.append(railway_line)
 

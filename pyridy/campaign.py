@@ -167,7 +167,7 @@ class Campaign:
 
     @osm.setter
     def osm(self, value):
-        for f in self:
+        for f in tqdm(self):
             f.osm = value
             if self.map_matching:
                 f.do_map_matching()
@@ -407,6 +407,29 @@ class Campaign:
         logging.info("Geographic boundaries of measurement campaign: Lat SW: %s, Lon SW: %s, Lat NE: %s, Lon NE: %s"
                      % (str(self.lat_sw), str(self.lon_sw), str(self.lat_ne), str(self.lon_ne)))
 
+    def do_map_matching(self, rematch=False, **kwargs):
+        """ Performs map matching for all files in campaign
+
+        Parameters
+        ----------
+        rematch: Bool, default: False
+            If True performs map matching again, even when file already contains a map matching
+        """
+        if self.osm:
+            for f in tqdm(self):
+                if f.matched_ways and f.matched_nodes:
+                    if rematch:
+                        logger.info("(%s) File already has a map matching! Rematching..." % f.filename)
+                        f.do_map_matching(**kwargs)
+                    else:
+                        logger.info("(%s) File already has a map matching! Skipping..." % f.filename)
+                        continue
+                else:
+                    f.do_map_matching(**kwargs)
+        else:
+            raise RuntimeError("Can't do Map Matching, because no OSM data has been downloaded!")
+        pass
+
     def download_osm_data(self):
         self.bboxs = [f.bbox for f in self.files if f.bbox]
         self.s_bboxs = []  # Filtered bounding boxes
@@ -415,7 +438,7 @@ class Campaign:
         # Cluster boxes by overlap
         clusters = []
         for b1, b2 in itertools.combinations(self.bboxs, 2):
-            if iou(b1, b2) > .5:
+            if iou(b1, b2) > config.options["OSM_BOUNDING_BOX_SPLIT_IOU_THRES"]:
                 clusters.append([str(b1), str(b2)])
 
         G = nx.Graph()
@@ -437,17 +460,17 @@ class Campaign:
             arr = np.array(c)
             self.s_bboxs.append([arr[:, 0].min(), arr[:, 1].min(), arr[:, 2].max(), arr[:, 3].max()])
 
-        fig, ax = plt.subplots(1, figsize=(6, 6))
-        for b in self.bboxs:
-            ax.add_patch(Rectangle((b[0], b[1]), b[2] - b[0], b[3] - b[1], alpha=1, edgecolor='r', facecolor='none'))
-
-        for b in self.s_bboxs:
-            ax.add_patch(Rectangle((b[0], b[1]), b[2] - b[0], b[3] - b[1], alpha=1, edgecolor='g', facecolor='none'))
-
-        ax.grid()
-        ax.set_xlim([self.lon_sw, self.lon_ne])
-        ax.set_ylim([self.lat_sw, self.lat_ne])
-        plt.show()
+        # fig, ax = plt.subplots(1, figsize=(6, 6))
+        # for b in self.bboxs:
+        #     ax.add_patch(Rectangle((b[0], b[1]), b[2] - b[0], b[3] - b[1], alpha=1, edgecolor='r', facecolor='none'))
+        #
+        # for b in self.s_bboxs:
+        #     ax.add_patch(Rectangle((b[0], b[1]), b[2] - b[0], b[3] - b[1], alpha=1, edgecolor='g', facecolor='none'))
+        #
+        # ax.grid()
+        # ax.set_xlim([self.lon_sw, self.lon_ne])
+        # ax.set_ylim([self.lat_sw, self.lat_ne])
+        # plt.show()
 
         if config.options["OSM_SINGLE_BOUNDING_BOX"]:
             self.osm = OSM(bbox=self.extent, desired_railway_types=self.railway_types, recurse=self.osm_recurse_type)
