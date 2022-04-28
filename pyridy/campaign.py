@@ -85,8 +85,6 @@ class Campaign:
         series: list or TimeSeries
             Classes of TimeSeries to load, if None all TimeSeries of each file will be imported
         """
-        self._colors = []  # Used colors
-
         self.folder = folder
         self.name = name
         self.files: List[RDYFile] = []
@@ -155,7 +153,7 @@ class Campaign:
         else:
             return results
 
-    def __getitem__(self, index):
+    def __getitem__(self, index) -> RDYFile:
         return self.files[index]
 
     def __len__(self):
@@ -218,19 +216,11 @@ class Campaign:
             raise ValueError("You must provide either a filename or the file")
 
         for f in files:
-            while True:
-                color = generate_random_color("HEX")
-                if color not in self._colors:
-                    self._colors.append(color)
-                    break
-                else:
-                    continue
-
             gps_series = f.measurements[GPSSeries]
             coords = gps_series.to_ipyleaflef()
 
             if coords != [[]]:
-                file_polyline = Polyline(locations=coords, color=color, fill=False, weight=4,
+                file_polyline = Polyline(locations=coords, color=f.color, fill=False, weight=4,
                                          dash_array='10, 10')
                 m.add_layer(file_polyline)
 
@@ -288,9 +278,10 @@ class Campaign:
         """
         if self.osm:
             for line in self.osm.railway_lines:
-                coords = line.to_ipyleaflet()
-                file_polyline = Polyline(locations=coords, color=line.color, fill=False, weight=4)
-                m.add_layer(file_polyline)
+                for track in line.tracks:
+                    coords = track.to_ipyleaflet()
+                    file_polyline = Polyline(locations=coords, color=line.color, fill=False, weight=4)
+                    m.add_layer(file_polyline)
         else:
             logger.warning("No OSM region downloaded!")
 

@@ -9,15 +9,16 @@ from typing import Optional, List, Dict, Tuple, Union, Type
 
 import networkx as nx
 import numpy as np
+import overpy
 import pandas as pd
-from ipyleaflet import Map, ScaleControl, FullScreenControl, Polyline, Icon, Marker, Circle, TileLayer, LayerGroup
+from ipyleaflet import Map, ScaleControl, FullScreenControl, Polyline, Marker, Circle, LayerGroup
 from ipywidgets import HTML
 from pandas.io.sql import DatabaseError as PandasDatabaseError
 from scipy.spatial import KDTree
 from scipy.stats import norm
 
 from pyridy import config
-from pyridy.osm import OSM
+from pyridy.osm import OSM, OSMRailwayLine
 from pyridy.osm.utils import is_point_within_line_projection, project_point_onto_line
 from pyridy.utils import Sensor, AccelerationSeries, LinearAccelerationSeries, MagnetometerSeries, OrientationSeries, \
     GyroSeries, RotationSeries, GPSSeries, PressureSeries, HumiditySeries, TemperatureSeries, WzSeries, LightSeries, \
@@ -34,7 +35,8 @@ class RDYFile:
                  timedelta_unit: str = 'timedelta64[ns]',
                  strip_timezone: bool = True,
                  filename="",
-                 series: Union[List[Type[TimeSeries]], Type[TimeSeries]] = None):
+                 series: Union[List[Type[TimeSeries]], Type[TimeSeries]] = None,
+                 color: str = None):
         """
 
         Parameters
@@ -140,9 +142,9 @@ class RDYFile:
 
         # OSM Data (set by Campaign)
         self.osm: Optional[OSM] = None
-        self.matched_nodes = []  # Nodes from Map Matching
-        self.matched_ways = []  # Ways from Map Matching
-        self.matched_line = None  # Matched Railway Line
+        self.matched_nodes: Optional[List[overpy.Node]] = []  # Nodes from Map Matching
+        self.matched_ways: Optional[List[overpy.Way]] = []  # Ways from Map Matching
+        self.matched_line: Optional[OSMRailwayLine] = None  # Matched Railway Line
 
         if self.path:
             self.load_file(self.path)
@@ -164,7 +166,17 @@ class RDYFile:
         else:
             logging.warning("RDYFile instantiated without a path")
 
-        pass
+        # Unique color for each line
+        if not color:
+            while True:
+                self.color = generate_random_color("HEX")
+                if self.color not in config.colors:
+                    config.colors.append(color)
+                    break
+                else:
+                    continue
+        else:
+            self.color = color
 
     # def __getitem__(self, idx):
     #     key = list(self.measurements.keys())[idx]

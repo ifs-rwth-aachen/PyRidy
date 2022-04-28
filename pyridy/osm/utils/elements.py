@@ -5,36 +5,47 @@ from typing import List
 
 import networkx as nx
 import overpy
+from ipyleaflet import Map, ScaleControl, FullScreenControl, Polyline, Circle, LayerGroup
 
 from pyridy import config
-from pyridy.osm.utils import convert_lon_lat_to_xy, calc_curvature, calc_distance_from_lon_lat, logger
+from pyridy.osm.utils import convert_lon_lat_to_xy, calc_curvature, calc_distance_from_lon_lat
 from pyridy.utils.tools import generate_random_color
 
 logger = logging.getLogger(__name__)
 
 
 class OSMResultNode:
-    def __init__(self, node_id, lat, lon, **kwargs):
+    def __init__(self, lat: float, lon: float,
+                 value=None, f=None, proc=None, dir: str = "", color: str = None):
         """ Class representing a Node calculated by PyRidy
 
         Parameters
         ----------
-        node_id:
-            ID of the node
+        color: str
+            Node colors
         lat: float
             Latitude of node coordinate
         lon: float
             Longitude of node coordinate
         """
-        self.id = node_id
+
         self.lat = lat
         self.lon = lon
-        self.projections: dict = {}  # Projections of Node onto other elements like railway lines
-
-        self.__dict__.update(kwargs)
+        self.value = value
+        self.f = f
+        self.proc = proc
+        self.dir = dir
+        self.color = '#CC071E' if not color else color
 
     def __repr__(self):
-        return "Result node at (%s, %s), ID: %s" % (self.lon, self.lat, str(self.id))
+        return "Result node at (%s, %s)" % (self.lon, self.lat)
+
+
+class OSMResultWay:
+    def __init(self, way, res: float = .5):
+        self.way: overpy.Way = way
+        self.res = res
+        pass
 
 
 class OSMRailwayElement(ABC):
@@ -153,6 +164,7 @@ class OSMRelation:
             ways = []
 
         self.id = relation.id
+        self.relation = relation
         self.name = relation.tags.get("name", "")
         self.ways = ways
         self.way_nodes = [way.nodes for way in self.ways]  # List of list of nodes
@@ -173,9 +185,6 @@ class OSMRelation:
             if len(self.G.adj[n]) == 1:
                 self.endpoints.append(n)
 
-        self.lon: [float] = []
-        self.lat: [float] = []
-
         # Search tracks within relation (double tracks have 2 physical tracks but 4 tracks are found through Graph
         # search since each track can be trafficked in both directions)
         self.tracks = []
@@ -184,13 +193,18 @@ class OSMRelation:
             try:
                 sp_n = nx.shortest_path(self.G, source=s, target=t)  # List of node ids that make up shortest path
                 nodes = [next(n for n in self.nodes if n.id == n_id) for n_id in sp_n]
-                self.tracks.append(OSMTrack(nodes))
+                ways = list(set(list(itertools.chain.from_iterable([n.ways for n in nodes]))))
+                self.tracks.append(OSMTrack(nodes, ways))
             except nx.NetworkXNoPath as e:
-                print(e)
+                logger.debug(e)
 
         logger.debug("Number of individual tracks: %d" % len(self.tracks))
 
         self.color = relation.tags.get("colour", generate_random_color("HEX")) if not color else color
+        self.lon_sw = min([float(n.lon) for n in self.nodes])
+        self.lon_ne = max([float(n.lon) for n in self.nodes])
+        self.lat_sw = min([float(n.lat) for n in self.nodes])
+        self.lat_ne = max([float(n.lat) for n in self.nodes])
 
     def to_ipyleaflef(self) -> List[list]:
         """
@@ -205,9 +219,42 @@ class OSMRelation:
         else:
             return [[]]
 
+    def create_map(self, show_result_nodes: bool = False) -> Map:
+        center = ((self.lat_sw + self.lat_ne) / 2, (self.lon_sw + self.lon_ne) / 2)
+
+        m = Map(center=center, zoom=12, scroll_wheel_zoom=True, basemap=config.OPEN_STREET_MAP_DE)
+        m.add_control(ScaleControl(position='bottomleft'))
+        m.add_control(FullScreenControl())
+
+        # Add map
+        m.add_layer(config.OPEN_RAILWAY_MAP)
+
+        for track in self.tracks:
+            coords = track.to_ipyleaflet()
+            file_polyline = Polyline(locations=coords, color=self.color, fill=False, weight=4)
+            m.add_layer(file_polyline)
+
+        if show_result_nodes:
+            nodes = list(itertools.chain.from_iterable([w.attributes.get("results", []) for w in self.ways]))
+            circles = []
+            for n in nodes:
+                circle = Circle()
+                circle.location = n.lon, n.lat
+                circle.radius = 2
+                circle.color = "#CC071E"
+                circle.fill_color = "#CC071E"
+                circle.weight = 3
+                circle.fill_opacity = 0.1
+                circles.append(circle)
+
+            l_circles = LayerGroup(layers=circles)
+            m.add_layer(l_circles)
+
+        return m
+
 
 class OSMRailwayLine(OSMRelation):
-    def __init__(self, relation: overpy.Relation, ways: List[overpy.Way] = None):
+    def __init__(self, relation: overpy.Relation, ways: List[overpy.Way] = None, color=None):
         """ Class representing a railway line
 
         See https://wiki.openstreetmap.org/wiki/Tag:railway%3Drail
@@ -223,9 +270,9 @@ class OSMRailwayLine(OSMRelation):
         members: list
             list of nodes and ways associated with the railway line
         """
-        super().__init__(relation=relation, ways=ways)
+        super(OSMRailwayLine, self).__init__(relation=relation, ways=ways, color=color)
 
-        self.__dict__.update(relation.tags)
+        self.tags = relation.tags
 
         self.members = relation.members
         self.milestones = [OSMRailwayMilestone(n) for n in self.nodes if n.tags.get("railway", "") == "milestone"]
@@ -236,7 +283,7 @@ class OSMRailwayLine(OSMRelation):
 
 
 class OSMTrack:
-    def __init__(self, nodes: List[overpy.Node]):
+    def __init__(self, nodes: List[overpy.Node], ways: List[overpy.Way]):
         """ Represents a single railway track
 
         Parameters
@@ -255,6 +302,7 @@ class OSMTrack:
         self.c = []
 
         self.nodes = nodes
+        self.ways = ways
 
     @property
     def nodes(self):
@@ -264,8 +312,8 @@ class OSMTrack:
     def nodes(self, nodes: List[overpy.Node]):
         self._nodes = nodes
 
-        self.lon = [float(n.lon)for n in nodes]
-        self.lat = [float(n.lat)for n in nodes]
+        self.lon = [float(n.lon) for n in nodes]
+        self.lat = [float(n.lat) for n in nodes]
 
         self.x, self.y = convert_lon_lat_to_xy(self.lon, self.lat)
         self.c = calc_curvature(self.x, self.y)
@@ -287,6 +335,30 @@ class OSMTrack:
             return [[float(lat), float(lon)] for lat, lon in zip(self.lat, self.lon)]
         else:
             return [[]]
+
+    def to_tuple_list(self, frmt: str = "lon,lat"):
+        """ Converts the coordinates to a list of tuples
+        Parameters
+        ----------
+            frmt : str, default: "lon,lat"
+                Format, lon,lat or x,y
+
+        Returns
+        -------
+            list
+        """
+        if frmt == "lon,lat":
+            if self.lat and self.lon:
+                return [[float(lat), float(lon)] for lat, lon in zip(self.lat, self.lon)]
+            else:
+                return [(None, None)]
+        elif frmt == "x,y":
+            if self.x and self.y:
+                return [(x, y) for x, y in zip(self.x, self.y)]
+            else:
+                return [(None, None)]
+        else:
+            raise ValueError("frmt %s not supported" % frmt)
 
     def __repr__(self):
         return "Track from %d to %d, Length: %f" % (self.nodes[0].id,

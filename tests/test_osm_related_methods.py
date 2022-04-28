@@ -22,6 +22,17 @@ def test_load_additional_osm_data(my_campaign, caplog):
     assert True
 
 
+def test_osm_map_matching(my_campaign, caplog):
+    caplog.set_level(logging.DEBUG)
+    my_campaign.import_folder("files/sqlite/osm_mapping_test",
+                              download_osm_region=True,
+                              railway_types=["tram"],
+                              osm_recurse_type="<")
+
+    my_campaign.do_map_matching()
+    assert my_campaign.files[0].matched_line.name == 'Linie 10: Hauptbahnhof/ZOB → Ahlem'
+
+
 def test_load_additional_osm_data_for_many_files(my_campaign, caplog):  # TODO
     caplog.set_level(logging.DEBUG)
     pyridy.options["OSM_TIMEOUT"] = 300
@@ -30,6 +41,17 @@ def test_load_additional_osm_data_for_many_files(my_campaign, caplog):  # TODO
                               download_osm_region=True,
                               railway_types=["rail"],
                               osm_recurse_type="<")
+    assert True
+
+
+def test_create_map(my_campaign, caplog):
+    caplog.set_level(logging.DEBUG)
+    pyridy.options["OSM_TIMEOUT"] = 200
+    my_campaign.import_folder("files/sqlite/osm_mapping_test",
+                              download_osm_region=True,
+                              railway_types=["tram"],
+                              osm_recurse_type="<")
+    my_campaign.create_map()
     assert True
 
 

@@ -23,6 +23,14 @@ from pyridy.utils.tools import internet
 logger = logging.getLogger(__name__)
 
 
+def upsample_way(self, res: float = config.options["TRACK_RESOLUTION"]):
+    self.res = 1
+    pass
+
+
+overpy.Way.upsample_way = upsample_way
+
+
 class OSM:
     supported_railway_types = ["rail", "tram", "subway", "light_rail"]
 
@@ -90,6 +98,9 @@ class OSM:
 
         self.ways: List[overpy.Way, overpy.RelationWay] = []
         self.way_dict = {}
+
+        self.relations: List[overpy.Relation] = []
+        self.relation_dict = {}
 
         self.railway_lines: List[OSMRailwayLine] = []
         self.railway_elements: List[OSMRailwayElement] = []
@@ -212,7 +223,7 @@ class OSM:
         # Download data for all desired railway types
         if internet():
             for i, b in tqdm(enumerate(self.bbox)):
-                logger.debug("Querying data for bounding box ( %d / %d): %s" % (i+1, len(self.bbox), str(b)))
+                logger.debug("Querying data for bounding box ( %d / %d): %s" % (i + 1, len(self.bbox), str(b)))
                 for railway_type in tqdm(self.desired_railway_types):
                     # Create Overpass queries and try downloading them
                     logger.debug("Querying data for railway type: %s" % railway_type)
@@ -227,35 +238,13 @@ class OSM:
                     # Convert relation result to OSMRailwayLine objects
                     if rou_result.result:
                         for rel in rou_result.result.relations:
-                            rel_way_ids = [mem.ref for mem in rel.members if
-                                           type(mem) == overpy.RelationWay and not mem.role]
-
-                            if trk_result.result:
-                                rel_ways = [w for w in trk_result.result.ways if w.id in rel_way_ids]
-
-                                sort_order = {w_id: idx for w_id, idx in zip(rel_way_ids, range(len(rel_way_ids)))}
-                                rel_ways.sort(key=lambda w: sort_order[w.id])
-
-                                railway_line = OSMRailwayLine(relation=rel, ways=rel_ways)
-                                if railway_line not in self.railway_lines:
-                                    self.railway_lines.append(railway_line)
+                            if rel not in self.relations:
+                                self.relations.append(rel)
 
                     if trk_result.result:
                         for n in trk_result.result.nodes:
                             if n not in self.nodes:
                                 self.nodes.append(n)
-
-                            if "railway" in n.tags:
-                                if n.tags["railway"] == "level_crossing":
-                                    self.railway_elements.append(OSMLevelCrossing(n))
-                                elif n.tags["railway"] == "signal":
-                                    self.railway_elements.append(OSMRailwaySignal(n))
-                                elif n.tags["railway"] == "switch":
-                                    self.railway_elements.append(OSMRailwaySwitch(n))
-                                elif n.tags["railway"] == "milestone":
-                                    self.railway_elements.append(OSMRailwayMilestone(n))
-                                else:
-                                    pass
 
                         for w in trk_result.result.ways:
                             if w not in self.ways:
@@ -264,12 +253,40 @@ class OSM:
             # Create dictionaries for easy node/way access
             self.node_dict = {n.id: n for n in self.nodes}  # Dict that returns node based on node id
             self.way_dict = {w.id: w for w in self.ways}  # Dict that returns way based on way id
+            self.relation_dict = {rel.id: rel for rel in self.relations}
 
             # Add XY coordinate to each node
             osm_xy = self.get_coords(frmt="xy")
             for i, xy in enumerate(osm_xy):
                 self.nodes[i].attributes["x"] = xy[0]
                 self.nodes[i].attributes["y"] = xy[1]
+
+            # Search through results for railway stuff
+            for n in self.nodes:
+                if "railway" in n.tags:
+                    if n.tags["railway"] == "level_crossing":
+                        self.railway_elements.append(OSMLevelCrossing(n))
+                    elif n.tags["railway"] == "signal":
+                        self.railway_elements.append(OSMRailwaySignal(n))
+                    elif n.tags["railway"] == "switch":
+                        self.railway_elements.append(OSMRailwaySwitch(n))
+                    elif n.tags["railway"] == "milestone":
+                        self.railway_elements.append(OSMRailwayMilestone(n))
+                    else:
+                        pass
+
+            for rel in self.relations:
+                rel_way_ids = [mem.ref for mem in rel.members if type(mem) == overpy.RelationWay and not mem.role]
+                rel_ways = [w for w in self.ways if w.id in rel_way_ids]
+
+                sort_order = {w_id: idx for w_id, idx in zip(rel_way_ids, range(len(rel_way_ids)))}
+                rel_ways.sort(key=lambda way: sort_order[way.id])
+
+                # rel_ways = [self.way_dict[rel_id] for rel_id in rel_way_ids]
+
+                railway_line = OSMRailwayLine(relation=rel, ways=rel_ways)
+                if railway_line not in self.railway_lines:
+                    self.railway_lines.append(railway_line)
         else:
             logger.warning("Could not download OSM data because of no internet connection!")
 
@@ -559,5 +576,14 @@ class OSM:
         """
         return [line for line in self.railway_lines if re.search(r'\b{0}\b'.format(name), line.name)]
 
+    def reset_way_attributes(self):
+        """ Deletes all attributes of each way. E.g results are saved
+
+        """
+        for w in self.ways:
+            w.attributes = {}
+
     def __repr__(self):
         return "OSM region with bounding boxes: %s" % (str(self.bbox))
+
+

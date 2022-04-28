@@ -3,8 +3,10 @@ from math import radians, cos, sin, asin, sqrt
 from typing import Union, List, Tuple
 
 import numpy as np
+import overpy
 import scipy.interpolate as si
 from numpy.linalg import norm
+from shapely.geometry import LineString
 
 from pyridy import config
 
@@ -167,6 +169,19 @@ def calc_distance_from_lon_lat(lon: List[float], lat: List[float]):
         return s, ds
     else:
         return [], []
+
+
+def convert_way_to_line_string(w: overpy.Way, frmt: str = "lon,lat") -> LineString:
+    if frmt == "lon,lat":
+        coords = [(float(n.lon), float(n.lat)) for n in w.nodes]
+        return LineString(coords)
+    elif frmt == "x,y":
+        lons, lats = [float(n.lon) for n in w.nodes], [float(n.lat) for n in w.nodes]
+        xs, ys = config.proj(lons, lats)
+        coords = [(x, y) for x, y in zip(xs, ys)]
+        return LineString(coords)
+    else:
+        raise ValueError(f"Unknown format: {frmt}")
 
 
 def convert_lon_lat_to_xy(lon: List[float], lat: List[float], adjust_zero_point: bool = False):

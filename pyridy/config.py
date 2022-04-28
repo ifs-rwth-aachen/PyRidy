@@ -1,6 +1,7 @@
 import pyproj
 from ipyleaflet import Icon, TileLayer
 
+
 # Projections
 proj = pyproj.Proj(proj='utm', zone=32, ellps='WGS84', preserve_units=True)
 geod = pyproj.Geod(ellps='WGS84')
@@ -54,5 +55,10 @@ options = {
     "MAP_MATCHING_V_THRES": 1.0,
     "MAP_MATCHING_ALPHA": 1.0,
     "MAP_MATCHING_BETA": 1.0,
-    "MAP_MATCHING_MIN_LINE_MATCH_RATIO": .2
+    "MAP_MATCHING_MIN_LINE_MATCH_RATIO": .2,
+    "TRACK_RESOLUTION": .5,
+    "RESULT_MATCHING_MAX_DISTANCE": 5
 }
+
+# Used colors
+colors = []
