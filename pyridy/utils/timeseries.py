@@ -182,7 +182,7 @@ class TimeSeries(ABC):
         sync_timestamp: int
             Timestamp used to synchronize timeseries
         sync_time: np.datetime64
-            Sync to bes used for synchronizing
+            Sync to be used for synchronizing
         timedelta_unit: str
             Timedelta unit
         """
@@ -240,7 +240,7 @@ class TimeSeries(ABC):
                 raise ValueError("(%s) Method %s not supported" % (self.filename, method))
         else:
             logger.debug("(%s) Trying to synchronize timestamps on empty %s" % (self.filename,
-                                                                               self.__class__.__name__))
+                                                                                self.__class__.__name__))
 
 
 class AccelerationSeries(TimeSeries):
@@ -273,6 +273,9 @@ class AccelerationUncalibratedSeries(TimeSeries):
                  acc_uncal_x: Union[list, np.ndarray] = None,
                  acc_uncal_y: Union[list, np.ndarray] = None,
                  acc_uncal_z: Union[list, np.ndarray] = None,
+                 acc_uncal_x_bias: Union[list, np.ndarray] = None,
+                 acc_uncal_y_bias: Union[list, np.ndarray] = None,
+                 acc_uncal_z_bias: Union[list, np.ndarray] = None,
                  rdy_format_version: float = None,
                  filename: str = ""):
         """ Series containing uncalibrated acceleration values
@@ -283,6 +286,9 @@ class AccelerationUncalibratedSeries(TimeSeries):
         acc_uncal_x
         acc_uncal_y
         acc_uncal_z
+        acc_uncal_x_bias
+        acc_uncal_y_bias
+        acc_uncal_z_bias
         rdy_format_version
         """
         args = locals().copy()
@@ -355,6 +361,9 @@ class MagnetometerUncalibratedSeries(TimeSeries):
                  mag_uncal_x: Union[list, np.ndarray] = None,
                  mag_uncal_y: Union[list, np.ndarray] = None,
                  mag_uncal_z: Union[list, np.ndarray] = None,
+                 mag_uncal_x_bias: Union[list, np.ndarray] = None,
+                 mag_uncal_y_bias: Union[list, np.ndarray] = None,
+                 mag_uncal_z_bias: Union[list, np.ndarray] = None,
                  rdy_format_version: float = None,
                  filename: str = ""):
         """ Series containing uncalibrated magnetic field values
@@ -365,6 +374,9 @@ class MagnetometerUncalibratedSeries(TimeSeries):
         mag_uncal_x
         mag_uncal_y
         mag_uncal_z
+        mag_uncal_x_bias
+        mag_uncal_y_bias
+        mag_uncal_z_bias
         rdy_format_version
         """
         args = locals().copy()
@@ -560,6 +572,9 @@ class GyroUncalibratedSeries(TimeSeries):
                  w_uncal_x: Union[list, np.ndarray] = None,
                  w_uncal_y: Union[list, np.ndarray] = None,
                  w_uncal_z: Union[list, np.ndarray] = None,
+                 w_uncal_x_bias: Union[list, np.ndarray] = None,
+                 w_uncal_y_bias: Union[list, np.ndarray] = None,
+                 w_uncal_z_bias: Union[list, np.ndarray] = None,
                  rdy_format_version: float = None,
                  filename: str = ""):
         """ Series containing uncalibrated gyro values
@@ -570,6 +585,9 @@ class GyroUncalibratedSeries(TimeSeries):
         w_uncal_x
         w_uncal_y
         w_uncal_z
+        w_uncal_x_bias
+        w_uncal_y_bias
+        w_uncal_z_bias
         rdy_format_version
         """
         args = locals().copy()
@@ -765,3 +783,32 @@ class SubjectiveComfortSeries(TimeSeries):
         args = locals().copy()
         args.pop("self")
         super(SubjectiveComfortSeries, self).__init__(**args)
+
+
+class NTPDatetimeSeries(TimeSeries):
+    def __init__(self, time: Union[list, np.ndarray] = None,
+                 ntp_datetime: Union[list, np.ndarray] = None,
+                 rdy_format_version: float = None,
+                 strip_timezone: bool = False,
+                 filename: str = ""):
+        """
+
+        Parameters
+        ----------
+        time
+        ntp_datetime
+        rdy_format_version
+        """
+        self.ntp_datetime = ntp_datetime
+
+        args = locals().copy()
+        args.pop("self")
+        args.pop("strip_timezone")
+        super(NTPDatetimeSeries, self).__init__(**args)
+
+        if len(self.ntp_datetime) > 0:
+            if strip_timezone:
+                ntp_datetime = [datetime.datetime.fromisoformat(el).replace(tzinfo=None) for el in self.ntp_datetime]
+                self.ntp_datetime = np.array([np.datetime64(el) for el in ntp_datetime])
+            else:
+                self.ntp_datetime = np.array([np.datetime64(el) for el in self.ntp_datetime])

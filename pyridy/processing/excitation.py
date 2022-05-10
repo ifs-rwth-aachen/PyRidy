@@ -49,11 +49,13 @@ class ExcitationProcessor(PostProcessor):
 
         self.b, self.a = signal.butter(self.order, 2 * self.f_c / self.f_s, 'high')  # High Pass (2*f_c/f_s)
 
-    def execute(self, axes: Union[str, list] = "z", intp_gps: bool = True):
+    def execute(self, axes: Union[str, list] = "z", intp_gps: bool = True, reset: bool = False):
         """ Executes the processor on the given axes
 
         Parameters
         ----------
+        reset: bool
+            Resets all result nodes
         intp_gps: bool, default: True
             If true interpolates the GPS measurements onto the results
         axes: str or list, default: "z"
@@ -70,6 +72,9 @@ class ExcitationProcessor(PostProcessor):
                     raise ValueError("axes must be 'x', 'y' or 'z', or list of these values")
         else:
             raise ValueError("axes must be list or str")
+
+        if reset and self.campaign.osm:
+            self.campaign.osm.reset_way_attributes()
 
         f: RDYFile
         for f in tqdm(self.campaign):

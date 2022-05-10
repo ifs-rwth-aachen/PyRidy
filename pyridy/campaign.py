@@ -12,17 +12,14 @@ import networkx as nx
 import numpy as np
 from ipyleaflet import Map, Polyline, Marker, Icon, FullScreenControl, ScaleControl
 from ipywidgets import HTML
-from matplotlib import pyplot as plt
-from matplotlib.patches import Rectangle
 from networkx import connected_components
 from tqdm.auto import tqdm
 
 from . import config
 from .file import RDYFile
 from .osm import OSM, OSMRailwaySwitch, OSMRailwaySignal, OSMLevelCrossing
-from .osm.utils import overlap, boxes_to_edges, iou
+from .osm.utils import boxes_to_edges, iou
 from .utils import GPSSeries, TimeSeries
-from .utils.tools import generate_random_color
 
 logger = logging.getLogger(__name__)
 

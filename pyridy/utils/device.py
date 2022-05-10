@@ -5,15 +5,15 @@ from pandas import Series
 
 class Device:
     def __init__(self,
-                 api_level: Union[int, Series] = None,
-                 base_os: Union[str, Series] = None,
-                 brand: Union[str, Series] = None,
-                 manufacturer: Union[str, Series] = None,
-                 device: Union[str, Series] = None,
-                 product: Union[str, Series] = None,
-                 model: Union[str, Series] = None,
-                 gnss_hardware_model_name: Union[str, Series] = None,
-                 gnss_year_of_hardware: Union[int, Series] = None):
+                 api_level: Union[int, Series] = -1,
+                 base_os: Union[str, Series] = "N/A",
+                 brand: Union[str, Series] = "N/A",
+                 manufacturer: Union[str, Series] = "N/A",
+                 device: Union[str, Series] = "N/A",
+                 product: Union[str, Series] = "N/A",
+                 model: Union[str, Series] = "N/A",
+                 gnss_hardware_model_name: Union[str, Series] = "N/A",
+                 gnss_year_of_hardware: Union[int, Series] = -1):
         """ Class representing Android device information
 
         Parameters

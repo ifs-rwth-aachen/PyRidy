@@ -41,37 +41,37 @@ def test_pyridy_campaign_manager(my_campaign):
 def test_loading_files_wo_mp(my_campaign, caplog):
     caplog.set_level(logging.DEBUG)
     my_campaign.import_folder("files", use_multiprocessing=False)
-    assert len(my_campaign) == 11
+    assert len(my_campaign) == 12
 
 
 def test_loading_files(my_campaign, caplog):
     caplog.set_level(logging.DEBUG)
     my_campaign.import_folder("files")
-    assert len(my_campaign) == 11
+    assert len(my_campaign) == 12
 
 
 def test_loading_files_partial_series(my_partial_campaign, caplog):
     caplog.set_level(logging.DEBUG)
     my_partial_campaign.import_folder("files")
-    assert len(my_partial_campaign) == 11
+    assert len(my_partial_campaign) == 12
 
 
 def test_exclude_file(my_campaign, caplog):
     caplog.set_level(logging.DEBUG)
     my_campaign.import_folder("files", exclude="device1.sqlite")
-    assert len(my_campaign) == 10
+    assert len(my_campaign) == 11
 
 
 def test_exclude_files(my_campaign, caplog):
     caplog.set_level(logging.DEBUG)
     my_campaign.import_folder("files", exclude=["device1.sqlite", "osm_mapping_test.sqlite"])
-    assert len(my_campaign) == 9
+    assert len(my_campaign) == 10
 
 
 def test_exclude_folder(my_campaign, caplog):
     caplog.set_level(logging.DEBUG)
     my_campaign.import_folder("files", exclude="sqlite")
-    assert len(my_campaign) == 3
+    assert len(my_campaign) == 4
 
 
 def test_load_single_file(my_campaign, caplog):
@@ -118,7 +118,7 @@ def test_device_information_repr(my_campaign, caplog):
 def test_loading_files_non_recursive(my_campaign, caplog):
     caplog.set_level(logging.DEBUG)
     my_campaign.import_folder("files/rdy/", recursive=False)
-    assert len(my_campaign) == 3
+    assert len(my_campaign) == 4
 
 
 def test_get_measurement(my_campaign, caplog):

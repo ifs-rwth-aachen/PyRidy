@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 
 class OSMResultNode:
-    def __init__(self, lat: float, lon: float,
+    def __init__(self, lon: float, lat: float,
                  value=None, f=None, proc=None, dir: str = "", color: str = None):
         """ Class representing a Node calculated by PyRidy
 
@@ -219,7 +219,7 @@ class OSMRelation:
         else:
             return [[]]
 
-    def create_map(self, show_result_nodes: bool = False) -> Map:
+    def create_map(self, show_result_nodes: bool = False, use_file_color: bool = False) -> Map:
         center = ((self.lat_sw + self.lat_ne) / 2, (self.lon_sw + self.lon_ne) / 2)
 
         m = Map(center=center, zoom=12, scroll_wheel_zoom=True, basemap=config.OPEN_STREET_MAP_DE)
@@ -241,8 +241,8 @@ class OSMRelation:
                 circle = Circle()
                 circle.location = n.lon, n.lat
                 circle.radius = 2
-                circle.color = "#CC071E"
-                circle.fill_color = "#CC071E"
+                circle.color = n.f.color if use_file_color else n.color
+                circle.fill_color = n.f.color if use_file_color else n.color
                 circle.weight = 3
                 circle.fill_opacity = 0.1
                 circles.append(circle)
