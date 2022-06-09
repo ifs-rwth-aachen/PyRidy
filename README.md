@@ -44,11 +44,6 @@ Install using pip
 ```python
     pip install pyridy
 ```
-Note that pyridy depends on geopandas, the best way to install geopandas is usually using conda
-```python
-    conda install geopandas
-```
-See the [GeoPandas documentation](https://geopandas.org/) for more details.
 
 #### Usage
 
