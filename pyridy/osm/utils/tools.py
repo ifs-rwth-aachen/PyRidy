@@ -410,18 +410,20 @@ def is_point_within_line_projection(line: Union[np.ndarray, list], point: Union[
     return b
 
 
-def haversine(lon1: float, lat1: float, lon2: float, lat2: float):
+def haversine(lon1: float, lat1: float, lon2: float, lat2: float) -> float:
     """ Calculate the great circle distance in kilometers between two points on the earth (specified in decimal degrees)
-        Source: https://stackoverflow.com/questions/4913349/haversine-formula-in-python-bearing-and-distance-between-two-gps-points
+        Source:
+        https://stackoverflow.com/questions/4913349/haversine-formula-in-python-bearing-and-distance-between-two-gps-points
+
     Parameters
     ----------
-    lon1 : float
+    lon1: float
         Longitude of first point
-    lat1 : float
+    lat1: float
         Latitude of first point
-    lon2 : float
+    lon2: float
         Longitude of second point
-    lat2 : float
+    lat2: float
         Latitude of second point
     Returns
     -------
