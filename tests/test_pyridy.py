@@ -6,7 +6,8 @@ import overpy
 import pytest
 
 import pyridy
-from pyridy.utils import AccelerationSeries, LinearAccelerationSeries, GPSSeries, GNSSMeasurementSeries
+from pyridy.utils import AccelerationSeries, LinearAccelerationSeries, GPSSeries, GNSSMeasurementSeries, \
+    MagnetometerSeries
 
 
 @pytest.fixture
@@ -53,7 +54,7 @@ def test_loading_files(my_campaign, caplog):
 def test_loading_files_partial_series(my_partial_campaign, caplog):
     caplog.set_level(logging.DEBUG)
     my_partial_campaign.import_folder("files")
-    assert len(my_partial_campaign) == 12
+    assert len(my_partial_campaign.files[0].measurements[MagnetometerSeries]) == 0
 
 
 def test_exclude_file(my_campaign, caplog):

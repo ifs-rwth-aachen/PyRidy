@@ -55,6 +55,9 @@ class OSM:
         """
 
         # Sanity check for bbox argument
+        if not bbox:
+            raise ValueError("No Bounding Box given!")
+
         if (type(bbox[0]) == float) or (type(bbox[0]) == np.float64):
             self._check_bbox(bbox)
             self.bbox = [bbox]
@@ -504,14 +507,27 @@ class OSM:
             logger.warning("No nodes get coordinates of!")
             return np.array([])
 
-    def get_switches(self) -> List[OSMRailwayElement]:
+    def get_switches(self, line: OSMRailwayLine = None) -> List[OSMRailwayElement]:
         """ Returns a list of railway switches found in the downloaded OSM region
 
         Returns
         -------
             list
         """
-        return [el for el in self.railway_elements if type(el) == OSMRailwaySwitch]
+        sws = [el for el in self.railway_elements if type(el) == OSMRailwaySwitch]
+
+        if line:
+            line_switches = []
+
+            for w in line.ways:
+                n_ids = [n.id for n in w.nodes]
+                for sw in sws:
+                    if sw.id in n_ids:
+                        line_switches.append(sw)
+
+            return line_switches
+        else:
+            return sws
 
     def get_switches_for_railway_line(self, line: OSMRailwayLine) -> List[OSMRailwaySwitch]:
         """ Get switches part of a given railway line

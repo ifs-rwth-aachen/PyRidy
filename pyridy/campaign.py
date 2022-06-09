@@ -463,10 +463,14 @@ class Campaign:
         if config.options["OSM_SINGLE_BOUNDING_BOX"]:
             self.osm = OSM(bbox=self.extent, desired_railway_types=self.railway_types, recurse=self.osm_recurse_type)
         else:
-            if config.options["OSM_BOUNDING_BOX_OPTIMIZATION"]:
-                self.osm = OSM(bbox=self.s_bboxs, desired_railway_types=self.railway_types, recurse=self.osm_recurse_type)
+            if config.options["OSM_BOUNDING_BOX_OPTIMIZATION"] and self.s_bboxs:
+                self.osm = OSM(bbox=self.s_bboxs, desired_railway_types=self.railway_types,
+                               recurse=self.osm_recurse_type)
             else:
-                self.osm = OSM(bbox=self.bboxs, desired_railway_types=self.railway_types, recurse=self.osm_recurse_type)
+                if self.bboxs:
+                    self.osm = OSM(bbox=self.bboxs, desired_railway_types=self.railway_types, recurse=self.osm_recurse_type)
+                else:
+                    raise ValueError("Can't retrieve OSM Data because bounding boxes are empty!")
 
     def import_files(self, file_paths: Union[list, str] = None,
                      sync_method: str = "timestamp",
@@ -527,8 +531,6 @@ class Campaign:
                 pass
             else:
                 raise ValueError("series argument must be list of TimeSeries or TimeSeries! not %s" % type(series))
-        else:
-            self._series = None
 
         if use_multiprocessing:
             with Pool(multiprocessing.cpu_count()) as p:

@@ -18,11 +18,11 @@ sys.path.insert(0, os.path.abspath('../../pyridy/'))
 # -- Project information -----------------------------------------------------
 
 project = 'PyRidy'
-copyright = '2021, Philipp Simon Leibner'
+copyright = '2022, Philipp Simon Leibner'
 author = 'Philipp Simon Leibner'
 
 # The full version, including alpha/beta/rc tags
-release = '0.5.1'
+release = '0.8.7'
 
 # -- General configuration ---------------------------------------------------
 

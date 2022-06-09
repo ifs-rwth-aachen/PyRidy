@@ -566,7 +566,7 @@ class RDYFile:
 
         attr = self.__dict__.copy()
         attr.update(attr["device"].__dict__.copy())
-        for a in ["db_con", "measurements", "device", "sensors"]:
+        for a in ["measurements", "device", "sensors"]:
             attr.pop(a)
             pass
 
@@ -1169,6 +1169,7 @@ class RDYFile:
                         rdy_format_version=self.rdy_format_version,
                         strip_timezone=self.strip_timezone,
                         **dict(ntp_datetime_df))
+
                 except (DatabaseError, PandasDatabaseError) as e:
                     logger.debug(
                         "(%s) DatabaseError occurred when accessing subjective_comfort_measurements_table" % self.filename)
@@ -1178,6 +1179,12 @@ class RDYFile:
 
         else:
             raise ValueError("File extension %s is not supported" % self.extension)
+
+        if (self.ntp_date_time is None) and \
+                (self.ntp_timestamp is None or self.ntp_timestamp == 0) and \
+                len(self.measurements[NTPDatetimeSeries]) > 0:
+            self.ntp_timestamp = self.measurements[NTPDatetimeSeries]._time[0]
+            self.ntp_date_time = self.measurements[NTPDatetimeSeries].ntp_datetime[0]
 
         if self.cutoff:
             for m in self.measurements.values():
