@@ -141,13 +141,15 @@ class OSM:
         if len(bbox) != 4:
             raise ValueError("Bounding box must have 4 coordinates, not %d" % len(bbox))
 
-        if bbox[0] == bbox[2] or bbox[1] == bbox[3]:
+        lon_sw, lat_sw, lon_ne, lat_ne = bbox
+
+        if lon_sw == lon_ne or lat_sw == lat_ne:
             raise ValueError("Invalid coordinates")
 
-        if not (-90 <= bbox[1] <= 90) or not (-90 <= bbox[3] <= 90):
+        if not (-90 <= lat_sw <= 90) or not (-90 <= lat_ne <= 90):
             raise ValueError("Lat. value outside valid range")
 
-        if not (-180 <= bbox[0] <= 180) or not (-180 <= bbox[2] <= 180):
+        if not (-180 <= lon_sw <= 180) or not (-180 <= lon_ne <= 180):
             raise ValueError("Lon. value outside valid range")
 
     @staticmethod
