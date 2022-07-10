@@ -203,22 +203,27 @@ class OSM:
         if railway_type not in OSM.supported_railway_types:
             raise ValueError("The desired railway type %s is not supported" % railway_type)
 
-        track_query = """[timeout:""" + str(config.options["OSM_TIMEOUT"]) + """];(node[""" + "railway" + """=""" \
-                      + railway_type + """](""" + str(bbox[1]) + """,""" + str(bbox[0]) + """,""" + str(bbox[3]) \
-                      + """,""" + str(bbox[2]) + """);way[""" + "railway" + """=""" + railway_type + """](""" \
-                      + str(bbox[1]) + """,""" + str(bbox[0]) + """,""" + str(bbox[3]) + """,""" + str(bbox[2]) \
-                      + """););(._;>;);
-                         out body;
-                      """
+        bbox_str = f"{str(bbox[1])},{str(bbox[0])},{str(bbox[3])},{str(bbox[2])}"
+
+        track_query = f"""
+[timeout:{str(config.options["OSM_TIMEOUT"])}];
+(
+    node[railway={railway_type}]({bbox_str});
+    way[railway={railway_type}]({bbox_str});
+);
+(._;>;);
+out body;"""
 
         if railway_type == "rail":  # Railway routes use train instead of rail
             railway_type = "train"
 
-        route_query = """[timeout:""" + str(config.options["OSM_TIMEOUT"]) + """];(relation[""" + "route" + """=""" \
-                      + railway_type + """](""" + str(bbox[1]) + """,""" + str(bbox[0]) + """,""" + str(bbox[3]) \
-                      + """,""" + str(bbox[2]) + """););(._;""" + recurse + """;);
-                         out body;
-                      """
+        route_query = f"""
+[timeout:{str(config.options["OSM_TIMEOUT"])}];
+(
+    relation[route={railway_type}]({bbox_str});
+);
+(._;{recurse};);
+out body;"""
 
         return track_query, route_query
 
