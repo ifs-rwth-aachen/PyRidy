@@ -83,15 +83,14 @@ class OSM:
 
         # Sanity check for railway type argument
         if desired_railway_types is None:
-            desired_railway_types = ["rail", "tram", "subway", "light_rail"]
+            desired_railway_types = OSM.supported_railway_types
         else:
+            if type(desired_railway_types) == str:
+                desired_railway_types = list(desired_railway_types)
             if type(desired_railway_types) == list:
                 for desired in desired_railway_types:
                     if desired not in OSM.supported_railway_types:
                         raise ValueError("Your desired railway type %s is not supported" % desired)
-            elif type(desired_railway_types) == str:
-                if desired_railway_types not in OSM.supported_railway_types:
-                    raise ValueError("Your desired railway type %s is not supported" % desired_railway_types)
             else:
                 raise ValueError("desired_railway_types must be list or str")
 
