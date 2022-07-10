@@ -68,7 +68,7 @@ class OSM:
 
         # Sanity check for bbox argument
         if not bbox:
-            raise ValueError("No Bounding Box given!")
+            raise ValueError("Can't retrieve OSM Data because bounding boxes are empty!")
 
         if (type(bbox[0]) == float) or (type(bbox[0]) == np.float64):
             self._check_bbox(bbox)
