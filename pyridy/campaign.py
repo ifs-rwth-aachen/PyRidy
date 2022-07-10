@@ -10,7 +10,7 @@ from typing import List, Union, Tuple, Optional, Type
 
 import networkx as nx
 import numpy as np
-from ipyleaflet import Map, Polyline, Marker, Icon, FullScreenControl, ScaleControl
+from ipyleaflet import Polyline, Marker, Icon, FullScreenControl, ScaleControl
 from ipywidgets import HTML
 from networkx import connected_components
 from tqdm.auto import tqdm
@@ -20,6 +20,11 @@ from .file import RDYFile
 from .osm import OSM, OSMRailwaySwitch, OSMRailwaySignal, OSMLevelCrossing
 from .osm.utils import boxes_to_edges, iou
 from .utils import GPSSeries, TimeSeries
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .widgets import Map
 
 logger = logging.getLogger(__name__)
 
@@ -162,162 +167,12 @@ class Campaign:
 
     @osm.setter
     def osm(self, value):
-        for f in tqdm(self):
+        for f in tqdm(self, desc="OSM Setter (Files in Campaign)"):
             f.osm = value
             if self.map_matching:
                 f.do_map_matching()
 
         self._osm = value
-
-    def add_tracks_to_map(self, m: Map) -> Map:
-        """ Add all GPS tracks from the campaign files to a Map
-
-        Parameters
-        ----------
-        m: Map
-            ipyleaflet Map
-
-        Returns
-        -------
-        Map
-
-        """
-        for file in self.files:
-            m = self.add_track_to_map(m, file=file)
-
-        return m
-
-    def add_track_to_map(self, m: Map, name: str = "", file: RDYFile = None) -> Map:
-        """ Adds a GPS track from a file to the Map
-
-        Parameters
-        ----------
-        m: Map
-            ipyleaflet map
-        name: str
-            Name of the file that should be drawn onto the map
-        file: RDYFile
-            Alternatively, provide RDYFile that should be drawn on the map
-
-        Returns
-        -------
-        Map
-
-        """
-        if name != "":
-            files = [self(name)]
-        elif file is not None:
-            files = [file]
-
-        else:
-            raise ValueError("You must provide either a filename or the file")
-
-        for f in files:
-            gps_series = f.measurements[GPSSeries]
-            coords = gps_series.to_ipyleaflef()
-
-            if coords != [[]]:
-                file_polyline = Polyline(locations=coords, color=f.color, fill=False, weight=4,
-                                         dash_array='10, 10')
-                m.add_layer(file_polyline)
-
-                # Add Start/End markers
-                start_icon = Icon(
-                    icon_url='https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png',
-                    shadow_url='https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
-                    icon_size=[25, 41],
-                    icon_anchor=[12, 41],
-                    popup_anchor=[1, -34],
-                    shadow_size=[41, 41])
-
-                end_icon = Icon(
-                    icon_url='https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png',
-                    shadow_url='https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
-                    icon_size=[25, 41],
-                    icon_anchor=[12, 41],
-                    popup_anchor=[1, -34],
-                    shadow_size=[41, 41])
-
-                start_marker = Marker(location=tuple(coords[0]), draggable=False, icon=start_icon)
-                end_marker = Marker(location=tuple(coords[-1]), draggable=False, icon=end_icon)
-
-                start_message = HTML()
-                end_message = HTML()
-                start_message.value = "<p>Start:</p><p>" \
-                                      + str(f.filename or '') + "</p><p>" \
-                                      + str(getattr(f.device, "manufacturer", "")) + "; " \
-                                      + str(getattr(f.device, "model", "")) + "</p>"
-                end_message.value = "<p>End:</p><p>" \
-                                    + str(f.filename or '') + "</p><p>" \
-                                    + str(getattr(f.device, "manufacturer", "")) + "; " \
-                                    + str(getattr(f.device, "model", "")) + "</p>"
-
-                start_marker.popup = start_message
-                end_marker.popup = end_message
-
-                m.add_layer(start_marker)
-                m.add_layer(end_marker)
-
-        return m
-
-    def add_osm_routes_to_map(self, m: Map) -> Map:
-        """ Adds OSM Routes from the downloaded OSM Region
-
-        Parameters
-        ----------
-        m: Map
-            ipyleaflet Map
-
-        Returns
-        -------
-        Map
-
-        """
-        if self.osm:
-            for line in self.osm.railway_lines:
-                for track in line.tracks:
-                    coords = track.to_ipyleaflet()
-                    file_polyline = Polyline(locations=coords, color=line.color, fill=False, weight=4)
-                    m.add_layer(file_polyline)
-        else:
-            logger.warning("No OSM region downloaded!")
-
-        return m
-
-    def add_osm_railway_elements_to_map(self, m: Map) -> Map:
-        """ Draws railway elements using markers on top of a map
-
-        Parameters
-        ----------
-        m: Map
-            Map where railway elements should be drawn onto
-
-        Returns
-        -------
-        m: Map
-            Map containing railway elements
-
-        """
-        if self.osm:
-            for el in self.osm.railway_elements:
-                if type(el) == OSMRailwaySwitch:
-                    icon = Icon(
-                        icon_url='https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-black.png',
-                        shadow_url='https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
-                        icon_size=[25, 41],
-                        icon_anchor=[12, 41],
-                        popup_anchor=[1, -34],
-                        shadow_size=[41, 41])
-                    marker = Marker(location=(el.lat, el.lon), draggable=False, icon=icon)
-
-                    m.add_layer(marker)
-                elif type(el) == OSMRailwaySignal:
-                    pass
-                elif type(el) == OSMLevelCrossing:
-                    pass
-                else:
-                    pass
-        return m
 
     def clear_files(self):
         """
@@ -327,8 +182,8 @@ class Campaign:
 
     def create_map(self, center: Tuple[float, float] = None,
                    show_gps_tracks=True,
-                   show_railway_elements=False) -> Map:
-        """ Creates a ipyleaflet map showing the GPS tracks of measurement files
+                   show_railway_elements=False) -> 'Map':
+        """ Creates a pyridy.widgets Map (based on ipyleaflet) showing the GPS tracks of measurement files
 
         Parameters
         ----------
@@ -338,31 +193,25 @@ class Campaign:
 
         Returns
         -------
-
+        pyridy.widgets Map
         """
+        from .widgets import Map
+
         if not center:
-            if self.lat_sw and self.lat_ne and self.lon_sw and self.lon_ne:
-                center = (
-                    (self.lat_sw + self.lat_ne) / 2,
-                    (self.lon_sw + self.lon_ne) / 2)
-            else:
-                raise ValueError("Cant determine geographic center of campaign, enter manually using 'center' argument")
+            center = self.determine_geographic_center()
 
-        m = Map(center=center, zoom=12, scroll_wheel_zoom=True, basemap=config.OPEN_STREET_MAP_DE)
-        m.add_control(ScaleControl(position='bottomleft'))
-        m.add_control(FullScreenControl())
+        m = Map(center=center, zoom=12)
 
-        # Add map
-        m.add_layer(config.OPEN_RAILWAY_MAP)
+        # Plot OSM Tracks
+        m.osm_routes_layer = m.add_osm_routes(self)
 
-        # Plot GPS point for each measurement and OSM Tracks
-        m = self.add_osm_routes_to_map(m)
-
+        # Plot measurement GPS Tracks
         if show_gps_tracks:
-            m = self.add_tracks_to_map(m)
+            m.measurement_layers = m.add_measurements(self)
 
+        # Plot railway elements
         if show_railway_elements:
-            m = self.add_osm_railway_elements_to_map(m)
+            m.railway_elements_layer = m.add_osm_railway_elements(self)
 
         return m
 
@@ -394,6 +243,14 @@ class Campaign:
 
         logging.info("Geographic boundaries of measurement campaign: Lat SW: %s, Lon SW: %s, Lat NE: %s, Lon NE: %s"
                      % (str(self.lat_sw), str(self.lon_sw), str(self.lat_ne), str(self.lon_ne)))
+    
+    def determine_geographic_center(self) -> Tuple[float, float]:
+        if self.lat_sw and self.lat_ne and self.lon_sw and self.lon_ne:
+            return (
+                (self.lat_sw + self.lat_ne) / 2,
+                (self.lon_sw + self.lon_ne) / 2)
+        else:
+            raise ValueError("Cannot determine geographic center of campaign, enter manually using 'center' argument")
 
     def do_map_matching(self, rematch=False, **kwargs):
         """ Performs map matching for all files in campaign
@@ -404,7 +261,7 @@ class Campaign:
             If True performs map matching again, even when file already contains a map matching
         """
         if self.osm:
-            for f in tqdm(self):
+            for f in tqdm(self, desc="Map Matching: Files in Campaign"):
                 if f.matched_ways and f.matched_nodes:
                     if rematch:
                         logger.info("(%s) File already has a map matching! Rematching..." % f.filename)
@@ -418,8 +275,23 @@ class Campaign:
             raise RuntimeError("Can't do Map Matching, because no OSM data has been downloaded!")
         pass
 
-    def download_osm_data(self):
+    def determine_bounding_boxes(self, simplify=True, plot=False):
+        """
+        Determine bounding boxes of files.
+        Stores bounding boxes in self.bboxs.
+        
+        If `simplify=True`: 
+        Unify bounding boxes with a large overlap to reduce number of queries and
+        stores these in self.s_bboxs.
+        """
+        # determine bounding boxes of files
         self.bboxs = [f.bbox for f in self.files if f.bbox]
+        if simplify:
+            self.simplify_bounding_boxes()
+        if plot:
+            self.plot_bounding_boxes_and_clusters()
+        
+    def simplify_bounding_boxes(self):
         self.s_bboxs = []  # Filtered bounding boxes
 
         # Unify bounding boxes with a large overlap to reduce number of queries
@@ -448,29 +320,30 @@ class Campaign:
             arr = np.array(c)
             self.s_bboxs.append([arr[:, 0].min(), arr[:, 1].min(), arr[:, 2].max(), arr[:, 3].max()])
 
-        # fig, ax = plt.subplots(1, figsize=(6, 6))
-        # for b in self.bboxs:
-        #     ax.add_patch(Rectangle((b[0], b[1]), b[2] - b[0], b[3] - b[1], alpha=1, edgecolor='r', facecolor='none'))
-        #
-        # for b in self.s_bboxs:
-        #     ax.add_patch(Rectangle((b[0], b[1]), b[2] - b[0], b[3] - b[1], alpha=1, edgecolor='g', facecolor='none'))
-        #
-        # ax.grid()
-        # ax.set_xlim([self.lon_sw, self.lon_ne])
-        # ax.set_ylim([self.lat_sw, self.lat_ne])
-        # plt.show()
+    def plot_bounding_boxes_and_clusters(self):
+        fig, ax = plt.subplots(1, figsize=(6, 6))
+        for b in self.bboxs:
+            ax.add_patch(Rectangle((b[0], b[1]), b[2] - b[0], b[3] - b[1], alpha=1, edgecolor='r', facecolor='none'))
+        
+        for b in self.s_bboxs:
+            ax.add_patch(Rectangle((b[0], b[1]), b[2] - b[0], b[3] - b[1], alpha=1, edgecolor='g', facecolor='none'))
+        
+        ax.grid()
+        ax.set_xlim([self.lon_sw, self.lon_ne])
+        ax.set_ylim([self.lat_sw, self.lat_ne])
+        plt.show()
 
+    def download_osm_data(self):
         if config.options["OSM_SINGLE_BOUNDING_BOX"]:
             self.osm = OSM(bbox=self.extent, desired_railway_types=self.railway_types, recurse=self.osm_recurse_type)
         else:
-            if config.options["OSM_BOUNDING_BOX_OPTIMIZATION"] and self.s_bboxs:
+            self.determine_bounding_boxes(simplify=False)
+            if config.options["OSM_BOUNDING_BOX_OPTIMIZATION"]:
+                self.simplify_bounding_boxes()
                 self.osm = OSM(bbox=self.s_bboxs, desired_railway_types=self.railway_types,
                                recurse=self.osm_recurse_type)
             else:
-                if self.bboxs:
-                    self.osm = OSM(bbox=self.bboxs, desired_railway_types=self.railway_types, recurse=self.osm_recurse_type)
-                else:
-                    raise ValueError("Can't retrieve OSM Data because bounding boxes are empty!")
+                self.osm = OSM(bbox=self.bboxs, desired_railway_types=self.railway_types, recurse=self.osm_recurse_type)
 
     def import_files(self, file_paths: Union[list, str] = None,
                      sync_method: str = "timestamp",
@@ -538,11 +411,12 @@ class Campaign:
                                                  sync_method=sync_method,
                                                  strip_timezone=strip_timezone,
                                                  cutoff=cutoff,
-                                                 series=self._series), file_paths)))
+                                                 series=self._series), file_paths)),
+                                  desc="multiprocessing pool")
                 for f in files:
                     self.files.append(f)
         else:
-            for p in tqdm(file_paths):
+            for p in tqdm(file_paths, desc="file paths"):
                 self.files.append(RDYFile(path=p,
                                           sync_method=sync_method,
                                           timedelta_unit=timedelta_unit,

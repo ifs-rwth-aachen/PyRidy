@@ -5,7 +5,6 @@ from typing import Union
 
 import numpy as np
 import pandas as pd
-from ipyleaflet import Map, ScaleControl, FullScreenControl, Circle, LayerGroup
 from scipy import signal, integrate
 from shapely.geometry import Point
 from tqdm.auto import tqdm
@@ -15,6 +14,7 @@ from pyridy.file import RDYFile
 from pyridy.osm.utils import convert_way_to_line_string, OSMResultNode
 from pyridy.processing import PostProcessor
 from pyridy.utils import LinearAccelerationSeries, GPSSeries
+from pyridy.widgets import Map
 
 logger = logging.getLogger(__name__)
 
@@ -165,33 +165,9 @@ class ExcitationProcessor(PostProcessor):
         pass
 
     def create_map(self, use_file_color=False) -> Map:
-        if not self.campaign.osm:
-            raise ValueError("Campaign has no OSM data!")
 
-        center = ((self.campaign.lat_sw + self.campaign.lat_ne) / 2,
-                  (self.campaign.lon_sw + self.campaign.lon_ne) / 2)
+        m = self.campaign.create_map(show_gps_tracks=True, show_railway_elements=False)
 
-        m = Map(center=center, zoom=12, scroll_wheel_zoom=True, basemap=config.OPEN_STREET_MAP_DE)
-        m.add_control(ScaleControl(position='bottomleft'))
-        m.add_control(FullScreenControl())
-
-        # Add map
-        m.add_layer(config.OPEN_RAILWAY_MAP)
-
-        circles = []
         nodes = list(itertools.chain.from_iterable([w.attributes.get("results", []) for w in self.campaign.osm.ways]))
-
-        n: OSMResultNode
-        for n in nodes:
-            circle = Circle()
-            circle.location = n.lon, n.lat
-            circle.radius = 2
-            circle.color = n.f.color if use_file_color else n.color
-            circle.fill_color = n.f.color if use_file_color else n.color
-            circle.weight = 3
-            circle.fill_opacity = 0.1
-            circles.append(circle)
-
-        l_circles = LayerGroup(layers=circles)
-        m.add_layer(l_circles)
+        m.add_results(nodes, use_file_color=use_file_color)
         return m
