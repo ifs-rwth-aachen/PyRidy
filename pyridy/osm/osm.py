@@ -228,7 +228,7 @@ out body;"""
         return track_query, route_query
 
     def _check_allowed_switch_transits(self):
-        """ Checks in what ways a switch can be transited, i.e. what combination of neighbouring nodes are allowed
+        """ Checks in what ways a switch can be transited, i.e. what combination of neighboring nodes are allowed
 
         """
         if not len(self.G.nodes):
