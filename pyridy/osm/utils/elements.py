@@ -45,7 +45,6 @@ class OSMResultWay:
     def __init(self, way, res: float = .5):
         self.way: overpy.Way = way
         self.res = res
-        pass
 
 
 class OSMRailwayElement(ABC):
