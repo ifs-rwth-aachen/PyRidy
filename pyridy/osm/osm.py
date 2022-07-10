@@ -647,7 +647,7 @@ out body;"""
         """
         return [el for el in self.railway_elements if type(el) == OSMLevelCrossing]
 
-    def get_railway_line(self, name) -> [OSMRailwayLine]:
+    def get_railway_line(self, name) -> List[OSMRailwayLine]:
         """ Get railway line by name. Always returns a list, even if only one line is found that matches the name
 
         Parameters
