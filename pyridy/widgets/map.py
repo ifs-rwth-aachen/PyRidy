@@ -223,7 +223,7 @@ def create_measurement_layer(file: RDYFile):
     gps_series = file.measurements[GPSSeries]
     coords = gps_series.to_ipyleaflef()
 
-    if coords == [[]]:
+    if not coords:
         logger.warning(f"Coordinates are empty in file: {file.filename}")
         return
 

@@ -214,11 +214,7 @@ class OSMRelation:
         -------
 
         """
-        if self.nodes:
-            logger.warning("Relation has no nodes!")
-            return [[n.lat, n.lon] for n in self.nodes]
-        else:
-            return [[]]
+        return [[n.lat, n.lon] for n in self.nodes]
 
     def create_map(self, show_result_nodes: bool = False, use_file_color: bool = False) -> Map:
         center = ((self.lat_sw + self.lat_ne) / 2, (self.lon_sw + self.lon_ne) / 2)
