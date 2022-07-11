@@ -165,9 +165,6 @@ class ExcitationProcessor(PostProcessor):
         pass
 
     def create_map(self, use_file_color=False) -> Map:
-
         m = self.campaign.create_map(show_gps_tracks=True, show_railway_elements=False)
-
-        nodes = list(itertools.chain.from_iterable([w.attributes.get("results", []) for w in self.campaign.osm.ways]))
-        m.add_results(nodes, use_file_color=use_file_color)
+        m.add_results_from_campaign(self.campaign, use_file_color=use_file_color)
         return m

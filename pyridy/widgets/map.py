@@ -1,4 +1,5 @@
 import io
+import itertools
 import logging
 from typing import Tuple, List, Union
 
@@ -183,6 +184,9 @@ class Map(LeafletMap):
 
         self.refresh_controls()
 
+    def add_results_from_campaign(self, campaign: Campaign, use_file_color=False):
+        nodes = list(itertools.chain.from_iterable([w.attributes.get("results", []) for w in campaign.osm.ways]))
+        self.add_results(nodes, use_file_color=use_file_color)
 
     def to_html(self) -> str:
         """
