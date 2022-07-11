@@ -167,7 +167,7 @@ class OSMRelation:
         self.name = relation.tags.get("name", "")
         self.ways = ways
         self.way_nodes = [way.nodes for way in self.ways]  # List of list of nodes
-        self.nodes = list(itertools.chain.from_iterable(self.way_nodes)) if self.way_nodes else None  # list of nodes
+        self.nodes = list(itertools.chain.from_iterable(self.way_nodes))  # list of nodes
 
         logger.debug(f'Create Graph for relation[id={self.id},name="{self.name}"].')
 
