@@ -62,3 +62,6 @@ options = {
 
 # Used colors
 colors = []
+
+# Location of the overpass cache (path relative to project root)
+OSM_OVERPASS_CACHE = 'overpass_cache'

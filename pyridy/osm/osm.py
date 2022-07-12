@@ -99,7 +99,7 @@ class OSM:
         self.recurse = recurse
 
         # use caching
-        cached_session = CachedSession(cache_name='overpass_cache', backend='filesystem')
+        cached_session = CachedSession(cache_name=config.OSM_OVERPASS_CACHE, backend='filesystem')
         # overpass API instances
         self.overpass_api = Overpass(session=cached_session)
         self.overpass_api_alt = Overpass(url="https://overpass.kumi.systems/api/interpreter", session=cached_session)
