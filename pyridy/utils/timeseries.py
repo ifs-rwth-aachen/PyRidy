@@ -62,8 +62,22 @@ class TimeSeries(ABC):
                                                                                   seconds=self.get_duration())),
                                                                               self.get_sample_rate())
 
-    def cutoff(self, timestamp_when_started: int, timestamp_when_stopped: int):
-        """ Cuts off measurement values saved before/after the measurement was started/stopped
+    def cut(self, start: float = 0, end: float = 0):
+        """ Cuts off seconds after start and before end
+
+        Parameters
+        ----------
+        start: float
+            Seconds to cutoff after start
+        end: float
+            Seconds to cutoff before end
+        """
+
+
+        pass
+
+    def trim_ends(self, timestamp_when_started: int, timestamp_when_stopped: int):
+        """ Trims measurement values saved before/after the measurement was started/stopped
 
         Parameters
         ----------

@@ -6,7 +6,7 @@ import os
 from functools import partial
 from multiprocessing import Pool
 from pathlib import Path
-from typing import List, Union, Tuple, Optional, Type
+from typing import List, Union, Tuple, Optional, Type, Dict, Any
 
 import networkx as nx
 import numpy as np
@@ -37,7 +37,7 @@ class Campaign:
                  sync_method: str = "timestamp",
                  timedelta_unit: str = 'timedelta64[ns]',
                  strip_timezone: bool = True,
-                 cutoff: bool = True,
+                 trim_ends: bool = True,
                  lat_sw: float = None,
                  lon_sw: float = None,
                  lat_ne: float = None,
@@ -63,7 +63,7 @@ class Campaign:
             Method to use to sync timestamps of individual files
         strip_timezone: bool, default: True
             Strips timezone from timestamps as np.datetime64 does not support timezones
-        cutoff: bool, default: True
+        trim_ends: bool, default: True
             If True, cutoffs the measurements precisely to the timestamp when the measurement was started, respectively
             stopped. By default, Ridy measurement files can contain several seconds of measurements from before/after
             the button press
@@ -90,6 +90,7 @@ class Campaign:
         self.folder = folder
         self.name = name
         self.files: List[RDYFile] = []
+        self.grouped_files: Dict[Any, RDYFile] = {}
 
         # Geographic extent of campaign
         self.lat_sw, self.lon_sw = lat_sw, lon_sw
@@ -129,13 +130,13 @@ class Campaign:
         self.sync_method = sync_method
         self.timedelta_unit = timedelta_unit # Only relevant for timestamp sync method
         self.strip_timezone = strip_timezone
-        self.cutoff = cutoff
+        self.trim_ends = trim_ends
 
         self.results = {}  # Dictionary for Post Processing Results
 
         if folder:
             self.import_folder(self.folder, recursive, exclude,
-                               cutoff=self.cutoff,
+                               trim_ends=self.trim_ends,
                                sync_method=self.sync_method,
                                timedelta_unit=self.timedelta_unit,
                                strip_timezone=self.strip_timezone)
@@ -243,7 +244,7 @@ class Campaign:
 
         logging.info("Geographic boundaries of measurement campaign: Lat SW: %s, Lon SW: %s, Lat NE: %s, Lon NE: %s"
                      % (str(self.lat_sw), str(self.lon_sw), str(self.lat_ne), str(self.lon_ne)))
-    
+
     def determine_geographic_center(self) -> Tuple[float, float]:
         if self.lat_sw and self.lat_ne and self.lon_sw and self.lon_ne:
             return (
@@ -275,12 +276,23 @@ class Campaign:
             raise RuntimeError("Can't do Map Matching, because no OSM data has been downloaded!")
         pass
 
+    def group_by(self, key):
+        """ Groupy Ridy files by given key, grouped files can be accessed through the grouped_files attributes
+
+        Parameters
+        ----------
+        key: Any
+            Key that should be used to group files
+        """
+        f_sorted = sorted(self.files, key=key)
+        self.grouped_files = {k: list(it) for k, it in itertools.groupby(f_sorted, key)}
+
     def determine_bounding_boxes(self, simplify=True, plot=False):
         """
         Determine bounding boxes of files.
         Stores bounding boxes in self.bboxs.
-        
-        If `simplify=True`: 
+
+        If `simplify=True`:
         Unify bounding boxes with a large overlap to reduce number of queries and
         stores these in self.s_bboxs.
         """
@@ -290,7 +302,7 @@ class Campaign:
             self.simplify_bounding_boxes()
         if plot:
             self.plot_bounding_boxes_and_clusters()
-        
+
     def simplify_bounding_boxes(self):
         self.s_bboxs = []  # Filtered bounding boxes
 
@@ -320,18 +332,17 @@ class Campaign:
             arr = np.array(c)
             self.s_bboxs.append([arr[:, 0].min(), arr[:, 1].min(), arr[:, 2].max(), arr[:, 3].max()])
 
-    def plot_bounding_boxes_and_clusters(self):
-        fig, ax = plt.subplots(1, figsize=(6, 6))
-        for b in self.bboxs:
-            ax.add_patch(Rectangle((b[0], b[1]), b[2] - b[0], b[3] - b[1], alpha=1, edgecolor='r', facecolor='none'))
-        
-        for b in self.s_bboxs:
-            ax.add_patch(Rectangle((b[0], b[1]), b[2] - b[0], b[3] - b[1], alpha=1, edgecolor='g', facecolor='none'))
-        
-        ax.grid()
-        ax.set_xlim([self.lon_sw, self.lon_ne])
-        ax.set_ylim([self.lat_sw, self.lat_ne])
-        plt.show()
+        # fig, ax = plt.subplots(1, figsize=(6, 6))
+        # for b in self.bboxs:
+        #     ax.add_patch(Rectangle((b[0], b[1]), b[2] - b[0], b[3] - b[1], alpha=1, edgecolor='r', facecolor='none'))
+        #
+        # for b in self.s_bboxs:
+        #     ax.add_patch(Rectangle((b[0], b[1]), b[2] - b[0], b[3] - b[1], alpha=1, edgecolor='g', facecolor='none'))
+        #
+        # ax.grid()
+        # ax.set_xlim([self.lon_sw, self.lon_ne])
+        # ax.set_ylim([self.lat_sw, self.lat_ne])
+        # plt.show()
 
     def download_osm_data(self):
         if config.options["OSM_SINGLE_BOUNDING_BOX"]:
@@ -348,7 +359,7 @@ class Campaign:
     def import_files(self, file_paths: Union[list, str] = None,
                      sync_method: str = "timestamp",
                      timedelta_unit: str = 'timedelta64[ns]',
-                     cutoff: bool = True,
+                     trim_ends: bool = True,
                      strip_timezone: bool = True,
                      det_geo_extent: bool = True,
                      use_multiprocessing: bool = False,
@@ -365,8 +376,8 @@ class Campaign:
             Timedelta unit for timestamp sync method
         strip_timezone: bool, default: True
             If True, strips timezone from timestamp arrays
-        cutoff: bool, default: True
-            If True, cutoffs measurement precisely to timestamp when the measurement was started respectively stopped
+        trim_ends: bool, default: True
+            If True, trims measurement precisely to timestamp when the measurement was started respectively stopped
         file_paths: str or list of str
             Individual file paths of the files that should be imported
         sync_method: str
@@ -384,6 +395,9 @@ class Campaign:
         """
         if osm_recurse_type:
             self.osm_recurse_type = osm_recurse_type
+
+        if railway_types:
+            self.railway_types = railway_types
 
         if type(file_paths) == str:
             file_paths = [file_paths]
@@ -410,7 +424,7 @@ class Campaign:
                 files = list(tqdm(p.imap(partial(RDYFile,
                                                  sync_method=sync_method,
                                                  strip_timezone=strip_timezone,
-                                                 cutoff=cutoff,
+                                                 trim_ends=trim_ends,
                                                  series=self._series), file_paths)),
                                   desc="multiprocessing pool")
                 for f in files:
@@ -421,10 +435,8 @@ class Campaign:
                                           sync_method=sync_method,
                                           timedelta_unit=timedelta_unit,
                                           strip_timezone=strip_timezone,
-                                          cutoff=cutoff,
+                                          trim_ends=trim_ends,
                                           series=self._series))
-
-        self.railway_types = railway_types
 
         if osm_recurse_type:
             self.osm_recurse_type = osm_recurse_type
