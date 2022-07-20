@@ -1,7 +1,7 @@
 import io
 import itertools
 import logging
-from typing import Tuple, List, Union
+from typing import Tuple, List, Union, Optional
 
 from ipyleaflet import Map as LeafletMap, ScaleControl, FullScreenControl, Polyline, Icon, Marker, GeoData, \
     LayersControl, basemaps, basemap_to_tiles, Circle, LayerGroup
@@ -198,6 +198,9 @@ class Map(LeafletMap):
 
 
 def create_marker(pos: Tuple[float, float], popup: Union[str, HTML] = None, color: str = "orange"):
+    # empty marker locations break leaflet
+    assert len(pos) == 2
+
     # Add Start/End markers
     icon = Icon(
         icon_url=f'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-{color}.png',
@@ -220,7 +223,7 @@ def create_marker(pos: Tuple[float, float], popup: Union[str, HTML] = None, colo
     return marker
 
 
-def create_measurement_layer(file: RDYFile):
+def create_measurement_layer(file: RDYFile) -> Optional[LayerGroup]:
     measurement_layer = LayerGroup()
     measurement_layer.name = file.filename
 
@@ -229,7 +232,7 @@ def create_measurement_layer(file: RDYFile):
 
     if not coords:
         logger.warning(f"Coordinates are empty in file: {file.filename}")
-        return
+        return None
 
     file_polyline = Polyline(locations=coords, color=file.color, fill=False, weight=4,
                              dash_array='10, 10')

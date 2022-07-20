@@ -301,7 +301,7 @@ class OSMTrack:
         if self.lat and self.lon:
             return [[float(lat), float(lon)] for lat, lon in zip(self.lat, self.lon)]
         else:
-            return [[]]
+            return []
 
     def to_tuple_list(self, frmt: str = "lon,lat"):
         """ Converts the coordinates to a list of tuples
