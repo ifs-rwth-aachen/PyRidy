@@ -6,6 +6,7 @@ import socket
 import time
 from itertools import chain
 from typing import List, Union
+from urllib.error import URLError
 
 import networkx as nx
 import numpy as np
@@ -15,10 +16,13 @@ from heapdict import heapdict
 from overpy import Result
 from tqdm.auto import tqdm
 
+from requests_cache import CachedSession
+
 from pyridy import config
+from pyridy.osm.utils.overpass import Overpass  # Overpass with caching support
 from pyridy.osm.utils import QueryResult, OSMLevelCrossing, OSMRailwaySwitch, OSMRailwaySignal, OSMRailwayLine, \
     OSMRailwayElement, OSMRailwayMilestone, calc_angle_between
-from pyridy.utils.tools import internet
+from pyridy.utils.tools import internet, test_connection_to_url
 
 logger = logging.getLogger(__name__)
 
@@ -29,6 +33,14 @@ def upsample_way(self, res: float = config.options["TRACK_RESOLUTION"]):
 
 
 overpy.Way.upsample_way = upsample_way
+
+
+class CouldNotConnect(Exception):
+    pass
+
+
+class QueryToOverpassApiFailed(Exception):
+    pass
 
 
 class OSM:
@@ -56,7 +68,7 @@ class OSM:
 
         # Sanity check for bbox argument
         if not bbox:
-            raise ValueError("No Bounding Box given!")
+            raise ValueError("Can't retrieve OSM Data because bounding boxes are empty!")
 
         if (type(bbox[0]) == float) or (type(bbox[0]) == np.float64):
             self._check_bbox(bbox)
@@ -71,15 +83,14 @@ class OSM:
 
         # Sanity check for railway type argument
         if desired_railway_types is None:
-            desired_railway_types = ["rail", "tram", "subway", "light_rail"]
+            desired_railway_types = OSM.supported_railway_types
         else:
+            if type(desired_railway_types) == str:
+                desired_railway_types = list(desired_railway_types)
             if type(desired_railway_types) == list:
                 for desired in desired_railway_types:
                     if desired not in OSM.supported_railway_types:
                         raise ValueError("Your desired railway type %s is not supported" % desired)
-            elif type(desired_railway_types) == str:
-                if desired_railway_types not in OSM.supported_railway_types:
-                    raise ValueError("Your desired railway type %s is not supported" % desired_railway_types)
             else:
                 raise ValueError("desired_railway_types must be list or str")
 
@@ -87,9 +98,21 @@ class OSM:
             raise ValueError("Recurse must be either < (up) or > (down), not %s" % recurse)
         self.recurse = recurse
 
-        self.overpass_api = overpy.Overpass()
-        self.overpass_api_alt = overpy.Overpass(url="https://overpass.kumi.systems/api/interpreter")
-        self.overpass_api_ifs = overpy.Overpass(url="http://134.130.76.80:12345/api/interpreter")
+        # use caching
+        cached_session = CachedSession(cache_name=config.OSM_OVERPASS_CACHE, backend='filesystem')
+        # overpass API instances
+        self.overpass_api = Overpass(session=cached_session)
+        self.overpass_api_alt = Overpass(url="https://overpass.kumi.systems/api/interpreter", session=cached_session)
+        self.overpass_api_ifs = Overpass(url="http://134.130.76.80:12345/api/interpreter", session=cached_session)
+        self.overpass_api_local = Overpass(url="http://localhost:12345/api/interpreter", session=cached_session)
+
+        # prioritized list of the overpass API instances
+        self.overpass_api_list = [
+            self.overpass_api, # fastest
+            self.overpass_api_alt, # fallback
+            self.overpass_api_local, # local fallback
+            self.overpass_api_ifs, # institute fallback
+        ]
 
         self.utm_proj = pyproj.Proj(proj='utm', zone=32, ellps='WGS84', preserve_units=True)
         self.geod = pyproj.Geod(ellps='WGS84')
@@ -113,21 +136,26 @@ class OSM:
         self.G = nx.MultiGraph()
 
         if download:
-            self._download_track_data()
+            self._download_track_data_and_populate_graph()
 
-            # Add nodes to Graph
-            self.G.add_nodes_from([(n.id, n.__dict__) for n in self.nodes])
+    def _download_track_data_and_populate_graph(self):
+        self._check_connection_and_download_track_data()
+        self._populate_graph()
 
-            # Add edges, use node distances as weight
-            for w in self.ways:
-                edges = [(n1.id, n2.id, self.geod.inv(float(n1.lon), float(n1.lat), float(n2.lon), float(n2.lat))[2])
-                         for n1, n2 in zip(w.nodes, w.nodes[1:])]
-                self.G.add_weighted_edges_from(edges, weight="d", way_id=w.id)
+    def _populate_graph(self):
+        # Add nodes to Graph
+        self.G.add_nodes_from([(n.id, n.__dict__) for n in self.nodes])
 
-            if len(self.G.nodes) > 0:
-                self._check_allowed_switch_transits()
-            else:
-                logger.warning("Can't check allowed switch transits, because the Graph has no nodes!")
+        # Add edges, use node distances as weight
+        for w in self.ways:
+            edges = [(n1.id, n2.id, self.geod.inv(float(n1.lon), float(n1.lat), float(n2.lon), float(n2.lat))[2])
+                        for n1, n2 in zip(w.nodes, w.nodes[1:])]
+            self.G.add_weighted_edges_from(edges, weight="d", way_id=w.id)
+
+        if len(self.G.nodes) > 0:
+            self._check_allowed_switch_transits()
+        else:
+            logger.warning("Can't check allowed switch transits, because the Graph has no nodes!")
 
     @staticmethod
     def _check_bbox(bbox: List[float]):
@@ -141,13 +169,15 @@ class OSM:
         if len(bbox) != 4:
             raise ValueError("Bounding box must have 4 coordinates, not %d" % len(bbox))
 
-        if bbox[0] == bbox[2] or bbox[1] == bbox[3]:
+        lon_sw, lat_sw, lon_ne, lat_ne = bbox
+
+        if lon_sw == lon_ne or lat_sw == lat_ne:
             raise ValueError("Invalid coordinates")
 
-        if not (-90 <= bbox[1] <= 90) or not (-90 <= bbox[3] <= 90):
+        if not (-90 <= lat_sw <= 90) or not (-90 <= lat_ne <= 90):
             raise ValueError("Lat. value outside valid range")
 
-        if not (-180 <= bbox[0] <= 180) or not (-180 <= bbox[2] <= 180):
+        if not (-180 <= lon_sw <= 180) or not (-180 <= lon_ne <= 180):
             raise ValueError("Lon. value outside valid range")
 
     @staticmethod
@@ -173,27 +203,32 @@ class OSM:
         if railway_type not in OSM.supported_railway_types:
             raise ValueError("The desired railway type %s is not supported" % railway_type)
 
-        track_query = """[timeout:""" + str(config.options["OSM_TIMEOUT"]) + """];(node[""" + "railway" + """=""" \
-                      + railway_type + """](""" + str(bbox[1]) + """,""" + str(bbox[0]) + """,""" + str(bbox[3]) \
-                      + """,""" + str(bbox[2]) + """);way[""" + "railway" + """=""" + railway_type + """](""" \
-                      + str(bbox[1]) + """,""" + str(bbox[0]) + """,""" + str(bbox[3]) + """,""" + str(bbox[2]) \
-                      + """););(._;>;);
-                         out body;
-                      """
+        bbox_str = f"{str(bbox[1])},{str(bbox[0])},{str(bbox[3])},{str(bbox[2])}"
+
+        track_query = f"""
+[timeout:{str(config.options["OSM_TIMEOUT"])}];
+(
+    node[railway={railway_type}]({bbox_str});
+    way[railway={railway_type}]({bbox_str});
+);
+(._;>;);
+out body;"""
 
         if railway_type == "rail":  # Railway routes use train instead of rail
             railway_type = "train"
 
-        route_query = """[timeout:""" + str(config.options["OSM_TIMEOUT"]) + """];(relation[""" + "route" + """=""" \
-                      + railway_type + """](""" + str(bbox[1]) + """,""" + str(bbox[0]) + """,""" + str(bbox[3]) \
-                      + """,""" + str(bbox[2]) + """););(._;""" + recurse + """;);
-                         out body;
-                      """
+        route_query = f"""
+[timeout:{str(config.options["OSM_TIMEOUT"])}];
+(
+    relation[route={railway_type}]({bbox_str});
+);
+(._;{recurse};);
+out body;"""
 
         return track_query, route_query
 
     def _check_allowed_switch_transits(self):
-        """ Checks in what ways a switch can be transited, i.e. what combination of neighbouring nodes are allowed
+        """ Checks in what ways a switch can be transited, i.e. what combination of neighboring nodes are allowed
 
         """
         if not len(self.G.nodes):
@@ -221,141 +256,175 @@ class OSM:
             sw.allowed_transits = allowed_transits
             self.G.nodes[sw.id]['attributes']['allowed_transits'] = allowed_transits
         pass
+    
+    def get_live_overpass_api_instances(self):
+        live_instances = []
+        for i in self.overpass_api_list:
+            logger.debug(f"Test connection to {i.url}.")
+            if test_connection_to_url(i.url):
+                logger.info(f"Connection to {i.url} was successful.")
+                live_instances.append(i)
+            else:
+                logger.info(f"Connection to {i.url} failed.")
+        return live_instances
 
-    def _download_track_data(self):
-        # Download data for all desired railway types
-        if internet():
-            for i, b in tqdm(enumerate(self.bbox)):
-                logger.debug("Querying data for bounding box ( %d / %d): %s" % (i + 1, len(self.bbox), str(b)))
-                for railway_type in tqdm(self.desired_railway_types):
-                    # Create Overpass queries and try downloading them
-                    logger.debug("Querying data for railway type: %s" % railway_type)
+    def _check_connection_and_download_track_data(self):
+        """
+        Download track data if there is a working internet connection
+        """
+        logger.debug("Check connectivity before starting download.")
+        live_overpass_instances = self.get_live_overpass_api_instances()
 
-                    trk_query, rou_query = self._create_query(bbox=b,
-                                                              railway_type=railway_type,
-                                                              recurse=self.recurse)
-
-                    trk_result = QueryResult(self.query_overpass(trk_query), railway_type)
-                    rou_result = QueryResult(self.query_overpass(rou_query), railway_type)
-
-                    # Convert relation result to OSMRailwayLine objects
-                    if rou_result.result:
-                        for rel in rou_result.result.relations:
-                            if rel not in self.relations:
-                                self.relations.append(rel)
-
-                    if trk_result.result:
-                        for n in trk_result.result.nodes:
-                            if n not in self.nodes:
-                                self.nodes.append(n)
-
-                        for w in trk_result.result.ways:
-                            if w not in self.ways:
-                                self.ways.append(w)
-
-            # Create dictionaries for easy node/way access
-            self.node_dict = {n.id: n for n in self.nodes}  # Dict that returns node based on node id
-            self.way_dict = {w.id: w for w in self.ways}  # Dict that returns way based on way id
-            self.relation_dict = {rel.id: rel for rel in self.relations}
-
-            # Add XY coordinate to each node
-            osm_xy = self.get_coords(frmt="xy")
-            for i, xy in enumerate(osm_xy):
-                self.nodes[i].attributes["x"] = xy[0]
-                self.nodes[i].attributes["y"] = xy[1]
-
-            # Search through results for railway stuff
-            for n in self.nodes:
-                if "railway" in n.tags:
-                    if n.tags["railway"] == "level_crossing":
-                        self.railway_elements.append(OSMLevelCrossing(n))
-                    elif n.tags["railway"] == "signal":
-                        self.railway_elements.append(OSMRailwaySignal(n))
-                    elif n.tags["railway"] == "switch":
-                        self.railway_elements.append(OSMRailwaySwitch(n))
-                    elif n.tags["railway"] == "milestone":
-                        self.railway_elements.append(OSMRailwayMilestone(n))
-                    else:
-                        pass
-
-            for rel in self.relations:
-                rel_way_ids = [mem.ref for mem in rel.members if type(mem) == overpy.RelationWay and not mem.role]
-                rel_ways = [w for w in self.ways if w.id in rel_way_ids]
-
-                sort_order = {w_id: idx for w_id, idx in zip(rel_way_ids, range(len(rel_way_ids)))}
-                rel_ways.sort(key=lambda way: sort_order[way.id])
-
-                # rel_ways = [self.way_dict[rel_id] for rel_id in rel_way_ids]
-
-                railway_line = OSMRailwayLine(relation=rel, ways=rel_ways)
-                if railway_line not in self.railway_lines:
-                    self.railway_lines.append(railway_line)
+        if len(live_overpass_instances) == 0:
+            logger.warning("Could not download OSM data: No connection to an Overpass API could be established.")
         else:
-            logger.warning("Could not download OSM data because of no internet connection!")
+            return self._download_track_data(overpass_instances=live_overpass_instances)
 
-    def query_overpass(self, query: str, attempts: int = None) -> Result:
+    def _query_data_for_bbox(self, b, overpass_instances=None):
+        """
+        Query data for a bounding box.
+
+        Stores returned data in self.relations, self.nodes and self.ways.
+        """
+
+        for railway_type in tqdm(self.desired_railway_types, desc="Railway Types"):
+            # Create Overpass queries and try downloading them
+            logger.debug("  Querying data for railway type: %s" % railway_type)
+
+            trk_query, rou_query = self._create_query(bbox=b,
+                                                      railway_type=railway_type,
+                                                      recurse=self.recurse)
+
+            trk_result = QueryResult(
+                self.query_overpass(trk_query, overpass_instances=overpass_instances), railway_type)
+            rou_result = QueryResult(
+                self.query_overpass(rou_query, overpass_instances=overpass_instances), railway_type)
+
+            # Convert relation result to OSMRailwayLine objects
+            if rou_result.result:
+                for rel in rou_result.result.relations:
+                    if rel not in self.relations:
+                        self.relations.append(rel)
+
+            if trk_result.result:
+                for n in trk_result.result.nodes:
+                    if n not in self.nodes:
+                        self.nodes.append(n)
+
+                for w in trk_result.result.ways:
+                    if w not in self.ways:
+                        self.ways.append(w)
+
+    def _postprocessing_of_downloaded_data(self):
+        logger.info("Start postprocessing of downloaded data.")
+
+        # Create dictionaries for easy node/way access
+        logger.debug("Create dictionaries from nodes, ways and relations.")
+        self.node_dict = {n.id: n for n in self.nodes}  # Dict that returns node based on node id
+        self.way_dict = {w.id: w for w in self.ways}  # Dict that returns way based on way id
+        self.relation_dict = {rel.id: rel for rel in self.relations}
+
+        # Add XY coordinate to each node
+        logger.debug("Add XY coordinates to each node.")
+        osm_xy = self.get_coords(frmt="xy")
+        for i, xy in enumerate(osm_xy):
+            self.nodes[i].attributes["x"] = xy[0]
+            self.nodes[i].attributes["y"] = xy[1]
+
+        # Search through results for railway stuff
+        logger.debug("Create railway elements from nodes.")
+        for n in self.nodes:
+            if "railway" in n.tags:
+                if n.tags["railway"] == "level_crossing":
+                    self.railway_elements.append(OSMLevelCrossing(n))
+                elif n.tags["railway"] == "signal":
+                    self.railway_elements.append(OSMRailwaySignal(n))
+                elif n.tags["railway"] == "switch":
+                    self.railway_elements.append(OSMRailwaySwitch(n))
+                elif n.tags["railway"] == "milestone":
+                    self.railway_elements.append(OSMRailwayMilestone(n))
+                else:
+                    pass
+
+        logger.debug("Create railway lines from relations.")
+        for rel in self.relations:
+            rel_way_ids = [mem.ref for mem in rel.members if type(mem) == overpy.RelationWay and not mem.role]
+            rel_ways = [w for w in self.ways if w.id in rel_way_ids]
+
+            sort_order = {w_id: idx for w_id, idx in zip(rel_way_ids, range(len(rel_way_ids)))}
+            rel_ways.sort(key=lambda way: sort_order[way.id])
+
+            # rel_ways = [self.way_dict[rel_id] for rel_id in rel_way_ids]
+
+            railway_line = OSMRailwayLine(relation=rel, ways=rel_ways)
+            if railway_line not in self.railway_lines:
+                self.railway_lines.append(railway_line)
+
+        logger.info("Postprocessing finished.")
+
+    def _download_track_data(self, overpass_instances=None):
+        logger.info("Start downloading track data.")
+        for i, b in tqdm(enumerate(self.bbox), desc="Bounding Boxes"):
+            logger.debug("Querying data for bounding box (%d / %d): %s" % (i + 1, len(self.bbox), str(b)))
+            self._query_data_for_bbox(b, overpass_instances=overpass_instances)
+        logger.info("Finished downloading track data.")
+
+        self._postprocessing_of_downloaded_data()
+
+    def _query_overpass_instance(self, query: str, attempts: int, overpass_api_instance: Overpass):
+        for a in range(attempts):
+            # increase waiting time between attempts
+            wait_seconds = 3*a
+            if wait_seconds > 0:
+                logger.debug(f"Wait {wait_seconds} s before next retry...")
+                time.sleep(3*a)
+
+            logger.debug("Trying to query OSM data, attempt %d of %d." % (a+1, attempts))
+            try:
+                result = overpass_api_instance.query(query)
+                logger.debug(f"Successfully queried OSM Data using {overpass_api_instance.url}")
+                return result
+            except overpy.exception.OverpassTooManyRequests as e:
+                logger.warning("OverpassTooManyRequest, retrying".format(e))
+            except overpy.exception.OverpassRuntimeError as e:
+                logger.warning("OverpassRuntimeError, retrying".format(e))
+                logger.warning(e)
+            except overpy.exception.OverpassGatewayTimeout as e:
+                logger.warning("OverpassGatewayTimeout, retrying".format(e))
+            except overpy.exception.OverpassBadRequest as e:
+                logger.warning("OverpassBadRequest, retrying".format(e))
+                logger.warning(e)
+            except URLError as e:
+                # for example due to connection errors
+                logger.warning(e)
+            except socket.timeout as e:
+                logger.warning("Socket timeout, retrying".format(e))
+
+        logger.warning("No attempts left, giving up.")
+        raise QueryToOverpassApiFailed()
+
+
+
+    def query_overpass(self, query: str, 
+                       attempts: int = None, 
+                       overpass_instances: List[Overpass] = None) -> Result:
         if attempts is None:
             attempts = config.options["OSM_RETRIES"]
 
-        if internet(host="134.130.76.80", port=12345):  # IFS internal Overpass instance
-            for a in range(attempts):
-                time.sleep(a)
-                try:
-                    logger.debug("Trying to query OSM data, %d/%d tries" % (a, attempts))
-                    result = self.overpass_api_ifs.query(query)
-                    logger.debug("Successfully queried OSM Data using IFS Overpass instance")
-                    return result
-                except overpy.exception.OverpassTooManyRequests as e:
-                    logger.warning("OverpassTooManyRequest (IFS Overpass instance), retrying".format(e))
-                except overpy.exception.OverpassRuntimeError as e:
-                    logger.warning("OverpassRuntimeError (IFS Overpass instance), retrying".format(e))
-                except overpy.exception.OverpassGatewayTimeout as e:
-                    logger.warning("OverpassTooManyRequest (IFS Overpass instance), retrying".format(e))
-                except overpy.exception.OverpassBadRequest as e:
-                    logger.warning("OverpassTooManyRequest (IFS Overpass instance), retrying".format(e))
-                except socket.timeout as e:
-                    logger.warning("Socket timeout (IFS Overpass instance), retrying".format(e))
+        logger.debug(f"Overpass query: {query}")
 
-        for a in range(attempts):  # Default Overpass instance
-            time.sleep(a)
+        if overpass_instances is None:
+            overpass_instances = self.overpass_api_list
+        
+        for i, overpass_api_instance in enumerate(overpass_instances):
+            logger.debug(f"Try to query Overpass API {i+1} of {len(overpass_instances)}: {overpass_api_instance.url}.")
             try:
-                logger.debug("Trying to query OSM data, %d/%d tries" % (a, attempts))
-                result = self.overpass_api.query(query)
-                logger.debug("Successfully queried OSM Data using default Overpass instance")
-                return result
-            except overpy.exception.OverpassTooManyRequests as e:
-                logger.warning("OverpassTooManyRequest (Default Overpass instance), retrying".format(e))
-            except overpy.exception.OverpassRuntimeError as e:
-                logger.warning("OverpassRuntimeError (Default Overpass instance), retrying".format(e))
-            except overpy.exception.OverpassGatewayTimeout as e:
-                logger.warning("OverpassTooManyRequest (Default Overpass instance), retrying".format(e))
-            except overpy.exception.OverpassBadRequest as e:
-                logger.warning("OverpassTooManyRequest (Default Overpass instance), retrying".format(e))
-            except socket.timeout as e:
-                logger.warning("Socket timeout (Default Overpass instance), retrying".format(e))
-
-        logger.debug("Using alternative Overpass API url")
-        for a in range(attempts):
-            time.sleep(a)
-            try:
-                logger.debug("Trying to query OSM data, %d/%d tries" % (a, attempts))
-                result = self.overpass_api_alt.query(query)
-                logger.debug("Successfully queried OSM Data using alternative instance")
-                return result
-            except overpy.exception.OverpassTooManyRequests as e:
-                logger.warning("OverpassTooManyRequest (Alternative Overpass instance), retrying".format(e))
-            except overpy.exception.OverpassRuntimeError as e:
-                logger.warning("OverpassRuntimeError (Alternative Overpass instance), retrying".format(e))
-            except overpy.exception.OverpassGatewayTimeout as e:
-                logger.warning("OverpassTooManyRequest (Alternative Overpass instance), retrying".format(e))
-            except overpy.exception.OverpassBadRequest as e:
-                logger.warning("OverpassTooManyRequest (Alternative Overpass instance), retrying".format(e))
-            except socket.timeout as e:
-                logger.warning("Socket timeout (Alternative Overpass instance), retrying".format(e))
-        else:
-            logger.warning("Could download OSM data via Overpass after %d attempts with query: %s" % (attempts,
-                                                                                                      query))
-            return None
+                return self._query_overpass_instance(query, attempts, overpass_api_instance)
+            except QueryToOverpassApiFailed:
+                continue
+        
+        logger.warning("Could not download OSM data via Overpass after %d attempts with query: %s" % (attempts, query))
+        return None
 
     def get_all_route_nodes(self) -> list:
         """ Retrieves a list of nodes part of any relation/route
@@ -578,7 +647,7 @@ class OSM:
         """
         return [el for el in self.railway_elements if type(el) == OSMLevelCrossing]
 
-    def get_railway_line(self, name) -> [OSMRailwayLine]:
+    def get_railway_line(self, name) -> List[OSMRailwayLine]:
         """ Get railway line by name. Always returns a list, even if only one line is found that matches the name
 
         Parameters

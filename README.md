@@ -51,6 +51,10 @@ Information and examples on how to use the library can be found in the [PyRidy d
 
 ### Developer
 Philipp Leibner - philipp.leibner@ifs.rwth-aachen.de
+
+### Contributor
+Daniel Pujiula Buhl - daniel.pujiula@rwth-aachen.de
+
 <div>  
 <a href="">
     <img src="assets/ifs_logo_rgb.svg" alt="IFS Logo" width="400">

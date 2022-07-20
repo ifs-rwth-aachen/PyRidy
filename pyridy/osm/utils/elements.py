@@ -45,7 +45,6 @@ class OSMResultWay:
     def __init(self, way, res: float = .5):
         self.way: overpy.Way = way
         self.res = res
-        pass
 
 
 class OSMRailwayElement(ABC):
@@ -168,7 +167,9 @@ class OSMRelation:
         self.name = relation.tags.get("name", "")
         self.ways = ways
         self.way_nodes = [way.nodes for way in self.ways]  # List of list of nodes
-        self.nodes = list(itertools.chain.from_iterable(self.way_nodes)) if self.way_nodes else None  # list of nodes
+        self.nodes = list(itertools.chain.from_iterable(self.way_nodes))  # list of nodes
+
+        logger.debug(f'Create Graph for relation[id={self.id},name="{self.name}"].')
 
         self.G = nx.MultiGraph()
         self.G.add_nodes_from([(n.id, n.__dict__) for n in self.nodes])
@@ -201,10 +202,13 @@ class OSMRelation:
         logger.debug("Number of individual tracks: %d" % len(self.tracks))
 
         self.color = relation.tags.get("colour", generate_random_color("HEX")) if not color else color
-        self.lon_sw = min([float(n.lon) for n in self.nodes])
-        self.lon_ne = max([float(n.lon) for n in self.nodes])
-        self.lat_sw = min([float(n.lat) for n in self.nodes])
-        self.lat_ne = max([float(n.lat) for n in self.nodes])
+        if self.nodes:
+            self.lon_sw = min([float(n.lon) for n in self.nodes])
+            self.lon_ne = max([float(n.lon) for n in self.nodes])
+            self.lat_sw = min([float(n.lat) for n in self.nodes])
+            self.lat_ne = max([float(n.lat) for n in self.nodes])
+        else:
+            self.lon_sw = self.lon_ne = self.lat_sw = self.lat_ne = None
 
     def to_ipyleaflef(self) -> List[list]:
         """
@@ -213,44 +217,7 @@ class OSMRelation:
         -------
 
         """
-        if self.nodes:
-            logger.warning("Relation has no nodes!")
-            return [[n.lat, n.lon] for n in self.nodes]
-        else:
-            return [[]]
-
-    def create_map(self, show_result_nodes: bool = False, use_file_color: bool = False) -> Map:
-        center = ((self.lat_sw + self.lat_ne) / 2, (self.lon_sw + self.lon_ne) / 2)
-
-        m = Map(center=center, zoom=12, scroll_wheel_zoom=True, basemap=config.OPEN_STREET_MAP_DE)
-        m.add_control(ScaleControl(position='bottomleft'))
-        m.add_control(FullScreenControl())
-
-        # Add map
-        m.add_layer(config.OPEN_RAILWAY_MAP)
-
-        for track in self.tracks:
-            coords = track.to_ipyleaflet()
-            file_polyline = Polyline(locations=coords, color=self.color, fill=False, weight=4)
-            m.add_layer(file_polyline)
-
-        if show_result_nodes:
-            nodes = list(itertools.chain.from_iterable([w.attributes.get("results", []) for w in self.ways]))
-            circles = []
-            for n in nodes:
-                circle = Circle()
-                circle.location = n.lon, n.lat
-                circle.radius = 2
-                circle.color = n.f.color if use_file_color else n.color
-                circle.fill_color = n.f.color if use_file_color else n.color
-                circle.weight = 3
-                circle.fill_opacity = 0.1
-                circles.append(circle)
-
-            l_circles = LayerGroup(layers=circles)
-            m.add_layer(l_circles)
-
-        return m
+        return [[n.lat, n.lon] for n in self.nodes]
 
 
 class OSMRailwayLine(OSMRelation):

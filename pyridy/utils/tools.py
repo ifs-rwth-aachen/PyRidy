@@ -1,11 +1,21 @@
 import random
 import socket
 from typing import Optional, Union
+from urllib.parse import urlparse
 
 import numpy as np
 from ipyleaflet import Circle
 
 from pyridy import config
+
+
+def test_connection_to_url(url, timeout=None):
+    parsed = urlparse(url)
+    hostname = parsed.hostname
+    port = parsed.port
+    if port is None:
+        port = 80
+    return internet(host=hostname, port=port, timeout=timeout)
 
 
 def internet(host="8.8.8.8", port=53, timeout=None):
