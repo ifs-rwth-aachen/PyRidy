@@ -376,14 +376,14 @@ class RDYFile:
                     scroll_wheel_zoom=True,
                     basemap=config.OPEN_STREET_MAP_DE)
 
-            m.add_control(ScaleControl(position='bottomleft'))
-            m.add_control(FullScreenControl())
+            m.add(ScaleControl(position='bottomleft'))
+            m.add(FullScreenControl())
 
             # Add map
-            m.add_layer(config.OPEN_RAILWAY_MAP)
+            m.add(config.OPEN_RAILWAY_MAP)
 
             file_polyline = Polyline(locations=coords, color=color, fill=False, weight=4, dash_array='10, 10')
-            m.add_layer(file_polyline)
+            m.add(file_polyline)
 
             start_marker = Marker(location=tuple(coords[0]), draggable=False, icon=config.START_ICON)
             end_marker = Marker(location=tuple(coords[-1]), draggable=False, icon=config.END_ICON)
@@ -403,8 +403,8 @@ class RDYFile:
             start_marker.popup = start_message
             end_marker.popup = end_message
 
-            m.add_layer(start_marker)
-            m.add_layer(end_marker)
+            m.add(start_marker)
+            m.add(end_marker)
 
             if show_hor_acc:
                 circles = []
@@ -420,7 +420,7 @@ class RDYFile:
                     circles.append(circle)
 
                 l_circles = LayerGroup(layers=circles)
-                m.add_layer(l_circles)
+                m.add(l_circles)
 
             return m
 

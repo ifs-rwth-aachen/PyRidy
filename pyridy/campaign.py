@@ -97,11 +97,12 @@ class Campaign:
         self.bboxs = []
         self.s_bboxs = []  # Simplified bounding boxes
 
+        self.map_matching = map_matching
+
         self.osm = None
         self.osm_recurse_type = osm_recurse_type
         self.railway_types = railway_types
         self.osm_mappings = {}  # Map Matching results for each file
-        self.map_matching = map_matching
 
         # Sanity check if series is arg is valid
         if series:
@@ -165,9 +166,11 @@ class Campaign:
 
     @osm.setter
     def osm(self, value):
-        for f in tqdm(self, desc="OSM Setter (Files in Campaign)"):
+        for f in self:
             f.osm = value
-            if self.map_matching:
+
+        if self.map_matching:
+            for f in tqdm(self, desc="Map Matching"):
                 f.do_map_matching()
 
         self._osm = value
@@ -425,7 +428,7 @@ class Campaign:
                 for f in files:
                     self.files.append(f)
         else:
-            for p in tqdm(file_paths, desc="file paths"):
+            for p in tqdm(file_paths, desc="File Import"):
                 self.files.append(RDYFile(path=p,
                                           sync_method=sync_method,
                                           timedelta_unit=timedelta_unit,

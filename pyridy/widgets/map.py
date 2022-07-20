@@ -74,6 +74,10 @@ class Map(LeafletMap):
         measurement_layers = []
 
         for file in campaign.files:
+            if len(file.measurements[GPSSeries]) == 0:
+                logger.warning(f"Coordinates are empty in file: {file.filename}")
+                continue
+
             track = create_measurement_layer(file)
             self.add(track)
             measurement_layers.append(track)
@@ -221,8 +225,6 @@ def create_marker(pos: Tuple[float, float], popup: Union[str, HTML] = None, colo
 
 
 def create_measurement_layer(file: RDYFile):
-    measurement_layer = LayerGroup()
-    measurement_layer.name = file.filename
 
     gps_series = file.measurements[GPSSeries]
     coords = gps_series.to_ipyleaflef()
@@ -230,6 +232,9 @@ def create_measurement_layer(file: RDYFile):
     if not coords:
         logger.warning(f"Coordinates are empty in file: {file.filename}")
         return
+
+    measurement_layer = LayerGroup()
+    measurement_layer.name = file.filename
 
     file_polyline = Polyline(locations=coords, color=file.color, fill=False, weight=4,
                              dash_array='10, 10')
