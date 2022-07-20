@@ -146,3 +146,4 @@ cython_debug/
 # .idea folder from PyCharm
 .idea/
 /overpass_cache/
+/tests/overpass_cache/

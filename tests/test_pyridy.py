@@ -1,8 +1,7 @@
 import logging
 
-import numpy as np
 import matplotlib.pyplot as plt
-import overpy
+import numpy as np
 import pytest
 
 import pyridy

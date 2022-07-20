@@ -72,9 +72,27 @@ class TimeSeries(ABC):
         end: float
             Seconds to cutoff before end
         """
+        if (start + end) >= self.get_duration():
+            raise ValueError(f'Trying to cut off more seconds than duration of {self.__class__.__name__}')
 
+        if len(self.time) > 0 and self.time[0] != 0:
+            d = self.__dict__.copy()
 
-        pass
+            for key in ["filename", "rdy_format_version"]:
+                d.pop(key)
+
+            t = d["time"]
+            t_sec = (t - t[0]) / np.timedelta64(1, "s")
+
+            idxs = np.where(np.logical_and(t_sec >= start, t_sec <= (t_sec[-1] - end)))
+            for k, v in d.items():
+                if len(t) == len(v):
+                    self.__setattr__(k, v[idxs])
+
+            self._timedelta: np.ndarray = np.diff(self._time)
+        else:
+            logger.debug("(%s) Cannot cut %s if timeseries is empty or series already starts at 0" %
+                         (self.filename, self.__class__.__name__))
 
     def trim_ends(self, timestamp_when_started: int, timestamp_when_stopped: int):
         """ Trims measurement values saved before/after the measurement was started/stopped

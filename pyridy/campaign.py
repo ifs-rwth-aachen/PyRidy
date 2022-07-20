@@ -7,21 +7,18 @@ from functools import partial
 from multiprocessing import Pool
 from pathlib import Path
 from typing import List, Union, Tuple, Optional, Type, Dict, Any
+from typing import TYPE_CHECKING
 
 import networkx as nx
 import numpy as np
-from ipyleaflet import Polyline, Marker, Icon, FullScreenControl, ScaleControl
-from ipywidgets import HTML
 from networkx import connected_components
 from tqdm.auto import tqdm
 
 from . import config
 from .file import RDYFile
-from .osm import OSM, OSMRailwaySwitch, OSMRailwaySignal, OSMLevelCrossing
+from .osm import OSM
 from .osm.utils import boxes_to_edges, iou
 from .utils import GPSSeries, TimeSeries
-
-from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from .widgets import Map
@@ -300,8 +297,6 @@ class Campaign:
         self.bboxs = [f.bbox for f in self.files if f.bbox]
         if simplify:
             self.simplify_bounding_boxes()
-        if plot:
-            self.plot_bounding_boxes_and_clusters()
 
     def simplify_bounding_boxes(self):
         self.s_bboxs = []  # Filtered bounding boxes
@@ -425,8 +420,8 @@ class Campaign:
                                                  sync_method=sync_method,
                                                  strip_timezone=strip_timezone,
                                                  trim_ends=trim_ends,
-                                                 series=self._series), file_paths)),
-                                  desc="multiprocessing pool")
+                                                 series=self._series), file_paths),
+                                  desc="multiprocessing pool"))
                 for f in files:
                     self.files.append(f)
         else:
