@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 
 class ExcitationProcessor(PostProcessor):
-    def __init__(self, campaign: Campaign, f_s: int = 200, f_c: float = 0.1, order: int = 4,
+    def __init__(self, campaign: Campaign, f_s: int = 200, f_c: float = 1, order: int = 4,
                  p_thres: float = .025, p_dist: int = 50, osm_integration=True):
         """ The ExcitationProcessor performs a double integration of the acceleration data to calculate
         excitations. High-Pass Filters are applied to remove static offset and drift. Hence, the resulting
@@ -47,7 +47,8 @@ class ExcitationProcessor(PostProcessor):
         self.p_dist = p_dist
         self.osm_integration = osm_integration
 
-        self.b, self.a = signal.butter(self.order, 2 * self.f_c / self.f_s, 'high')  # High Pass (2*f_c/f_s)
+        self.b, self.a = signal.butter(self.order, self.f_c, 'high', analog=True)  # High Pass (2*f_c/f_s)
+        self.z, self.p = signal.bilinear(self.b, self.a, fs=self.f_s)
 
     def execute(self, axes: Union[str, list] = "z", intp_gps: bool = True, reset: bool = False):
         """ Executes the processor on the given axes
@@ -79,8 +80,8 @@ class ExcitationProcessor(PostProcessor):
         f: RDYFile
         for f in tqdm(self.campaign):
             if len(f.measurements[LinearAccelerationSeries]) == 0:
-                logger.warning("({f.filename}) LinearAccelerationSeries is empty, can't execute ExcitationProcessor "
-                               "on this file")
+                logger.warning("({}) LinearAccelerationSeries is empty, can't execute ExcitationProcessor "
+                               "on this file".format(f.filename))
                 continue
             else:
                 lin_acc_df = f.measurements[LinearAccelerationSeries].to_df()
@@ -107,15 +108,15 @@ class ExcitationProcessor(PostProcessor):
                         raise ValueError("axes must be 'x', 'y' or 'z', or list of these values")
 
                     # High pass filter first to remove static offset
-                    lin_acc_hp = signal.filtfilt(self.b, self.a, lin_acc, padlen=150)
+                    lin_acc_hp = signal.filtfilt(self.z, self.p, lin_acc, padlen=150)
 
                     # Integrate and High-Pass Filter
                     lin_v = integrate.cumtrapz(lin_acc_hp, t, initial=0)
-                    lin_v_hp = signal.filtfilt(self.b, self.a, lin_v, padlen=150)
+                    lin_v_hp = signal.filtfilt(self.z, self.p, lin_v, padlen=150)
                     df["lin_v_" + ax] = lin_v_hp
 
                     lin_s = integrate.cumtrapz(lin_v_hp, t, initial=0)
-                    lin_s_hp = signal.filtfilt(self.b, self.a, lin_s, padlen=150)
+                    lin_s_hp = signal.filtfilt(self.z, self.p, lin_s, padlen=150)
                     df["lin_s_" + ax] = lin_s_hp
 
                     # Peak nodes for OSM

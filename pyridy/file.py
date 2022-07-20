@@ -31,7 +31,7 @@ logger = logging.getLogger(__name__)
 
 
 class RDYFile:
-    def __init__(self, path: str = "", sync_method: str = "timestamp", cutoff: bool = True,
+    def __init__(self, path: str = "", sync_method: str = "timestamp", trim_ends: bool = True,
                  timedelta_unit: str = 'timedelta64[ns]',
                  strip_timezone: bool = True,
                  filename="",
@@ -45,8 +45,8 @@ class RDYFile:
             Path to the Ridy File
         sync_method: str
             Sync method to be applied
-        cutoff: bool, default: True
-            If True, cutoffs the measurements precisely to the timestamp when the measurement was started, respectively
+        trim_ends: bool, default: True
+            If True, trims the measurements precisely to the timestamp when the measurement was started, respectively
             stopped. By default Ridy measurement files can contain several seconds of measurements from before/after
             the button press
         timedelta_unit: str
@@ -80,7 +80,7 @@ class RDYFile:
                 sync_method)
 
         self.sync_method = sync_method
-        self.cutoff = cutoff
+        self.trim_ends = trim_ends
         self.timedelta_unit = timedelta_unit
         self.strip_timezone = strip_timezone
 
@@ -195,7 +195,8 @@ class RDYFile:
     def __repr__(self):
         return "Filename: %s, T0: %s, Duration: %s" % (self.filename,
                                                        str(self.t0),
-                                                       str(datetime.timedelta(seconds=self.duration)))
+                                                       str(datetime.timedelta(seconds=self.duration)) if self.duration
+                                                       else "N/A")
 
     def _do_candidate_search(self, osm_xy: np.ndarray, track_xy: np.ndarray, hor_acc: np.ndarray):
         """ Internal method to search for candidate edges for map matching
@@ -320,7 +321,7 @@ class RDYFile:
                     m.synchronize("ntp_time", self.ntp_timestamp, self.ntp_date_time,
                                   timedelta_unit=self.timedelta_unit)
             else:
-                logger.warning("(%s) No ntp timestamp and datetime, falling back to device_time synchronization" %
+                logger.warning("(%s) No NTP timestamp and datetime, falling back to device_time synchronization" %
                                self.filename)
 
                 self.sync_method = "device_time"
@@ -1186,10 +1187,10 @@ class RDYFile:
             self.ntp_timestamp = self.measurements[NTPDatetimeSeries]._time[0]
             self.ntp_date_time = self.measurements[NTPDatetimeSeries].ntp_datetime[0]
 
-        if self.cutoff:
+        if self.trim_ends:
             for m in self.measurements.values():
                 if len(m) > 0:
-                    m.cutoff(self.timestamp_when_started, self.timestamp_when_stopped)
+                    m.trim_ends(self.timestamp_when_started, self.timestamp_when_stopped)
 
     def to_df(self, interpolate: bool = True) -> pd.DataFrame:
         """ Merges the measurement series to a single DataFrame
