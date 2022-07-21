@@ -353,7 +353,7 @@ class RDYFile:
         time = gps_series.time
         hor_acc = gps_series.hor_acc
 
-        if coords == [[]]:
+        if not coords:
             logger.warning("(%s) Cant create map, GPSSeries is empty!" % self.filename)
         else:
             if t_lim:

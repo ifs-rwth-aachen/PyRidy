@@ -1,7 +1,7 @@
 import io
 import itertools
 import logging
-from typing import Tuple, List, Union
+from typing import Tuple, List, Union, Optional
 
 from ipyleaflet import Map as LeafletMap, ScaleControl, FullScreenControl, Polyline, Icon, Marker, GeoData, \
     LayersControl, basemaps, basemap_to_tiles, Circle, LayerGroup
@@ -225,13 +225,12 @@ def create_marker(pos: Tuple[float, float], popup: Union[str, HTML] = None, colo
 
 
 def create_measurement_layer(file: RDYFile):
-
     gps_series = file.measurements[GPSSeries]
     coords = gps_series.to_ipyleaflef()
 
     if not coords:
         logger.warning(f"Coordinates are empty in file: {file.filename}")
-        return
+        return None
 
     measurement_layer = LayerGroup()
     measurement_layer.name = file.filename

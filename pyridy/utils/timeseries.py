@@ -697,10 +697,10 @@ class GPSSeries(TimeSeries):
         """
         if np.array_equal(self.lat, np.array(None)) and np.array_equal(self.lat, np.array(None)):
             logger.warning("(%s) Coordinates are empty in GPSSeries" % self.filename)
-            return [[]]
+            return []
         elif len(self.lat) == 0 and len(self.lon) == 0:
             logger.warning("(%s) Coordinates are empty in GPSSeries" % self.filename)
-            return [[]]
+            return []
         else:
             return [[lat, lon] for lat, lon in zip(self.lat, self.lon)]
 
