@@ -348,81 +348,14 @@ class RDYFile:
         -------
             Map
         """
-        gps_series = self.measurements[GPSSeries]
-        coords = gps_series.to_ipyleaflef()
-        time = gps_series.time
-        hor_acc = gps_series.hor_acc
+        from .widgets import Map
 
-        if not coords:
-            logger.warning("(%s) Cant create map, GPSSeries is empty!" % self.filename)
-        else:
-            if t_lim:
-                if type(t_lim) != tuple:
-                    raise ValueError("t_lim must be a tuple of np.datetime64")
+        center = self.determine_track_center()[::-1]
 
-                if t_lim[0] > t_lim[1]:
-                    raise ValueError("The first datetime for t_lim must be smaller than the second!")
+        m = Map(center=center, zoom=12)
+        m.measurement_layers = [m.add_measurement(self, t_lim, show_hor_acc)]
 
-                mask = (gps_series.time >= t_lim[0]) & (gps_series.time <= t_lim[1])
-
-                coords = [c for i, c in enumerate(coords) if mask[i]]
-                time = [t for i, t in enumerate(gps_series.time) if mask[i]]
-                hor_acc = [h for i, h in enumerate(gps_series.hor_acc) if mask[i]]
-
-            color = generate_random_color("HEX")
-
-            m = Map(center=self.determine_track_center()[::-1],
-                    zoom=12,
-                    scroll_wheel_zoom=True,
-                    basemap=config.OPEN_STREET_MAP_DE)
-
-            m.add(ScaleControl(position='bottomleft'))
-            m.add(FullScreenControl())
-
-            # Add map
-            m.add(config.OPEN_RAILWAY_MAP)
-
-            file_polyline = Polyline(locations=coords, color=color, fill=False, weight=4, dash_array='10, 10')
-            m.add(file_polyline)
-
-            start_marker = Marker(location=tuple(coords[0]), draggable=False, icon=config.START_ICON)
-            end_marker = Marker(location=tuple(coords[-1]), draggable=False, icon=config.END_ICON)
-
-            start_message = HTML()
-            end_message = HTML()
-            start_message.value = "<p>Start:</p><p>" + self.filename + "</p><p>" \
-                                  + str(time[0] or 'n/a') + "</p><p>" \
-                                  + str(getattr(self.device, "manufacturer", "n/a")) + "; " \
-                                  + str(getattr(self.device, "model", "n/a")) + "</p>"
-
-            end_message.value = "<p>End:</p><p>" + self.filename + "</p><p>" \
-                                + str(time[-1] or 'n/a') + "</p><p>" \
-                                + str(getattr(self.device, "manufacturer", "n/a")) + "; " \
-                                + str(getattr(self.device, "model", "n/a")) + "</p>"
-
-            start_marker.popup = start_message
-            end_marker.popup = end_message
-
-            m.add(start_marker)
-            m.add(end_marker)
-
-            if show_hor_acc:
-                circles = []
-                for c, h in zip(coords, hor_acc):
-                    circle = Circle()
-                    circle.location = (c[0], c[1])
-                    circle.radius = int(h)
-                    circle.color = "#00549F"
-                    circle.fill_color = "#00549F"
-                    circle.weight = 3
-                    circle.fill_opacity = 0.1
-
-                    circles.append(circle)
-
-                l_circles = LayerGroup(layers=circles)
-                m.add(l_circles)
-
-            return m
+        return m
 
     def determine_track_center(self, gps_series: Optional[GPSSeries] = None) -> (float, float):
         """ Determines the geographical center of the GPSSeries, returns None if the GPSSeries is emtpy.
