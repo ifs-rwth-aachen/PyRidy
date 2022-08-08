@@ -163,7 +163,6 @@ class ExcitationProcessor(PostProcessor):
             self.campaign.results[ExcitationProcessor] = {"params": params}
         else:
             self.campaign.results[ExcitationProcessor]["params"] = params
-        pass
 
     def create_map(self, use_file_color=False) -> Map:
         m = self.campaign.create_map(show_gps_tracks=True, show_railway_elements=False)

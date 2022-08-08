@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pyridy"
-version = "0.9.8"
+version = "0.9.19"
 description = "Support library for measurements made with the Ridy Android App"
 authors = ["Philipp Simon Leibner <philipp.leibner@ifs.rwth-aachen.de>"]
 license = "Apache-2.0"
@@ -36,6 +36,7 @@ networkx = "^2.6.3"
 HeapDict = "^1.0.1"
 Shapely = "^1.8.1"
 requests-cache = "^0.9.5"
+rwthcolors = "^0.1.6"
 
 [tool.poetry.dev-dependencies]
 

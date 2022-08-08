@@ -342,7 +342,13 @@ class Campaign:
         # ax.set_ylim([self.lat_sw, self.lat_ne])
         # plt.show()
 
-    def download_osm_data(self):
+    def download_osm_data(self, railway_types: Union[list, str] = None, osm_recurse_type: str = ">",):
+        if railway_types:
+            self.railway_types = railway_types
+
+        if osm_recurse_type:
+            self.osm_recurse_type = osm_recurse_type
+
         if config.options["OSM_SINGLE_BOUNDING_BOX"]:
             self.osm = OSM(bbox=self.extent, desired_railway_types=self.railway_types, recurse=self.osm_recurse_type)
         else:

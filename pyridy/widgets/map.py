@@ -1,20 +1,18 @@
 import io
 import itertools
 import logging
+from typing import TYPE_CHECKING
 from typing import Tuple, List, Union, Optional
 
 import numpy as np
-from ipyleaflet import Map as LeafletMap, ScaleControl, FullScreenControl, Polyline, Icon, Marker, GeoData, \
-    LayersControl, basemaps, basemap_to_tiles, Circle, LayerGroup
+from ipyleaflet import Map as LeafletMap, ScaleControl, FullScreenControl, Polyline, Icon, Marker, LayersControl, \
+    basemaps, basemap_to_tiles, Circle, LayerGroup
 from ipywidgets import HTML
 
-from pyridy.file import RDYFile
-from pyridy.osm.utils.elements import OSMRailwaySignal, OSMRailwaySwitch, OSMLevelCrossing, OSMResultNode, \
-    OSMRailwayElement
-from pyridy.utils import GPSSeries
 from pyridy import config
-
-from typing import TYPE_CHECKING
+from pyridy.file import RDYFile
+from pyridy.osm.utils.elements import OSMRailwaySignal, OSMRailwaySwitch, OSMLevelCrossing, OSMResultNode
+from pyridy.utils import GPSSeries
 
 if TYPE_CHECKING:
     from pyridy.campaign import Campaign
@@ -141,7 +139,7 @@ class Map(LeafletMap):
             self.add(railway_lines_layer)
             return railway_lines_layer
         else:
-            logger.warning("No OSM region downloaded!")
+            logger.debug("No OSM region downloaded!")
             return None
 
     def add_osm_railway_elements(self, campaign: 'Campaign') -> LayerGroup:
@@ -259,20 +257,21 @@ def create_measurement_layer(file: RDYFile, t_lim: Tuple[np.datetime64, np.datet
     file_polyline = Polyline(locations=coords, color=file.color, fill=False, weight=4,
                              dash_array='10, 10')
     file_message = HTML()
-    file_message.value = f"<p>{str(file.filename or '')}" \
-                         f"<br>{str(getattr(file.device, 'manufacturer', ''))}" \
-                         f"<br>{str(getattr(file.device, 'model', ''))}</p>"
+    file_message.value = f"<p>Filename: {str(file.filename or '')}" \
+                         f"<br>Device: {str(getattr(file.device, 'manufacturer', ''))} " \
+                         f"{str(getattr(file.device, 'model', ''))}</p>" + \
+                         f"<br>GPS Start time: {str(time[0] or 'n/a')}" + \
+                         f"<br>GPS End time:   {str(time[-1] or 'n/a')}"
+
     file_polyline.popup = file_message
     measurement_layer.add(file_polyline)
 
     # Add Start/End markers
     start_message = HTML()
     end_message = HTML()
-    start_message.value = "<p>Start:</p>" + file_message.value + \
-                          f"<br>{str(time[0] or 'n/a')}"
 
-    end_message.value = "<p>Start:</p>" + file_message.value + \
-                        f"<br>{str(time[-1] or 'n/a')}"
+    start_message.value = "<p>Start:</p>" + file_message.value
+    end_message.value = "<p>End:</p>" + file_message.value
 
     start_marker = create_marker(tuple(coords[0]), start_message, "green")
     end_marker = create_marker(tuple(coords[-1]), end_message, "red")

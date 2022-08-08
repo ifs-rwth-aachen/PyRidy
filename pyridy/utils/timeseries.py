@@ -1,3 +1,4 @@
+import copy
 import datetime
 import logging
 from abc import ABC
@@ -62,11 +63,13 @@ class TimeSeries(ABC):
                                                                                   seconds=self.get_duration())),
                                                                               self.get_sample_rate())
 
-    def cut(self, start: float = 0, end: float = 0):
+    def cut(self, start: float = 0, end: float = 0, inplace: bool = False):
         """ Cuts off seconds after start and before end
 
         Parameters
         ----------
+        inplace: bool, Default: True
+            If True cuts data inplace, otherwise returns it
         start: float
             Seconds to cutoff after start
         end: float
@@ -76,20 +79,41 @@ class TimeSeries(ABC):
             raise ValueError(f'Trying to cut off more seconds than duration of {self.__class__.__name__}')
 
         if len(self.time) > 0 and self.time[0] != 0:
-            d = self.__dict__.copy()
+            if inplace:
+                d = self.__dict__.copy()
 
-            for key in ["filename", "rdy_format_version"]:
-                d.pop(key)
+                for key in ["filename", "rdy_format_version"]:
+                    d.pop(key)
 
-            t = d["time"]
-            t_sec = (t - t[0]) / np.timedelta64(1, "s")
+                t = d["time"]
+                t_sec = (t - t[0]) / np.timedelta64(1, "s")
 
-            idxs = np.where(np.logical_and(t_sec >= start, t_sec <= (t_sec[-1] - end)))
-            for k, v in d.items():
-                if len(t) == len(v):
-                    self.__setattr__(k, v[idxs])
+                idxs = np.where(np.logical_and(t_sec >= start, t_sec <= (t_sec[-1] - end)))
 
-            self._timedelta: np.ndarray = np.diff(self._time)
+                for k, v in d.items():
+                    if len(t) == len(v):
+                        self.__setattr__(k, v[idxs])
+
+                self._timedelta: np.ndarray = np.diff(self._time)
+            else:
+                time_series_copy: TimeSeries = copy.deepcopy(self)
+                d = time_series_copy.__dict__.copy()
+
+                for key in ["filename", "rdy_format_version"]:
+                    d.pop(key)
+
+                t = d["time"]
+                t_sec = (t - t[0]) / np.timedelta64(1, "s")
+
+                idxs = np.where(np.logical_and(t_sec >= start, t_sec <= (t_sec[-1] - end)))
+
+                for k, v in d.items():
+                    if len(t) == len(v):
+                        time_series_copy.__setattr__(k, v[idxs])
+
+                time_series_copy._timedelta: np.ndarray = np.diff(time_series_copy._time)
+
+                return time_series_copy
         else:
             logger.debug("(%s) Cannot cut %s if timeseries is empty or series already starts at 0" %
                          (self.filename, self.__class__.__name__))

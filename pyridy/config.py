@@ -1,6 +1,9 @@
 import pyproj
+from RWTHColors import ColorManager
 from ipyleaflet import Icon, TileLayer
 
+# Colors
+cm = ColorManager()
 
 # Projections
 proj = pyproj.Proj(proj='utm', zone=32, ellps='WGS84', preserve_units=True)
@@ -57,7 +60,8 @@ options = {
     "MAP_MATCHING_BETA": 1.0,
     "MAP_MATCHING_MIN_LINE_MATCH_RATIO": .2,
     "TRACK_RESOLUTION": .5,
-    "RESULT_MATCHING_MAX_DISTANCE": 5
+    "RESULT_MATCHING_MAX_DISTANCE": 5,
+    "SYNC_USING_NTP_DATETIME_SERIES": True
 }
 
 # Used colors

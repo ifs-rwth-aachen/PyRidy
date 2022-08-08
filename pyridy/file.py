@@ -18,6 +18,7 @@ from scipy.spatial import KDTree
 from scipy.stats import norm
 
 from pyridy import config
+from pyridy.config import cm, options
 from pyridy.osm import OSM, OSMRailwayLine
 from pyridy.osm.utils import is_point_within_line_projection, project_point_onto_line
 from pyridy.utils import Sensor, AccelerationSeries, LinearAccelerationSeries, MagnetometerSeries, OrientationSeries, \
@@ -31,6 +32,8 @@ logger = logging.getLogger(__name__)
 
 
 class RDYFile:
+    c_cycler = itertools.cycle(cm.rwth_color_cycle)
+
     def __init__(self, path: str = "", sync_method: str = "timestamp", trim_ends: bool = True,
                  timedelta_unit: str = 'timedelta64[ns]',
                  strip_timezone: bool = True,
@@ -169,13 +172,7 @@ class RDYFile:
 
         # Unique color for each line
         if not color:
-            while True:
-                self.color = generate_random_color("HEX")
-                if self.color not in config.colors:
-                    config.colors.append(color)
-                    break
-                else:
-                    continue
+            self.color = next(self.c_cycler)['color']
         else:
             self.color = color
 
@@ -316,9 +313,22 @@ class RDYFile:
                 self.sync_method = "device_time"
                 self._synchronize()
         elif self.sync_method == "ntp_time":
-            if self.ntp_timestamp and self.ntp_date_time:
+            if len(self.measurements[NTPDatetimeSeries]) > 0 and options['SYNC_USING_NTP_DATETIME_SERIES']:
+                logger.debug(f'({self.filename}) Using NTPDatetimeSeries for syncing')
+                # This uses the median value for syncing
+                ntp = self.measurements[NTPDatetimeSeries]
+                ntp_ns = (ntp.ntp_datetime - ntp.ntp_datetime[0]) / np.timedelta64(1, 'ns')
+                dt = (ntp._time - ntp_ns)
+                idx = (np.abs(dt - np.median(dt))).argmin()
+
                 for m in self.measurements.values():
-                    m.synchronize("ntp_time", self.ntp_timestamp, self.ntp_date_time,
+                    m.synchronize("ntp_time", ntp._time[idx],
+                                  ntp.ntp_datetime[idx],
+                                  timedelta_unit=self.timedelta_unit)
+            elif self.ntp_timestamp and self.ntp_date_time:
+                for m in self.measurements.values():
+                    m.synchronize("ntp_time", self.ntp_timestamp,
+                                  self.ntp_date_time,
                                   timedelta_unit=self.timedelta_unit)
             else:
                 logger.warning("(%s) No NTP timestamp and datetime, falling back to device_time synchronization" %

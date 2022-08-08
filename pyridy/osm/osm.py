@@ -108,10 +108,10 @@ class OSM:
 
         # prioritized list of the overpass API instances
         self.overpass_api_list = [
-            self.overpass_api, # fastest
-            self.overpass_api_alt, # fallback
-            self.overpass_api_local, # local fallback
-            self.overpass_api_ifs, # institute fallback
+            self.overpass_api,  # fastest
+            self.overpass_api_alt,  # fallback
+            self.overpass_api_local,  # local fallback
+            self.overpass_api_ifs,  # institute fallback
         ]
 
         self.utm_proj = pyproj.Proj(proj='utm', zone=32, ellps='WGS84', preserve_units=True)
@@ -149,7 +149,7 @@ class OSM:
         # Add edges, use node distances as weight
         for w in self.ways:
             edges = [(n1.id, n2.id, self.geod.inv(float(n1.lon), float(n1.lat), float(n2.lon), float(n2.lat))[2])
-                        for n1, n2 in zip(w.nodes, w.nodes[1:])]
+                     for n1, n2 in zip(w.nodes, w.nodes[1:])]
             self.G.add_weighted_edges_from(edges, weight="d", way_id=w.id)
 
         if len(self.G.nodes) > 0:
@@ -206,24 +206,24 @@ class OSM:
         bbox_str = f"{str(bbox[1])},{str(bbox[0])},{str(bbox[3])},{str(bbox[2])}"
 
         track_query = f"""
-[timeout:{str(config.options["OSM_TIMEOUT"])}];
-(
-    node[railway={railway_type}]({bbox_str});
-    way[railway={railway_type}]({bbox_str});
-);
-(._;>;);
-out body;"""
+                        [timeout:{str(config.options["OSM_TIMEOUT"])}];
+                        (
+                            node[railway={railway_type}]({bbox_str});
+                            way[railway={railway_type}]({bbox_str});
+                        );
+                        (._;>;);
+                        out body;"""
 
         if railway_type == "rail":  # Railway routes use train instead of rail
             railway_type = "train"
 
         route_query = f"""
-[timeout:{str(config.options["OSM_TIMEOUT"])}];
-(
-    relation[route={railway_type}]({bbox_str});
-);
-(._;{recurse};);
-out body;"""
+                        [timeout:{str(config.options["OSM_TIMEOUT"])}];
+                        (
+                            relation[route={railway_type}]({bbox_str});
+                        );
+                        (._;{recurse};);
+                        out body;"""
 
         return track_query, route_query
 
@@ -256,7 +256,7 @@ out body;"""
             sw.allowed_transits = allowed_transits
             self.G.nodes[sw.id]['attributes']['allowed_transits'] = allowed_transits
         pass
-    
+
     def get_live_overpass_api_instances(self):
         live_instances = []
         for i in self.overpass_api_list:
@@ -289,7 +289,7 @@ out body;"""
 
         for railway_type in tqdm(self.desired_railway_types, desc="Railway Types"):
             # Create Overpass queries and try downloading them
-            logger.debug("  Querying data for railway type: %s" % railway_type)
+            logger.debug("Querying data for railway type: %s" % railway_type)
 
             trk_query, rou_query = self._create_query(bbox=b,
                                                       railway_type=railway_type,
@@ -364,7 +364,7 @@ out body;"""
 
     def _download_track_data(self, overpass_instances=None):
         logger.info("Start downloading track data.")
-        for i, b in tqdm(enumerate(self.bbox), desc="Bounding Boxes"):
+        for i, b in enumerate(tqdm(self.bbox, desc="Bounding Boxes")):
             logger.debug("Querying data for bounding box (%d / %d): %s" % (i + 1, len(self.bbox), str(b)))
             self._query_data_for_bbox(b, overpass_instances=overpass_instances)
         logger.info("Finished downloading track data.")
@@ -374,12 +374,12 @@ out body;"""
     def _query_overpass_instance(self, query: str, attempts: int, overpass_api_instance: Overpass):
         for a in range(attempts):
             # increase waiting time between attempts
-            wait_seconds = 3*a
+            wait_seconds = 3 * a
             if wait_seconds > 0:
                 logger.debug(f"Wait {wait_seconds} s before next retry...")
-                time.sleep(3*a)
+                time.sleep(3 * a)
 
-            logger.debug("Trying to query OSM data, attempt %d of %d." % (a+1, attempts))
+            logger.debug("Trying to query OSM data, attempt %d of %d." % (a + 1, attempts))
             try:
                 result = overpass_api_instance.query(query)
                 logger.debug(f"Successfully queried OSM Data using {overpass_api_instance.url}")
@@ -403,10 +403,8 @@ out body;"""
         logger.warning("No attempts left, giving up.")
         raise QueryToOverpassApiFailed()
 
-
-
-    def query_overpass(self, query: str, 
-                       attempts: int = None, 
+    def query_overpass(self, query: str,
+                       attempts: int = None,
                        overpass_instances: List[Overpass] = None) -> Result:
         if attempts is None:
             attempts = config.options["OSM_RETRIES"]
@@ -415,14 +413,15 @@ out body;"""
 
         if overpass_instances is None:
             overpass_instances = self.overpass_api_list
-        
+
         for i, overpass_api_instance in enumerate(overpass_instances):
-            logger.debug(f"Try to query Overpass API {i+1} of {len(overpass_instances)}: {overpass_api_instance.url}.")
+            logger.debug(
+                f"Try to query Overpass API {i + 1} of {len(overpass_instances)}: {overpass_api_instance.url}.")
             try:
                 return self._query_overpass_instance(query, attempts, overpass_api_instance)
             except QueryToOverpassApiFailed:
                 continue
-        
+
         logger.warning("Could not download OSM data via Overpass after %d attempts with query: %s" % (attempts, query))
         return None
 
@@ -670,5 +669,3 @@ out body;"""
 
     def __repr__(self):
         return "OSM region with bounding boxes: %s" % (str(self.bbox))
-
-
