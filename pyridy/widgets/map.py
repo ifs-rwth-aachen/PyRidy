@@ -31,7 +31,9 @@ class Map(LeafletMap):
             scroll_wheel_zoom=True,
             basemap=config.OPEN_STREET_MAP_DE,
         )
-        super().__init__(**(defaults | kwargs))
+        defaults.update(kwargs)
+
+        super().__init__(**defaults)
         self._set_up_controls()
         self._add_tile_layers()
 

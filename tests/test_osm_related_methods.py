@@ -16,7 +16,7 @@ def test_load_additional_osm_data(my_campaign, caplog):
     caplog.set_level(logging.DEBUG)
     pyridy.options["OSM_TIMEOUT"] = 200
     my_campaign.import_folder("files/sqlite/osm_mapping_test",
-                              download_osm_region=True,
+                              download_osm_data=True,
                               railway_types=["tram"],
                               osm_recurse_type="<")
     assert True
@@ -25,7 +25,7 @@ def test_load_additional_osm_data(my_campaign, caplog):
 def test_osm_map_matching(my_campaign, caplog):
     caplog.set_level(logging.DEBUG)
     my_campaign.import_folder("files/sqlite/osm_mapping_test",
-                              download_osm_region=True,
+                              download_osm_data=True,
                               railway_types=["tram"],
                               osm_recurse_type="<")
 
@@ -38,7 +38,7 @@ def test_load_additional_osm_data_for_many_files(my_campaign, caplog):  # TODO
     pyridy.options["OSM_TIMEOUT"] = 300
     my_campaign.import_folder("D:/10_Daten/Ridy",
                               series=[GPSSeries],
-                              download_osm_region=True,
+                              download_osm_data=True,
                               railway_types=["rail"],
                               osm_recurse_type="<")
     assert True
@@ -48,7 +48,7 @@ def test_create_map(my_campaign, caplog):
     caplog.set_level(logging.DEBUG)
     pyridy.options["OSM_TIMEOUT"] = 200
     my_campaign.import_folder("files/sqlite/osm_mapping_test",
-                              download_osm_region=True,
+                              download_osm_data=True,
                               railway_types=["tram"],
                               osm_recurse_type="<")
     my_campaign.create_map()
@@ -61,7 +61,7 @@ def test_single_bounding_box(my_campaign, caplog):
     pyridy.options["OSM_SINGLE_BOUNDING_BOX"] = True
     my_campaign.import_folder("D:/10_Daten/Ridy",
                               series=[GPSSeries],
-                              download_osm_region=True,
+                              download_osm_data=True,
                               railway_types=["rail"],
                               osm_recurse_type="<")
 
@@ -73,7 +73,7 @@ def test_split_bounding_boxes(my_campaign, caplog):
     pyridy.options["OSM_TIMEOUT"] = 300
     my_campaign.import_folder("D:/10_Daten/Ridy",
                               series=[GPSSeries],
-                              download_osm_region=True,
+                              download_osm_data=True,
                               railway_types=["rail"],
                               osm_recurse_type="<")
 
@@ -83,7 +83,7 @@ def test_dont_split_bounding_boxes(my_campaign, caplog):
     pyridy.options["OSM_TIMEOUT"] = 300
     my_campaign.import_folder("D:/10_Daten/Ridy",
                               series=[GPSSeries],
-                              download_osm_region=True,
+                              download_osm_data=True,
                               railway_types=["rail"],
                               osm_recurse_type="<")
 

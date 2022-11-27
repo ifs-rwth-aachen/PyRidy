@@ -47,8 +47,9 @@ class ExcitationProcessor(PostProcessor):
         self.p_dist = p_dist
         self.osm_integration = osm_integration
 
-        self.b, self.a = signal.butter(self.order, self.f_c, 'high', analog=True)  # High Pass (2*f_c/f_s)
-        self.z, self.p = signal.bilinear(self.b, self.a, fs=self.f_s)
+        # self.b, self.a = signal.butter(self.order, self.f_c, 'high', analog=True)  # High Pass (2*f_c/f_s)
+        # self.z, self.p = signal.bilinear(self.b, self.a, fs=self.f_s)
+        self.fir_bp = signal.firwin(4001, [.5, 50], pass_zero=False, fs=200)
 
     def execute(self, axes: Union[str, list] = "z", intp_gps: bool = True, reset: bool = False):
         """ Executes the processor on the given axes
@@ -108,15 +109,14 @@ class ExcitationProcessor(PostProcessor):
                         raise ValueError("axes must be 'x', 'y' or 'z', or list of these values")
 
                     # High pass filter first to remove static offset
-                    lin_acc_hp = signal.filtfilt(self.z, self.p, lin_acc, padlen=150)
+                    lin_acc_hp = signal.filtfilt(self.fir_bp, 1, lin_acc)
 
-                    # Integrate and High-Pass Filter
                     lin_v = integrate.cumtrapz(lin_acc_hp, t, initial=0)
-                    lin_v_hp = signal.filtfilt(self.z, self.p, lin_v, padlen=150)
+                    lin_v_hp = signal.filtfilt(self.fir_bp, 1, lin_v)
                     df["lin_v_" + ax] = lin_v_hp
 
                     lin_s = integrate.cumtrapz(lin_v_hp, t, initial=0)
-                    lin_s_hp = signal.filtfilt(self.z, self.p, lin_s, padlen=150)
+                    lin_s_hp = signal.filtfilt(self.fir_bp, 1, lin_s)
                     df["lin_s_" + ax] = lin_s_hp
 
                     # Peak nodes for OSM
@@ -142,7 +142,7 @@ class ExcitationProcessor(PostProcessor):
                                         way = trk.ways[dists.index(min_d)]
                                         pp = line.interpolate(line.project(p))  # Projection of GPS point to OSM line
                                         lon, lat = config.proj(pp.x, pp.y, inverse=True)
-                                        r_node = OSMResultNode(lon, lat, peaks[i], f, proc=self, dir=ax)
+                                        r_node = OSMResultNode(lon, lat, peaks[i], f, proc=self, direction=ax)
                                         if "results" not in way.attributes:
                                             way.attributes["results"] = [r_node]
                                         else:
@@ -150,7 +150,6 @@ class ExcitationProcessor(PostProcessor):
 
                         else:
                             logger.warning("(%s) Campaign contains no OSM data, can't integrate results" % f.filename)
-                        pass
 
                 if ExcitationProcessor not in self.campaign.results:
                     self.campaign.results[ExcitationProcessor] = {f.filename: df}

@@ -367,7 +367,7 @@ class Campaign:
                      strip_timezone: bool = True,
                      det_geo_extent: bool = True,
                      use_multiprocessing: bool = False,
-                     download_osm_region: bool = False,
+                     download_osm_data: bool = False,
                      railway_types: Union[list, str] = None,
                      osm_recurse_type: Optional[str] = None,
                      series: Union[List[Type[TimeSeries]], Type[TimeSeries]] = None):
@@ -388,7 +388,7 @@ class Campaign:
             Method to use for timestamp syncing
         det_geo_extent: bool, default: True
             If True, determine the geographic extent of the imported files
-        download_osm_region: bool, default: False
+        download_osm_data: bool, default: False
             If True, download OSM Data via the Overpass API
         railway_types: str or list of str
             Railway types to be downloaded via the Overpass API
@@ -448,7 +448,7 @@ class Campaign:
         if det_geo_extent:
             self.determine_geographic_extent()
 
-        if download_osm_region:
+        if download_osm_data:
             self.download_osm_data()
 
     def import_folder(self, folder: Union[list, str] = None,

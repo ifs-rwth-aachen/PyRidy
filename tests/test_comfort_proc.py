@@ -17,15 +17,16 @@ def my_campaign():
 def test_comfort_proc_execution(caplog, my_campaign):
     caplog.set_level(logging.DEBUG)
     my_campaign.import_folder("files/sqlite/osm_mapping_test",
-                              download_osm_region=False,
+                              download_osm_data=False,
                               railway_types=["tram"],
                               osm_recurse_type="<")
-    ComfortProcessor(my_campaign).execute()
+    ComfortProcessor(my_campaign, v_thres=10/3.6).execute()
 
     t = my_campaign.results[ComfortProcessor]['osm_mapping_test.sqlite']['t']
     cc_x = my_campaign.results[ComfortProcessor]['osm_mapping_test.sqlite']['cc_x']
     cc_y = my_campaign.results[ComfortProcessor]['osm_mapping_test.sqlite']['cc_y']
     cc_z = my_campaign.results[ComfortProcessor]['osm_mapping_test.sqlite']['cc_z']
+    n_mv = my_campaign.results[ComfortProcessor]['osm_mapping_test.sqlite']['n_mv']
 
     fig, ax = plt.subplots(1, 1)
 

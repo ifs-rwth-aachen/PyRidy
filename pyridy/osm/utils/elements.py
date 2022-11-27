@@ -5,7 +5,6 @@ from typing import List
 
 import networkx as nx
 import overpy
-from ipyleaflet import Map, ScaleControl, FullScreenControl, Polyline, Circle, LayerGroup
 
 from pyridy import config
 from pyridy.osm.utils import convert_lon_lat_to_xy, calc_curvature, calc_distance_from_lon_lat
@@ -16,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 class OSMResultNode:
     def __init__(self, lon: float, lat: float,
-                 value=None, f=None, proc=None, dir: str = "", color: str = None):
+                 value=None, f=None, proc=None, direction: str = "", color: str = None):
         """ Class representing a Node calculated by PyRidy
 
         Parameters
@@ -34,11 +33,11 @@ class OSMResultNode:
         self.value = value
         self.f = f
         self.proc = proc
-        self.dir = dir
+        self.direction = direction
         self.color = '#CC071E' if not color else color
 
     def __repr__(self):
-        return "Result node at (%s, %s)" % (self.lon, self.lat)
+        return f'Result node at ({self.lon}, {self.lat} of value {self.value})'
 
 
 class OSMResultWay:
@@ -106,6 +105,7 @@ class OSMRailwayMilestone(OSMRailwayElement):
         except ValueError:
             logger.debug("Unusual milestone position format: %s" % n.tags.get("railway:position", ""))
             self.position = None
+            
         self.addition = "" if len(pos) == 1 else pos[1]
 
     def __repr__(self):
