@@ -1,37 +1,36 @@
-tests package
+tests 
 =============
 
-Submodules
-----------
 
-tests.test\_file module
+
+tests.test\_file 
 -----------------------
 
-.. automodule:: tests.test_file
+.. auto:: tests.test_file
    :members:
    :undoc-members:
    :show-inheritance:
 
-tests.test\_pyridy module
+tests.test\_pyridy 
 -------------------------
 
-.. automodule:: tests.test_pyridy
+.. auto:: tests.test_pyridy
    :members:
    :undoc-members:
    :show-inheritance:
 
-tests.test\_series module
+tests.test\_series 
 -------------------------
 
-.. automodule:: tests.test_series
+.. auto:: tests.test_series
    :members:
    :undoc-members:
    :show-inheritance:
 
-tests.test\_timeseries module
+tests.test\_timeseries 
 -----------------------------
 
-.. automodule:: tests.test_timeseries
+.. auto:: tests.test_timeseries
    :members:
    :undoc-members:
    :show-inheritance:
@@ -39,7 +38,7 @@ tests.test\_timeseries module
 Module contents
 ---------------
 
-.. automodule:: tests
+.. auto:: tests
    :members:
    :undoc-members:
    :show-inheritance:

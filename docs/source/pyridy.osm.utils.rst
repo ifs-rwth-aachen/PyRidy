@@ -1,13 +1,20 @@
-pyridy.osm.utils package
-========================
+pyridy.osm.utils
+=======================
 
-Submodules
-----------
+
 
 pyridy.osm.utils.elements module
 --------------------------------
 
 .. automodule:: pyridy.osm.utils.elements
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+pyridy.osm.utils.overpass module
+--------------------------------
+
+.. automodule:: pyridy.osm.utils.overpass
    :members:
    :undoc-members:
    :show-inheritance:

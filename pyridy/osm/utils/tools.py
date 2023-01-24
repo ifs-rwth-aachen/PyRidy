@@ -12,18 +12,23 @@ from pyridy import config
 
 
 def calc_unit_vector(v: Union[list, np.ndarray]) -> np.ndarray:
-    """ Returns the unit vector of the given vector v
+    """
+    Returns the unit vector of the given vector v
 
     Parameters
     ----------
     v : array_like
         Vector of which the unit vector should be calculated
+    Returns
+        -------
+        unit vector: np.ndarray
     """
     return v / np.linalg.norm(v)
 
 
 def calc_angle_between(v1: Union[list, np.ndarray], v2: Union[list, np.ndarray]) -> np.ndarray:
-    """ Returns the angle in radians between vectors v1 and v2
+    """
+    Returns the angle in radians between vectors v1 and v2
 
     Parameters
     ----------
@@ -31,6 +36,9 @@ def calc_angle_between(v1: Union[list, np.ndarray], v2: Union[list, np.ndarray])
         First vector
     v2 : array_like
         Second vector
+    Returns
+        -------
+        angle: np.ndarray
     """
     v1_u = calc_unit_vector(v1)
     v2_u = calc_unit_vector(v2)
@@ -38,16 +46,22 @@ def calc_angle_between(v1: Union[list, np.ndarray], v2: Union[list, np.ndarray])
 
 
 def calc_curvature(x: List[float], y: List[float]) -> List[float]:
-    """ Calculates the Menger curvature for a set of coordinates
+    """
+    Calculates the Menger curvature for a set of coordinates
 
     Parameters
     ----------
-    x
-    y
-
+    x: List[float]
+        x-coordinate
+    y: List[float]
+        y-coordinate
     Returns
     -------
-    list
+    list of Menger curvature of the coordinates
+
+    Raises
+    -------
+    ValueError: Raised if x and y are not of same length.
     """
     if len(x) != len(y):
         raise ValueError("x and y have to be same length")
@@ -103,17 +117,23 @@ def calc_curvature(x: List[float], y: List[float]) -> List[float]:
 
 
 def calc_distance_from_xy(x: List[float], y: List[float]) -> Tuple[list, list]:
-    """ Computes distances between a set of x y coordinates as well as the total distance
+    """
+    Computes distances between a set of x y coordinates as well as the total distance
 
     Parameters
     ----------
-    x
-    y
+    x: List[float]
+        x-coordinate
+    y: List[float]
+        y-coordinate
 
     Returns
     -------
     Tuple
         List containing total distance, list of pairwise distances
+    Raises
+    -------
+    ValueError: Raised if x and y are not of same length.
     """
     if len(x) != len(y):
         raise ValueError("x and y have to be same length")
@@ -146,11 +166,18 @@ def calc_distance_from_lon_lat(lon: List[float], lat: List[float]):
     Parameters
     ----------
     lon: list
+        Longitude
     lat: list
+        Latitude
 
     Returns
     -------
-    list, list
+    pairwise distance: list
+    total distance: list
+
+    Raises
+    -------
+    ValueError: Raised if x and y are not of same length.
     """
     if len(lon) != len(lat):
         raise ValueError("x and y have to be same length")
@@ -172,6 +199,24 @@ def calc_distance_from_lon_lat(lon: List[float], lat: List[float]):
 
 
 def convert_way_to_line_string(w: overpy.Way, frmt: str = "lon,lat") -> LineString:
+    """
+    Converts a way to LineString; one-dimensional figure comprising one or more line segments.
+
+    Parameters
+    ----------
+    w: overpy.Way
+        The way to be converted
+    frmt: str
+        The location's format. Defaults to "lon,lat"
+
+    Returns
+    -------
+    LineString
+
+    Raises
+    -------
+    ValueError: Raised if the format is unknown.
+    """
     if frmt == "lon,lat":
         coords = [(float(n.lon), float(n.lat)) for n in w.nodes]
         return LineString(coords)
@@ -185,19 +230,23 @@ def convert_way_to_line_string(w: overpy.Way, frmt: str = "lon,lat") -> LineStri
 
 
 def convert_lon_lat_to_xy(lon: List[float], lat: List[float], adjust_zero_point: bool = False):
-    """ Convert lon/lat coordinates to a metric coordinate system. The first coordinate is used for zero-point in
+    """
+    Convert lon/lat coordinates to a metric coordinate system. The first coordinate is used for zero-point in
     the metric coordinate system
 
     Parameters
     ----------
-    adjust_zero_point: bool
-        If True, first coordinate will be 0,0
     lon: list[float]
+        Longitude
     lat: list[float]
+        Latitude
+    adjust_zero_point: bool
+        If True, first coordinate will be 0,0. Defaults to False.
 
     Returns
     -------
-    list, list
+    x: list
+    y: list
     """
     if lon and lat:
         x, y = config.proj(lon, lat)
@@ -210,21 +259,22 @@ def convert_lon_lat_to_xy(lon: List[float], lat: List[float], adjust_zero_point:
 
 
 def bspline(cv, n=10000, degree=3, periodic=False):
-    """ Calculate n samples on a bspline
+    """
+    Calculate n samples on a bspline
 
-        Parameters
-        ----------
-        cv: array_like
-            Array ov control vertices
-        n: int
-            Number of samples to return
-        degree: int
-            Curve degree
-        periodic: bool
-            True - Curve is closed, False - Curve is open
-        Returns
-        -------
-        np.ndarray
+    Parameters
+    ----------
+     cv: array_like
+        Array ov control vertices
+    n: int
+        Number of samples to return
+    degree: int
+        Curve degree
+    periodic: bool
+        True - Curve is closed, False - Curve is open
+    Returns
+    -------
+    np.ndarray
 
         """
 
@@ -258,18 +308,21 @@ def bspline(cv, n=10000, degree=3, periodic=False):
 
 def project_point_onto_line(line: Union[np.ndarray, list], point: Union[np.ndarray, list]) -> tuple:
     """
-
+    Returns a tuple with the point where the orthogonal projections of the given points intersects the given the
+    line and secondly the (perpendicular) distance to this point
     Parameters
     ----------
-    line: np.ndarray
+    line: np.ndarray or list
         List of two points defining the line in the form of [[x1, y1],[x2, y2]]
-    point: np.ndarray
+    point: np.ndarray or list
         Point of which the distance perpendicular from the line should be calculated to
     Returns
     -------
     tuple
-        Returns a tuple with the point where the orthogonal projections of the given points intersects the given the
-        line and secondly the (perpendicular) distance to this point
+
+    Raises
+    -------
+    ValueError: Raised if the given line consists of two identical points.
 
     """
     if type(line) is list:
@@ -299,8 +352,14 @@ def boxes_to_edges(boxes):
     """
     Source: https://stackoverflow.com/questions/4842613/merge-lists-that-share-common-elements
 
-        treat `l` as a Graph and returns it's edges
-        to_edges(['a','b','c','d']) -> [(a,b), (b,c),(c,d)]
+    treat `l` as a Graph and returns it's edges
+    to_edges(['a','b','c','d']) -> [(a,b), (b,c),(c,d)]
+    Parameters
+    -------
+    boxes: list
+    Returns
+    -------
+    None
     """
     it = iter(boxes)
     last = next(it)
@@ -311,14 +370,22 @@ def boxes_to_edges(boxes):
 
 
 def overlap(b1: List[float], b2: List[float], thres: float = .8) -> bool:
-    """ Check whether to bounding boxes have an overlap larger than thres
-        Each box must be of form x_min, y_min, x_max, y_max
+    """
+    Check whether two bounding boxes have an overlap larger than thres
+    Each box must be of form x_min, y_min, x_max, y_max
 
     Parameters
     ----------
-    thres
-    b1
-    b2
+    b1: List[float]
+        A box defined by its coordinates [x_min, y_min, x_max, y_max]
+    b2: List[float]
+        A box defined by its coordinates [x_min, y_min, x_max, y_max]
+    thres: float
+        Defaults to .8
+
+    Returns
+    -------
+    bool
     """
     a1 = abs(b1[2] - b1[0]) * abs(b1[3] - b1[1])
     a2 = abs(b2[2] - b2[0]) * abs(b2[3] - b2[1])
@@ -338,13 +405,20 @@ def overlap(b1: List[float], b2: List[float], thres: float = .8) -> bool:
 
 
 def iou(b1: List[float], b2: List[float]):
-    """ Calculates the Intersection over Union metric for two bounding boxes
-        Each box must be of form x_min, y_min, x_max, y_max
+    """
+    Calculates the Intersection over Union metric for two bounding boxes
+    Each box must be of form x_min, y_min, x_max, y_max
 
     Parameters
     ----------
-    b1
-    b2
+    b1: List[float]
+        A box defined by its coordinates [x_min, y_min, x_max, y_max]
+    b2: List[float]
+        A box defined by its coordinates [x_min, y_min, x_max, y_max]
+    Returns
+    -------
+    iou: float
+        Intersection over Union
     """
     b1_x0, b1_y0 = b1[0], b1[1]
     b1_x1, b1_y1 = b1[2], b1[3]
@@ -379,18 +453,19 @@ def iou(b1: List[float], b2: List[float]):
 
 
 def is_point_within_line_projection(line: Union[np.ndarray, list], point: Union[np.ndarray, list]) -> bool:
-    """ Checks whether a given points line projection falls within the points that the define the line
+    """
+    Checks whether a given points line projection falls within the points that the define the line
 
     Parameters
     ----------
-    line: np.ndarray
+    line: Union[np.ndarray, list]
         List of two points defining the line in the form of [[x1, y1],[x2, y2]]
-    point: np.ndarray
+    point: Union[np.ndarray, list]
         Point of which it should be determined whether the projection onto the line falls within the points that
         define the line
     Returns
     -------
-
+    bool
     """
     if type(line) is list:
         line = np.array(line)
@@ -411,9 +486,10 @@ def is_point_within_line_projection(line: Union[np.ndarray, list], point: Union[
 
 
 def haversine(lon1: float, lat1: float, lon2: float, lat2: float) -> float:
-    """ Calculate the great circle distance in kilometers between two points on the earth (specified in decimal degrees)
-        Source:
-        https://stackoverflow.com/questions/4913349/haversine-formula-in-python-bearing-and-distance-between-two-gps-points
+    """
+    Calculate the great circle distance in kilometers between two points on the earth (specified in decimal degrees)
+    Source:
+    https://stackoverflow.com/questions/4913349/haversine-formula-in-python-bearing-and-distance-between-two-gps-points
 
     Parameters
     ----------

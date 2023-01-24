@@ -1,16 +1,14 @@
-pyridy.osm package
-==================
+pyridy.osm
+=================
 
-Subpackages
------------
+
 
 .. toctree::
    :maxdepth: 4
 
    pyridy.osm.utils
+   elements_example
 
-Submodules
-----------
 
 pyridy.osm.osm module
 ---------------------

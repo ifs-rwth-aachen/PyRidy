@@ -22,7 +22,8 @@ logger = logging.getLogger(__name__)
 class ExcitationProcessor(PostProcessor):
     def __init__(self, campaign: Campaign, f_s: int = 200, f_c: float = 1, order: int = 4,
                  p_thres: float = .025, p_dist: int = 50, osm_integration=True):
-        """ The ExcitationProcessor performs a double integration of the acceleration data to calculate
+        """
+        The ExcitationProcessor performs a double integration of the acceleration data to calculate
         excitations. High-Pass Filters are applied to remove static offset and drift. Hence, the resulting
         excitations only represent high-frequent excitations but no quasi-static movements
 
@@ -52,7 +53,8 @@ class ExcitationProcessor(PostProcessor):
         self.fir_bp = signal.firwin(4001, [.5, 50], pass_zero=False, fs=200)
 
     def execute(self, axes: Union[str, list] = "z", intp_gps: bool = True, reset: bool = False):
-        """ Executes the processor on the given axes
+        """
+        Executes the processor on the given axes
 
         Parameters
         ----------
@@ -62,6 +64,10 @@ class ExcitationProcessor(PostProcessor):
             If true interpolates the GPS measurements onto the results
         axes: str or list, default: "z"
             Axes to which processor should be applied to. Can be a single axis or a list of axes
+
+        Raises
+        -------
+        ValueError: Raised if axes are not of type list or str, or not in the format 'x', 'y' or 'z'
         """
         if type(axes) == str:
             if axes not in ["x", "y", "z"]:
@@ -164,6 +170,18 @@ class ExcitationProcessor(PostProcessor):
             self.campaign.results[ExcitationProcessor]["params"] = params
 
     def create_map(self, use_file_color=False) -> Map:
+        """
+        Creates a pyridy.widgets Map showing the GPS tracks of measurement files and adds the nodes to the map.
+
+        Parameters
+        ----------
+        use_file_color: bool
+        Defaults to False.
+
+        Returns
+        -------
+        m: pyridy.widgets Map
+        """
         m = self.campaign.create_map(show_gps_tracks=True, show_railway_elements=False)
         m.add_results_from_campaign(self.campaign, use_file_color=use_file_color)
         return m

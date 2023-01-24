@@ -23,10 +23,18 @@ class ComfortProcessor(PostProcessor):
 
         Parameters
         ----------
-        campaign
-        f_s
-        v_thres
-        method
+        campaign: pyridy.Campaign
+            An object used to import and evaluate several measurements made using Ridy.
+        f_s: int
+            Sample rate, as ordinary frequency [Hz]. Defaults to 200.
+        v_thres: float
+            Threshold velocity. Defaults to 0.
+        method: str
+            Standard to process acceleration data. Defaults to the EN 12299 standard.
+
+        Raises
+        -------
+        ValueError: Raised if method is not supported ("EN1299" or "Wz")
         """
         super(ComfortProcessor, self).__init__(campaign)
         self.f_s = f_s
@@ -40,17 +48,31 @@ class ComfortProcessor(PostProcessor):
 
     @staticmethod
     def calc_comfort_en12999(acc_x: np.ndarray, acc_y: np.ndarray, acc_z: np.ndarray, f_s: int = 200):
-        """ Static method that works purely with numpy arrays for optional use on non campaign like data
+        """
+        Static method that works purely with numpy arrays for optional use on non campaign like data
 
         Parameters
         ----------
-        acc_x
-        acc_y
-        acc_z
-        f_s
+        acc_x: np.ndarray
+            Acceleration according to x-axis.
+        acc_y: np.ndarray
+            Acceleration according to y-axis.
+        acc_z: np.ndarray
+            Acceleration according to z-axis.
+        f_s: int
+            Sample rate, as ordinary frequency [Hz]. Defaults to 200.
 
         Returns
         -------
+        n_mv: ndarray
+        t: ndarray
+            Array of segment times
+        cc_x: ndarray
+            Square magnitude of x
+        cc_y: ndarray
+            Square magnitude of y
+        cc_z: ndarray
+            Square magnitude of z
 
         """
         # The evaluation assumes the phone is laying on the floor pointing in the direction of travel
@@ -78,6 +100,18 @@ class ComfortProcessor(PostProcessor):
         return n_mv, t, cc_x, cc_y, cc_z
 
     def create_map(self, use_file_color=False) -> Map:
+        """
+        Creates a pyridy.widgets Map showing the GPS tracks of measurement files and adds the nodes to the map.
+
+        Parameters
+        ----------
+        use_file_color: bool
+            Defaults to False.
+
+        Returns
+        -------
+        m: pyridy.widgets Map
+        """
         m = self.campaign.create_map(show_gps_tracks=True, show_railway_elements=False)
         m.add_results_from_campaign(self.campaign, use_file_color=use_file_color)
         return m
@@ -85,7 +119,7 @@ class ComfortProcessor(PostProcessor):
     def execute(self):
         """ Executes the Comfort Processor on the given axes
 
-        Parameters
+        Returns
         ----------
         """
 
