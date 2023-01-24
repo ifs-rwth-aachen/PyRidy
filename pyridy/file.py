@@ -168,7 +168,7 @@ class RDYFile:
 
                 self.bbox = [self.lon_sw, self.lat_sw, self.lon_ne, self.lat_ne]
         else:
-            logging.warning("RDYFile instantiated without a path")
+            logging.info("RDYFile instantiated without a path")
 
         # Unique color for each line
         if not color:

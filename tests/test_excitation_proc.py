@@ -14,7 +14,7 @@ def my_campaign():
 def test_excitation_proc_osm_integration(my_campaign, caplog):
     caplog.set_level(logging.DEBUG)
     my_campaign.import_folder("files/sqlite/osm_mapping_test",
-                              download_osm_region=True,
+                              download_osm_data=True,
                               railway_types=["tram"],
                               osm_recurse_type="<")
 

@@ -28,14 +28,14 @@ def test_comfort_proc_execution(caplog, my_campaign):
     cc_z = my_campaign.results[ComfortProcessor]['osm_mapping_test.sqlite']['cc_z']
     n_mv = my_campaign.results[ComfortProcessor]['osm_mapping_test.sqlite']['n_mv']
 
-    fig, ax = plt.subplots(1, 1)
-
-    ax.plot(t, cc_x, label='x')
-    ax.plot(t, cc_y, label='y')
-    ax.plot(t, cc_z, label='z')
-    ax.grid()
-    ax.legend()
-    plt.show()
+    # fig, ax = plt.subplots(1, 1)
+    #
+    # ax.plot(t, cc_x, label='x')
+    # ax.plot(t, cc_y, label='y')
+    # ax.plot(t, cc_z, label='z')
+    # ax.grid()
+    # ax.legend()
+    # plt.show()
     assert True
 
 
