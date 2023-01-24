@@ -64,7 +64,8 @@ class TimeSeries(ABC):
                                                                               self.get_sample_rate())
 
     def cut(self, start: float = 0, end: float = 0, inplace: bool = False):
-        """ Cuts off seconds after start and before end
+        """
+        Cuts off seconds after start and before end
 
         Parameters
         ----------
@@ -74,6 +75,11 @@ class TimeSeries(ABC):
             Seconds to cutoff after start
         end: float
             Seconds to cutoff before end
+
+        Returns
+        ----------
+        time_series_copy: TimeSeries
+            A copy of the timeseries without the cut interval
         """
         if (start + end) >= self.get_duration():
             raise ValueError(f'Trying to cut off more seconds than duration of {self.__class__.__name__}')
@@ -119,7 +125,8 @@ class TimeSeries(ABC):
                          (self.filename, self.__class__.__name__))
 
     def trim_ends(self, timestamp_when_started: int, timestamp_when_stopped: int):
-        """ Trims measurement values saved before/after the measurement was started/stopped
+        """
+        Trims measurement values saved before/after the measurement was started/stopped
 
         Parameters
         ----------
@@ -156,11 +163,12 @@ class TimeSeries(ABC):
         pass
 
     def to_df(self) -> pd.DataFrame:
-        """ Converts the Series to a Pandas DataFrame
+        """
+        Converts the Series to a Pandas DataFrame
 
         Returns
         -------
-            pd.DataFrame
+            pd.DataFrame : Pandas DataFrame
 
         """
         d = self.__dict__.copy()
@@ -170,7 +178,8 @@ class TimeSeries(ABC):
         return pd.DataFrame(dict([(k, pd.Series(v)) for k, v in d.items()])).set_index("time")
 
     def get_sub_series_names(self) -> list:
-        """ Returns names of sub series (e.g., acc_x, acc_y, acc_z)
+        """
+        Returns names of sub series (e.g., acc_x, acc_y, acc_z)
 
         Returns
         -------
@@ -184,11 +193,13 @@ class TimeSeries(ABC):
         return list(d.keys())
 
     def get_duration(self) -> float:
-        """ Calculates the duration of the TimeSeries in seconds
+        """
+        Calculates the duration of the TimeSeries in seconds
 
         Returns
         -------
-            float
+        duration: float
+            Duration of the TimeSeries
         """
         if not np.array_equal(self._time, np.array(None)) and len(self._time) > 0:
             if type(self._time[0]) == np.int64:
@@ -201,11 +212,13 @@ class TimeSeries(ABC):
         return duration
 
     def get_sample_rate(self) -> float:
-        """ Calculates the sample rate of the TimeSeries
+        """
+        Calculates the sample rate of the TimeSeries
 
         Returns
         -------
-            float
+        sample_rate: float
+            Sample rate of the TimeSeries
         """
         if not np.array_equal(self._time, np.array(None)) and self.get_duration() > 0:
             mean_timedelta = self._timedelta.mean()
@@ -216,7 +229,8 @@ class TimeSeries(ABC):
         return sample_rate
 
     def is_empty(self) -> bool:
-        """ Checks whether the TimeSeries contains any values
+        """
+        Checks whether the TimeSeries contains any values
 
         Returns
         -------
@@ -241,6 +255,10 @@ class TimeSeries(ABC):
             Sync to be used for synchronizing
         timedelta_unit: str
             Timedelta unit
+
+        Raises
+        -------
+        ValueError: Raised if method is not supported or sync_time's type is not compatible with given method
         """
         if sync_timestamp and type(sync_timestamp) not in [int, np.int64]:
             raise ValueError(
@@ -306,18 +324,22 @@ class AccelerationSeries(TimeSeries):
                  acc_z: Union[list, np.ndarray] = None,
                  rdy_format_version: float = None,
                  filename: str = ""):
-        """ Series containing acceleration values
+        """
+        Series containing acceleration values
         See https://developer.android.com/guide/topics/sensors/sensors_overview for more information
         on Android sensors
 
-
         Parameters
         ----------
-        time
-        acc_x
-        acc_y
-        acc_z
-        rdy_format_version
+        time: Union[list, np.ndarray]
+            Series' timestamps.
+        acc_x: Union[list, np.ndarray]
+            Acceleration according to x-axis.
+        acc_y: Union[list, np.ndarray]
+            Acceleration according to y-axis.
+        acc_z: Union[list, np.ndarray]
+            Acceleration according to z-axis.
+        rdy_format_version: float
         """
         args = locals().copy()
         args.pop("self")
@@ -334,18 +356,27 @@ class AccelerationUncalibratedSeries(TimeSeries):
                  acc_uncal_z_bias: Union[list, np.ndarray] = None,
                  rdy_format_version: float = None,
                  filename: str = ""):
-        """ Series containing uncalibrated acceleration values
+        """
+        Series containing uncalibrated acceleration values
 
         Parameters
         ----------
-        time
-        acc_uncal_x
-        acc_uncal_y
-        acc_uncal_z
-        acc_uncal_x_bias
-        acc_uncal_y_bias
-        acc_uncal_z_bias
-        rdy_format_version
+        time: Union[list, np.ndarray]
+            Series' timestamps.
+        acc_uncal_x: Union[list, np.ndarray]
+            Uncalibrated acceleration according to x-axis without any bias compensation.
+        acc_uncal_y: Union[list, np.ndarray]
+            Uncalibrated acceleration according to y-axis without any bias compensation.
+        acc_uncal_z: Union[list, np.ndarray]
+            Uncalibrated acceleration according to z-axis without any bias compensation.
+        acc_uncal_x_bias: Union[list, np.ndarray]
+            Measured acceleration along the x-axis with estimated bias compensation.
+        acc_uncal_y_bias: Union[list, np.ndarray]
+            Measured acceleration along the y-axis with estimated bias compensation.
+        acc_uncal_z_bias: Union[list, np.ndarray]
+            Measured acceleration along the z-axis with estimated bias compensation.
+        rdy_format_version: float
+        filename: str
         """
         args = locals().copy()
         args.pop("self")
@@ -360,16 +391,21 @@ class LinearAccelerationSeries(TimeSeries):
                  rdy_format_version: float = None,
                  filename: str = "",
                  **kwargs):
-        """ Series containing linear acceleration values (i.e. without g)
+        """
+        Series containing linear acceleration values (i.e. without g)
 
         Parameters
         ----------
-        time
-        lin_acc_x
-        lin_acc_y
-        lin_acc_z
-        rdy_format_version
-        kwargs
+        time: Union[list, np.ndarray]
+            Series' timestamps.
+        lin_acc_x: Union[list, np.ndarray]
+            Linear acceleration force along x-axis.
+        lin_acc_y: Union[list, np.ndarray]
+            Linear acceleration force along y-axis.
+        lin_acc_z: Union[list, np.ndarray]
+            Linear acceleration force along z-axis.
+        rdy_format_version: float
+        filename: str
         """
         args = locals().copy()
         args.pop("self")
@@ -397,15 +433,21 @@ class MagnetometerSeries(TimeSeries):
                  mag_z: Union[list, np.ndarray] = None,
                  rdy_format_version: float = None,
                  filename: str = ""):
-        """ Series containing magnetic field values
+        """
+        Series containing magnetic field values
 
         Parameters
         ----------
-        time
-        mag_x
-        mag_y
-        mag_z
-        rdy_format_version
+        time: Union[list, np.ndarray]
+            Series' timestamps.
+        mag_x: Union[list, np.ndarray]
+            Geomagnetic field strength according to x-axis.
+        mag_y: Union[list, np.ndarray]
+            Geomagnetic field strength according to y-axis.
+        mag_z: Union[list, np.ndarray]
+            Geomagnetic field strength according to z-axis.
+        rdy_format_version: float
+        filename: str
         """
         args = locals().copy()
         args.pop("self")
@@ -426,14 +468,22 @@ class MagnetometerUncalibratedSeries(TimeSeries):
 
         Parameters
         ----------
-        time
-        mag_uncal_x
-        mag_uncal_y
-        mag_uncal_z
-        mag_uncal_x_bias
-        mag_uncal_y_bias
-        mag_uncal_z_bias
-        rdy_format_version
+        time: Union[list, np.ndarray]
+            Series' timestamps.
+        mag_uncal_x: Union[list, np.ndarray]
+            Geomagnetic field strength (without hard iron calibration) along the x-axis.
+        mag_uncal_y: Union[list, np.ndarray]
+            Geomagnetic field strength (without hard iron calibration) along the y-axis.
+        mag_uncal_z: Union[list, np.ndarray]
+            Geomagnetic field strength (without hard iron calibration) along the z-axis.
+        mag_uncal_x_bias: Union[list, np.ndarray]
+            Iron bias estimation along the x-axis.
+        mag_uncal_y_bias: Union[list, np.ndarray]
+            Iron bias estimation along the y-axis.
+        mag_uncal_z_bias: Union[list, np.ndarray]
+            Iron bias estimation along the z-axis.
+        rdy_format_version: float
+        filename: str
         """
         args = locals().copy()
         args.pop("self")
@@ -447,15 +497,20 @@ class NMEAMessageSeries(TimeSeries):
                  msg: Union[list, np.ndarray] = None,
                  rdy_format_version: float = None,
                  filename: str = ""):
-        """ Series containing raw NMEA strings from GNSS chipset
+        """
+        Series containing raw NMEA strings from GNSS chipset
         See https://www.wikiwand.com/en/NMEA_0183 for more information on NMEA messages
 
         Parameters
         ----------
-        time
-        utc_time
-        msg
-        rdy_format_version
+        time: Union[list, np.ndarray]
+            Series' timestamps.
+        utc_time: Union[list, np.ndarray]
+            Time of the observation, UTC time zone.
+        msg: Union[list, np.ndarray]
+            NMEA message from GNSS chipset
+        rdy_format_version: float
+        filename: str
         """
         args = locals().copy()
         args.pop("self")
@@ -481,28 +536,45 @@ class GNSSClockMeasurementSeries(TimeSeries):
                  time_uncertainty_nanos: Union[list, np.ndarray] = None,
                  rdy_format_version: float = None,
                  filename: str = ""):
-        """ Series containing raw GNSS clock values
+        """
+        Series containing raw GNSS clock values
         See https://developer.android.com/reference/android/location/GnssClock for more information on individual
         parameters
 
         Parameters
         ----------
-        time
-        bias_nanos
-        bias_uncertainty_nanos
-        drift_nanos_per_second
-        drift_uncertainty_nanos_per_second
-        elapsed_realtime_nanos
-        elapsed_realtime_uncertainty_nanos
-        full_bias_nanos
-        hardware_clock_discontinuity_count
-        leap_second
-        reference_carrier_frequency_hz_for_isb
-        reference_code_type_for_isb
-        reference_constellation_type_for_isb
-        time_nanos
-        time_uncertainty_nanos
-        rdy_format_version
+        time: Union[list, np.ndarray]:
+            Timeseries's timestamps
+        bias_nanos: Union[list, np.ndarray]
+            The clock's sub-nanosecond bias.
+        bias_uncertainty_nanos: Union[list, np.ndarray]
+            The clock's Bias Uncertainty (1-Sigma) in nanoseconds.
+        drift_nanos_per_second: Union[list, np.ndarray]
+            The clock's Drift in nanoseconds per second.
+        drift_uncertainty_nanos_per_second: Union[list, np.ndarray]
+            The clock's Drift Uncertainty (1-Sigma) in nanoseconds per second.
+        elapsed_realtime_nanos: Union[list, np.ndarray]
+            The elapsed real-time of this clock since system boot, in nanoseconds.
+        elapsed_realtime_uncertainty_nanos: Union[list, np.ndarray]
+            The estimate of the relative precision of the alignment of the elapsed_realtime_nanos timestamp.
+        full_bias_nanos: Union[list, np.ndarray]
+            The difference between hardware clock inside GPS receiver and the true GPS time.
+        hardware_clock_discontinuity_count: Union[list, np.ndarray]
+            Count of hardware clock discontinuities.
+        leap_second: Union[list, np.ndarray]
+            The leap second associated with the clock's time
+        reference_carrier_frequency_hz_for_isb: Union[list, np.ndarray]
+            The reference carrier frequency in Hz for inter-signal bias.
+        reference_code_type_for_isb: Union[list, np.ndarray]
+            The reference code type for inter-signal bias.
+        reference_constellation_type_for_isb: Union[list, np.ndarray]
+            The reference constellation type for inter-signal bias.
+        time_nanos: Union[list, np.ndarray]
+            The GNSS receiver internal hardware clock value in nanoseconds.
+        time_uncertainty_nanos: Union[list, np.ndarray]
+            The clock's time Uncertainty (1-Sigma) in nanoseconds.
+        rdy_format_version: float
+        filename: str
         """
         args = locals().copy()
         args.pop("self")
@@ -546,33 +618,60 @@ class GNSSMeasurementSeries(TimeSeries):
 
         Parameters
         ----------
-        time
-        accumulated_delta_range_meters
-        accumulated_delta_range_state
-        accumulated_delta_range_uncertainty_meters
-        automatic_gain_control_level_db
-        baseband_cn0DbHz
-        carrier_cycles
-        carrier_frequency_hz
-        carrier_phase
-        carrier_phase_uncertainty
-        cn0DbHz
-        code_type
-        constellation_type
-        full_inter_signal_bias_nanos
-        full_inter_signal_bias_uncertainty_nanos
-        multipath_indicator
-        pseudorange_rate_meters_per_second
-        pseudorange_rate_uncertainty_meters_per_second
-        received_sv_time_nanos
-        received_sv_time_uncertainty_nanos
-        satellite_inter_signal_bias_nanos
-        satellite_inter_signal_bias_uncertainty_nanos
-        snrInDb
-        state
-        svid
-        time_offset_nanos
-        rdy_format_version
+        time: Union[list, np.ndarray]
+         Series's timestamps.
+        accumulated_delta_range_meters: Union[list, np.ndarray]
+            The accumulated delta range since the last channel reset, in meters.
+        accumulated_delta_range_state: Union[list, np.ndarray]
+            The state (availability of the value) of the accumulated_delta_range_meters measurement.
+        accumulated_delta_range_uncertainty_meters: Union[list, np.ndarray]
+            The accumulated delta range's uncertainty (1-Sigma) in meters.
+        automatic_gain_control_level_db: Union[list, np.ndarray]
+            The Automatic Gain Control level in dB.
+        baseband_cn0DbHz: Union[list, np.ndarray]
+            The baseband carrier-to-noise density in dB-Hz. Typical range: 10-50 dB-Hz.
+        carrier_cycles: Union[list, np.ndarray]
+            The number of full carrier cycles between the satellite and the receiver.
+        carrier_frequency_hz: Union[list, np.ndarray]
+            The carrier frequency of the tracked signal.
+        carrier_phase: Union[list, np.ndarray]
+            The RF phase detected by the receiver. Range: [0.0, 1.0].
+        carrier_phase_uncertainty: Union[list, np.ndarray]
+            The carrier-phase's uncertainty (1-Sigma).
+        cn0DbHz: Union[list, np.ndarray]
+            The Carrier-to-noise density in dB-Hz.
+        code_type: Union[list, np.ndarray]
+            The GNSS measurement's code type.
+        constellation_type: Union[list, np.ndarray]
+            The constellation type.
+        full_inter_signal_bias_nanos: Union[list, np.ndarray]
+            The GNSS measurement's inter-signal bias in nanoseconds with sub-nanosecond accuracy.
+        full_inter_signal_bias_uncertainty_nanos: Union[list, np.ndarray]
+            The GNSS measurement's inter-signal bias uncertainty (1 sigma) in nanoseconds with sub-nanosecond accuracy.
+        multipath_indicator: Union[list, np.ndarray]
+            Values indicating the 'multipath' state of the event.
+        pseudorange_rate_meters_per_second: Union[list, np.ndarray]
+            The Pseudorange rate at the timestamp in m/s.
+        pseudorange_rate_uncertainty_meters_per_second: Union[list, np.ndarray]
+            The pseudorange's rate uncertainty (1-Sigma) in m/s.
+        received_sv_time_nanos: Union[list, np.ndarray]
+            The received GNSS satellite time, at the measurement time, in nanoseconds.
+        received_sv_time_uncertainty_nanos: Union[list, np.ndarray]
+            The error estimate (1-sigma) for the received GNSS time, in nanoseconds.
+        satellite_inter_signal_bias_nanos: Union[list, np.ndarray]
+            The GNSS measurement's satellite inter-signal bias in nanoseconds with sub-nanosecond accuracy.
+        satellite_inter_signal_bias_uncertainty_nanos: Union[list, np.ndarray]
+            The GNSS measurement's satellite inter-signal bias uncertainty (1 sigma) in nanoseconds with sub-nanosecond accuracy.
+        snrInDb: Union[list, np.ndarray]
+            The (post-correlation & integration) Signal-to-Noise ratio (SNR) in dB.
+        state: Union[list, np.ndarray]
+            The per-satellite-signal sync state.
+        svid: Union[list, np.ndarray]
+            The satellite ID.
+        time_offset_nanos: Union[list, np.ndarray]
+            The time offset at which the measurement was taken in nanoseconds.
+        rdy_format_version: float
+        filename: str
         """
         args = locals().copy()
         args.pop("self")
@@ -586,15 +685,21 @@ class OrientationSeries(TimeSeries):
                  roll: Union[list, np.ndarray] = None,
                  rdy_format_version: float = None,
                  filename: str = ""):
-        """ Series containing orientation values
+        """
+        Series containing orientation values
 
         Parameters
         ----------
-        time
-        azimuth
-        pitch
-        roll
-        rdy_format_version
+        time: Union[list, np.ndarray]
+            Series's timestamps.
+        azimuth: Union[list, np.ndarray]
+            Azimuth (angle around the z-axis).
+        pitch: Union[list, np.ndarray]
+            Pitch (angle around the x-axis).
+        roll: Union[list, np.ndarray]
+            Roll (angle around the y-axis).
+        rdy_format_version: float
+        filename: str
         """
         args = locals().copy()
         args.pop("self")
@@ -608,15 +713,21 @@ class GyroSeries(TimeSeries):
                  w_z: Union[list, np.ndarray] = None,
                  rdy_format_version: float = None,
                  filename: str = ""):
-        """ Series containing gyro values
+        """
+        Series containing gyro values
 
         Parameters
         ----------
-        time
-        w_x
-        w_y
-        w_z
-        rdy_format_version
+        time: Union[list, np.ndarray]
+            Series's timestamps.
+        w_x: Union[list, np.ndarray]
+            Rate of rotation around x-axis.
+        w_y: Union[list, np.ndarray]
+            Rate of rotation around y-axis.
+        w_z: Union[list, np.ndarray]
+            Rate of rotation around z-axis.
+        rdy_format_version: float
+        filename: str
         """
         args = locals().copy()
         args.pop("self")
@@ -637,14 +748,22 @@ class GyroUncalibratedSeries(TimeSeries):
 
         Parameters
         ----------
-        time
-        w_uncal_x
-        w_uncal_y
-        w_uncal_z
-        w_uncal_x_bias
-        w_uncal_y_bias
-        w_uncal_z_bias
-        rdy_format_version
+        time: Union[list, np.ndarray]
+            Series's timestamps.
+        w_uncal_x: Union[list, np.ndarray]
+            Rate of rotation (without drift compensation) around x-axis.
+        w_uncal_y: Union[list, np.ndarray]
+            Rate of rotation (without drift compensation) around y-axis.
+        w_uncal_z: Union[list, np.ndarray]
+            Rate of rotation (without drift compensation) around z-axis.
+        w_uncal_x_bias: Union[list, np.ndarray]
+            Estimated drift around the x-axis.
+        w_uncal_y_bias: Union[list, np.ndarray]
+            Estimated drift around the y-axis.
+        w_uncal_z_bias: Union[list, np.ndarray]
+            Estimated drift around the z-axis.
+        rdy_format_version: float
+        filename: str
         """
         args = locals().copy()
         args.pop("self")
@@ -660,17 +779,23 @@ class RotationSeries(TimeSeries):
                  heading_acc: Union[list, np.ndarray] = None,
                  rdy_format_version: float = None,
                  filename: str = ""):
-        """ Series containing rotation values
+        """
+        Series containing rotation values
 
         Parameters
         ----------
-        time
-        rot_x
-        rot_y
-        rot_z
-        cos_phi
-        heading_acc
-        rdy_format_version
+        time: Union[list, np.ndarray]
+            Series timestamps.
+        rot_x: Union[list, np.ndarray]
+            Rotation vector component along the x-axis.
+        rot_y: Union[list, np.ndarray]
+            Rotation vector component along the y-axis.
+        rot_z: Union[list, np.ndarray]
+            Rotation vector component along the y-axis.
+        cos_phi: Union[list, np.ndarray]
+            Scalar component of the rotation vector.
+        heading_acc: Union[list, np.ndarray]
+        rdy_format_version: float
         """
         args = locals().copy()
         args.pop("self")
@@ -691,22 +816,34 @@ class GPSSeries(TimeSeries):
                  utc_time: Union[list, np.ndarray] = None,
                  rdy_format_version: float = None,
                  filename: str = ""):
-        """ Series containing GPS values
+        """
+        Series containing GPS values
 
         Parameters
         ----------
-        time
-        lat
-        lon
-        altitude
-        bearing
-        speed
-        hor_acc
-        ver_acc
-        bear_acc
-        speed_acc
-        utc_time
-        rdy_format_version
+        time: Union[list, np.ndarray]
+            Series's timestamps.
+        lat: Union[list, np.ndarray]
+            The latitude in degrees.
+        lon: Union[list, np.ndarray]
+            The longitude in degrees.
+        altitude: Union[list, np.ndarray]
+            The altitude of this location in meters
+        bearing: Union[list, np.ndarray]
+            The bearing at the time of this location in degrees.
+        speed: Union[list, np.ndarray]
+            The speed at the time of this location in meters per second.
+        hor_acc: Union[list, np.ndarray]
+            The estimated horizontal accuracy radius in meters of this location.
+        ver_acc: Union[list, np.ndarray]
+            The estimated altitude accuracy in meters of this location.
+        bear_acc: Union[list, np.ndarray]
+            The estimated bearing accuracy in degrees of this location.
+        speed_acc: Union[list, np.ndarray]
+            The estimated speed accuracy in meters per second of this location
+        utc_time: Union[list, np.ndarray]
+        rdy_format_version: float
+        filename: str
         """
         args = locals().copy()
         args.pop("self")
@@ -714,9 +851,10 @@ class GPSSeries(TimeSeries):
 
     def to_ipyleaflef(self) -> List[list]:
         """
-
+        Gives a list of coordinates of the form [latitude, longitude]
         Returns
         -------
+        List[list]
 
         """
         if np.array_equal(self.lat, np.array(None)) and np.array_equal(self.lat, np.array(None)):
@@ -738,9 +876,12 @@ class PressureSeries(TimeSeries):
 
         Parameters
         ----------
-        time
-        pressure
-        rdy_format_version
+        time: Union[list, np.ndarray]
+            Series's timestamps.
+        pressure: Union[list, np.ndarray]
+            Ambient air pressure.
+        rdy_format_version: float
+        filename: str
         """
         args = locals().copy()
         args.pop("self")
@@ -756,9 +897,12 @@ class TemperatureSeries(TimeSeries):
 
         Parameters
         ----------
-        time
-        temperature
-        rdy_format_version
+        time: Union[list, np.ndarray]
+            Series's timestamps.
+        temperature: Union[list, np.ndarray]
+            Device temperature.
+        rdy_format_version: float
+        filename: str
         """
         args = locals().copy()
         args.pop("self")
@@ -774,9 +918,12 @@ class HumiditySeries(TimeSeries):
 
         Parameters
         ----------
-        time
-        humidity
-        rdy_format_version
+        time: Union[list, np.ndarray]
+            Series's timestamps.
+        humidity: Union[list, np.ndarray]
+            Ambient relative humidity.
+        rdy_format_version: float
+        filename: str
         """
         args = locals().copy()
         args.pop("self")
@@ -792,9 +939,12 @@ class LightSeries(TimeSeries):
 
         Parameters
         ----------
-        time
-        light
-        rdy_format_version
+        time: Union[list, np.ndarray]
+            Series's timestamps.
+        light: Union[list, np.ndarray]
+            Illuminance.
+        rdy_format_version: float
+        filename: str
         """
         args = locals().copy()
         args.pop("self")
@@ -812,11 +962,13 @@ class WzSeries(TimeSeries):
 
         Parameters
         ----------
-        time
-        wz_x
-        wz_y
-        wz_z
-        rdy_format_version
+        time: Union[list, np.ndarray]
+            Series's timestamps.
+        wz_x: Union[list, np.ndarray]
+        wz_y: Union[list, np.ndarray]
+        wz_z: Union[list, np.ndarray]
+        rdy_format_version: float
+        filename: str
         """
         args = locals().copy()
         args.pop("self")
@@ -832,9 +984,11 @@ class SubjectiveComfortSeries(TimeSeries):
 
         Parameters
         ----------
-        time
-        comfort
-        rdy_format_version
+        time: Union[list, np.ndarray]
+            Series's timestamps.
+        comfort: Union[list, np.ndarray]
+        rdy_format_version: float
+        filename: str
         """
         args = locals().copy()
         args.pop("self")
@@ -851,9 +1005,12 @@ class NTPDatetimeSeries(TimeSeries):
 
         Parameters
         ----------
-        time
-        ntp_datetime
-        rdy_format_version
+        time: Union[list, np.ndarray]
+            Series's timestamps.
+        ntp_datetime: Union[list, np.ndarray]
+            Date-time from NTP(Network Time Protocol) server.
+        rdy_format_version: float
+        filename: str
         """
         self.ntp_datetime = ntp_datetime
 

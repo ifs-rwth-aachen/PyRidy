@@ -14,19 +14,28 @@ class Device:
                  model: Union[str, Series] = "N/A",
                  gnss_hardware_model_name: Union[str, Series] = "N/A",
                  gnss_year_of_hardware: Union[int, Series] = -1):
-        """ Class representing Android device information
+        """
+        Class representing Android device information
 
         Parameters
         ----------
-        api_level
-        base_os
-        brand
-        manufacturer
-        device
-        product
-        model
-        gnss_hardware_model_name
-        gnss_year_of_hardware
+        api_level: Union[int, Series]
+            Identifies the framework API revision offered by a version of the Android platform.
+        base_os: Union[int, Series]
+            The base OS build the product is based on.
+        brand: Union[int, Series]
+            The consumer-visible brand with which the product/hardware
+        manufacturer: Union[int, Series]
+            The manufacturer of the product/hardware.
+        device: Union[int, Series]
+        product: Union[int, Series]
+            The name of the overall product.
+        model: Union[int, Series]
+            The end-user-visible name for the end product.
+        gnss_hardware_model_name: Union[int, Series]
+            The exact GNSS hardware in-use in the device.
+        gnss_year_of_hardware: Union[int, Series]
+            The year of manufacture of GNSS hardware in-use ?.
         """
         if type(api_level) == Series:
             self.api_level = api_level[0] if len(api_level) > 0 else None

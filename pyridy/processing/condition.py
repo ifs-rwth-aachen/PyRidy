@@ -10,8 +10,17 @@ class ConditionProcessor:
     def __init__(self, thres_lo: float = 0, thres_hi: float = 0, v_thres: float = 1.0, sampling_period: str = "1000ms"):
         """
         Class representing the Track condition based on a RDYFile containing measurements of a track
-        :param thres_lo:
-        :param thres_hi:
+
+        Parameters
+        ----------
+        thres_lo: float
+            Low acceleration threshold. Defaults to 0.
+        thres_hi: float
+            High acceleration threshold. Defaults to 0.
+        v_thres: float
+            Velocity threshold. Defaults to 1.0.
+        sampling_period: str
+            Sampling period. Defaults to "1000ms"
         """
         self.thres_lo: float = thres_lo
         self.thres_hi: float = thres_hi
@@ -40,6 +49,26 @@ class ConditionProcessor:
     #     self._evaluate_track_condition()
 
     def process_file(self, file: RDYFile, method="acc") -> pd.DataFrame:
+        """
+        Class representing the Track condition based on a RDYFile containing measurements of a track.
+
+        Parameters
+        ----------
+        file: RDYFile
+            Ridy file containing measurements.
+        method: str
+            Defines the method used; acceleration, velocity or comfort. Defaults to "acc".
+
+        Returns
+        ----------
+        df_merged: pd.DataFrame
+
+        Raises
+        -------
+        ValueError: Raised if method is not supported ('acc', 'velocity' or 'comfort')
+
+        """
+
         if method not in ["acc", "velocity", "comfort"]:
             raise ValueError("Method must be either 'acc', 'velocity' or 'comfort'")
 
@@ -113,6 +142,14 @@ class ConditionProcessor:
 
 
 class TrackCondition(Enum):
+    """
+    Class mapping track conditions to specific colors using RWTH colors
+
+    Parameters
+    ----------
+    Enum: Enum
+
+    """
     GOOD = "#57AB27"  # (RWTHGrün100)
     SATISFACTORY = "#F6A800"  # (RWTHOrange100)
     INSUFFICIENT = "#CC071E"  # (RWTHRot100)

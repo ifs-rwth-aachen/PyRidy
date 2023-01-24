@@ -10,22 +10,32 @@ class Sensor:
                  max_delay: int = None,
                  max_range: float = None,
                  min_delay: int = None):
-        """ Class that describes an Android sensor
+        """
+        Class that describes an Android sensor
 
         See https://developer.android.com/reference/android/hardware/Sensor for documentation on individual parameters
 
         Parameters
         ----------
         name: str
+            Sensor's name.
         vendor: str
+            Vendor string of the sensor.
         string_type: str
+            A constant string describing the sensor's type.
         power: float
         resolution: float
+            Resolution of the sensor in the sensor's unit.
         version: int
+            Version of the sensor's module.
         type: int
+            Generic type of this sensor.
         max_delay: int
+            The delay between two sensor events corresponding to the lowest frequency that this sensor supports.
         max_range: int
+            Maximum range of the sensor in the sensor's unit.
         min_delay: int
+            The minimum delay allowed between two events in microseconds or zero if this sensor only returns a value when the data it's measuring changes.
         """
         self.name = name
         self.vendor = vendor

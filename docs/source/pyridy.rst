@@ -1,22 +1,30 @@
-pyridy package
-==============
+pyridy
+=============
 
-Subpackages
------------
+
 
 .. toctree::
    :maxdepth: 4
 
    pyridy.osm
+   pyridy.processing
    pyridy.utils
+   pyridy.widgets
 
-Submodules
-----------
+
 
 pyridy.campaign module
 ----------------------
 
 .. automodule:: pyridy.campaign
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+pyridy.config module
+--------------------
+
+.. automodule:: pyridy.config
    :members:
    :undoc-members:
    :show-inheritance:

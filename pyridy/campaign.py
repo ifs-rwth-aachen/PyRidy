@@ -184,14 +184,17 @@ class Campaign:
     def create_map(self, center: Tuple[float, float] = None,
                    show_gps_tracks=True,
                    show_railway_elements=False) -> 'Map':
-        """ Creates a pyridy.widgets Map (based on ipyleaflet) showing the GPS tracks of measurement files
+        """
+        Creates a pyridy.widgets Map (based on ipyleaflet) showing the GPS tracks of measurement files
 
         Parameters
         ----------
-        show_gps_tracks
-        center
-        show_railway_elements
-
+        center: Tuple[float, float]
+            The tuple containing the latitude/longitude of the marker.
+        show_gps_tracks: bool
+            Defines whether GPS tracks are shown or not
+        show_railway_elements: bool
+            Defines if railway elements are shown or not
         Returns
         -------
         pyridy.widgets Map
@@ -217,8 +220,12 @@ class Campaign:
         return m
 
     def determine_geographic_extent(self):
-        """ Determines the geographic extent of the campaign in terms of min/max lat/lon
+        """
+        Determines the geographic extent of the campaign in terms of min/max lat/lon
 
+        Returns
+        -------
+        None
         """
         min_lats = []
         max_lats = []
@@ -246,6 +253,17 @@ class Campaign:
                      % (str(self.lat_sw), str(self.lon_sw), str(self.lat_ne), str(self.lon_ne)))
 
     def determine_geographic_center(self) -> Tuple[float, float]:
+        """
+        Determines the geographic center of the campaign.
+
+        Returns
+        -------
+        Tuple[float, float]
+            Geographic center of the campaign
+        Raises:
+        -------
+        ValueError: An error occurred determining the geographic center.
+        """
         if self.lat_sw and self.lat_ne and self.lon_sw and self.lon_ne:
             return (
                 (self.lat_sw + self.lat_ne) / 2,
@@ -254,12 +272,20 @@ class Campaign:
             raise ValueError("Cannot determine geographic center of campaign, enter manually using 'center' argument")
 
     def do_map_matching(self, rematch=False, **kwargs):
-        """ Performs map matching for all files in campaign
+        """
+        Performs map matching for all files in campaign
 
         Parameters
         ----------
         rematch: Bool, default: False
             If True performs map matching again, even when file already contains a map matching
+        Returns
+        -------
+        None
+
+        Raises:
+        -------
+        RuntimeError: An error occurred matching maps
         """
         if self.osm:
             for f in tqdm(self, desc="Map Matching: Files in Campaign"):
@@ -277,7 +303,8 @@ class Campaign:
         pass
 
     def group_by(self, key):
-        """ Groupy Ridy files by given key, grouped files can be accessed through the grouped_files attributes
+        """
+        Group Ridy files by given key, grouped files can be accessed through the grouped_files attributes
 
         Parameters
         ----------
@@ -289,12 +316,17 @@ class Campaign:
 
     def determine_bounding_boxes(self, simplify=True, plot=False):
         """
-        Determine bounding boxes of files.
-        Stores bounding boxes in self.bboxs.
-
-        If `simplify=True`:
-        Unify bounding boxes with a large overlap to reduce number of queries and
-        stores these in self.s_bboxs.
+        Determine bounding boxes of files and stores them in self.bboxs.
+        Parameters
+        ----------
+        simplify: bool
+            If True, unify bounding boxes with a large overlap to reduce number of queries and
+            stores these in self.s_bboxs. Defaults to True.
+        plot: bool
+            Defaults to False.
+        Returns
+        -------
+        None
         """
         # determine bounding boxes of files
         self.bboxs = [f.bbox for f in self.files if f.bbox]
@@ -302,10 +334,16 @@ class Campaign:
             self.simplify_bounding_boxes()
 
     def simplify_bounding_boxes(self):
+        """
+        Unify bounding boxes with a large overlap to reduce number of queries. Cluster boxes by overlap
+
+        Returns
+        -------
+        None
+        """
         self.s_bboxs = []  # Filtered bounding boxes
 
-        # Unify bounding boxes with a large overlap to reduce number of queries
-        # Cluster boxes by overlap
+
         clusters = []
         for b1, b2 in itertools.combinations(self.bboxs, 2):
             if iou(b1, b2) > config.options["OSM_BOUNDING_BOX_SPLIT_IOU_THRES"]:
@@ -343,6 +381,19 @@ class Campaign:
         # plt.show()
 
     def download_osm_data(self, railway_types: Union[list, str] = None, osm_recurse_type: str = ">",):
+        """
+        Downloads the OSM data and
+        Parameters
+        ----------
+        railway_types: list or list of str
+            Railway type to be downloaded from OSM, e.g., "rail", "subway", "tram" or "light_rail". Defaults to None.
+        osm_recurse_type: str
+            Recurse type to be used when querying OSM data using the overpass API. Defaults to ">".
+
+        Returns
+        -------
+        None
+        """
         if railway_types:
             self.railway_types = railway_types
 
@@ -396,6 +447,11 @@ class Campaign:
             Recurse type to be used when querying OSM data using the overpass API
         use_multiprocessing : bool, default: True
             If True, uses multiprocessing to import Ridy files
+
+        Raises:
+        -------
+        TypeError: Occurs if path's arguments are not of type str or list of str
+        ValueError: Error if the series is not of type Timeseries or if series' arguments ar not valid
         """
         if osm_recurse_type:
             self.osm_recurse_type = osm_recurse_type
@@ -455,7 +511,8 @@ class Campaign:
                       recursive: bool = True,
                       exclude: Union[list, str] = None,
                       **kwargs):
-        """ Imports folder(s) into the campaign
+        """
+        Imports folder(s) into the campaign
 
         Parameters
         ----------
@@ -465,6 +522,9 @@ class Campaign:
             Flag if folders should be imported recursively, i.e., whether subfolders should also be searched
         exclude: str or list of str
             Folder(s) or file(s) that should be excluded while importing
+        Raises:
+        -------
+        TypeError: Occurs if folder's arguments are not of type str or list of str
         """
         if exclude is None:
             exclude = []

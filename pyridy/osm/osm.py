@@ -64,6 +64,12 @@ class OSM:
             If True, starts downloading the OSM data
         recurse: str, default: '>'
             Type of recursion used on Overpass query. (Recurse up < or down >)
+
+        Raises
+        -------
+        ValueError: Raised if bounding boxes are empty, the bounding box is not a list with coordinates or list of bounding boxes,
+        desired_railway_type is not supported or recurse type is invalid
+
         """
 
         # Sanity check for bbox argument
@@ -143,7 +149,13 @@ class OSM:
         self._populate_graph()
 
     def _populate_graph(self):
-        # Add nodes to Graph
+
+        """
+        Add nodes to Graph. Edges added use node distances as weights.
+        Returns
+        -------
+        None
+        """
         self.G.add_nodes_from([(n.id, n.__dict__) for n in self.nodes])
 
         # Add edges, use node distances as weight
@@ -159,12 +171,18 @@ class OSM:
 
     @staticmethod
     def _check_bbox(bbox: List[float]):
-        """ Sanity check for bounding box
+        # noinspection PyUnresolvedReferences
+        """
+        Sanity check for bounding box
 
         Parameters
         ----------
         bbox: List[float]
             Bounding box with coordinate format lon_sw, lat_sw, lon_ne, lat_ne
+
+        Raises
+        -------
+        ValueError: Raised if coordinates are invalid
         """
         if len(bbox) != 4:
             raise ValueError("Bounding box must have 4 coordinates, not %d" % len(bbox))
@@ -195,7 +213,12 @@ class OSM:
 
         Returns
         -------
+        track query: query
+        route query: query
 
+        Raises
+        -------
+        ValueError: Raised if the desired_railway_type is not supported or recurse type is invalid
         """
         if recurse not in [">", ">>", "<", "<<"]:
             raise ValueError("recurse type %s not supported" % recurse)
@@ -228,8 +251,12 @@ class OSM:
         return track_query, route_query
 
     def _check_allowed_switch_transits(self):
-        """ Checks in what ways a switch can be transited, i.e. what combination of neighboring nodes are allowed
+        """
+        Checks in what ways a switch can be transited, i.e. what combination of neighboring nodes are allowed
 
+        Raises
+        -------
+        ValueError: Raised if graph G has no nodes
         """
         if not len(self.G.nodes):
             raise ValueError("Can't determine allowed switch transits if Graph G has no nodes")
@@ -258,6 +285,13 @@ class OSM:
         pass
 
     def get_live_overpass_api_instances(self):
+        """
+        The function returns live instances by testing the connection to the api_instances' list.
+        Returns
+        -------
+        live_instances: list
+            A list of current live instances.
+        """
         live_instances = []
         for i in self.overpass_api_list:
             logger.debug(f"Test connection to {i.url}.")
@@ -271,6 +305,9 @@ class OSM:
     def _check_connection_and_download_track_data(self):
         """
         Download track data if there is a working internet connection
+        Returns
+        -------
+        None
         """
         logger.debug("Check connectivity before starting download.")
         live_overpass_instances = self.get_live_overpass_api_instances()
@@ -285,7 +322,13 @@ class OSM:
         Query data for a bounding box.
 
         Stores returned data in self.relations, self.nodes and self.ways.
+        Parameters
+        ----------
+        b: List[float]
+            Bounding box must have the format lon_sw, lat_sw, lon_ne, lat_ne
+        overpass_instances: List[Overpass]
         """
+
 
         for railway_type in tqdm(self.desired_railway_types, desc="Railway Types"):
             # Create Overpass queries and try downloading them
@@ -316,6 +359,13 @@ class OSM:
                         self.ways.append(w)
 
     def _postprocessing_of_downloaded_data(self):
+        """
+        Performs postprocessing of downloaded track data (e.g. add coordinates of nodes, create railway lines ...)
+
+        Returns
+        -------
+        None
+        """
         logger.info("Start postprocessing of downloaded data.")
 
         # Create dictionaries for easy node/way access
@@ -363,6 +413,16 @@ class OSM:
         logger.info("Postprocessing finished.")
 
     def _download_track_data(self, overpass_instances=None):
+        """
+        Downloads the track data by querying data for bounding boxes.
+        Parameters
+        ----------
+        overpass_instances: list[Overpass]
+
+        Returns
+        -------
+        None
+        """
         logger.info("Start downloading track data.")
         for i, b in enumerate(tqdm(self.bbox, desc="Bounding Boxes")):
             logger.debug("Querying data for bounding box (%d / %d): %s" % (i + 1, len(self.bbox), str(b)))
@@ -372,6 +432,28 @@ class OSM:
         self._postprocessing_of_downloaded_data()
 
     def _query_overpass_instance(self, query: str, attempts: int, overpass_api_instance: Overpass):
+        """
+
+        Parameters
+        ----------
+        query: str
+            The query string in Overpass QL
+        attempts: int
+            Number of attempts of the query.
+        overpass_api_instance: Overpass
+            Overpass API instance
+        Returns
+        -------
+        The parsed result
+
+        Raises
+        -------
+        overpy.exception.OverpassBadRequest: Raised if the Overpass API service returns a syntax error.
+        overpy.exception.OverpassTooManyRequests: Raised if the Overpass API service returns a 429 status code.
+        overpy.exception.OverpassGatewayTimeout: Raised if load of the Overpass API service is too high and it can’t handle the request.
+        overpy.exception.OverpassRuntimeError: Raised if the server returns a remark-tag(xml) or remark element(json) with a message starting with ‘runtime error:’.
+        QueryToOverpassApiFailed: Raised when query to overpass fails
+        """
         for a in range(attempts):
             # increase waiting time between attempts
             wait_seconds = 3 * a
@@ -406,6 +488,24 @@ class OSM:
     def query_overpass(self, query: str,
                        attempts: int = None,
                        overpass_instances: List[Overpass] = None) -> Result:
+        """
+
+        Parameters
+        ----------
+        query: str
+        attempts: int
+            Number of attempts
+        overpass_instances: List[Overpass]
+            A list of Overpass API instances
+
+        Returns
+        -------
+        None
+
+        Raises
+        -------
+        QueryToOverpassApiFailed: Raised when query to overpass fails
+        """
         if attempts is None:
             attempts = config.options["OSM_RETRIES"]
 
@@ -426,7 +526,8 @@ class OSM:
         return None
 
     def get_all_route_nodes(self) -> list:
-        """ Retrieves a list of nodes part of any relation/route
+        """
+        Retrieves a list of nodes part of any relation/route
 
         Returns
         -------
@@ -440,7 +541,8 @@ class OSM:
         return list(chain.from_iterable(nodes))
 
     def get_shortest_path(self, source: int, target: int, weight: str, method="dijkstra") -> List[int]:
-        """ Calculates the shortest path between a source and target node. Also considers how switches can be transited
+        """
+        Calculates the shortest path between a source and target node. Also considers how switches can be transited
         Based on: https://en.wikipedia.org/wiki/Dijkstra
 
         Parameters
@@ -458,6 +560,10 @@ class OSM:
         -------
         List[int]
             List of node ids that represent the shortest path between source and target
+
+        Raises
+        -------
+        ValueError: Raised when given method is not supported
         """
         dist = {n: np.inf for n in self.G.nodes}
         prev = {n: None for n in self.G.nodes}
@@ -540,6 +646,20 @@ class OSM:
         return dist, prev, S
 
     def search_osm_result(self, way_ids: List[int], railway_type="tram"):
+        """
+        Queries ways using their ids and railway type
+        Parameters
+        ----------
+        way_ids: List[int]
+            List of IDs of ways.
+        railway_type: str
+            Type of railway. Defaults to 'tram'
+
+        Returns
+        -------
+        ways: list
+            The ways resulting from the query
+        """
         ways = []
 
         for way_id in way_ids:
@@ -550,16 +670,20 @@ class OSM:
         return ways
 
     def get_coords(self, frmt: str = "lon/lat") -> np.ndarray:
-        """ Get the coordinates in lon/lat format for all nodes
+        """
+        Get the coordinates in lon/lat format for all nodes
 
         Parameters
         ----------
-            frmt: str, default: lon/lat
-                Format in which the coordinates are being returned. Can be lon/lat or x/y
+        frmt: str, default: lon/lat
+            Format in which the coordinates are being returned. Can be lon/lat or x/y
 
         Returns
         -------
             np.ndarray
+        Raises
+        -------
+        ValueError: Raised when format is not lon/lat or xy
         """
         if frmt not in ["lon/lat", "xy"]:
             raise ValueError("fmrt must be lon/lat or xy")
@@ -576,11 +700,15 @@ class OSM:
             return np.array([])
 
     def get_switches(self, line: OSMRailwayLine = None) -> List[OSMRailwayElement]:
-        """ Returns a list of railway switches found in the downloaded OSM region
-
+        """
+        Returns a list of railway switches found in the downloaded OSM region
+        Parameters
+        ----------
+        line: OSMRailwayLine
         Returns
         -------
-            list
+        line_switches: list[OSMRailwayElement]
+            list of railway switches found in the downloaded OSM region
         """
         sws = [el for el in self.railway_elements if type(el) == OSMRailwaySwitch]
 
@@ -598,7 +726,8 @@ class OSM:
             return sws
 
     def get_switches_for_railway_line(self, line: OSMRailwayLine) -> List[OSMRailwaySwitch]:
-        """ Get switches part of a given railway line
+        """
+        Get switches part of a given railway line
 
         Parameters
         ----------
@@ -606,7 +735,9 @@ class OSM:
 
         Returns
         -------
-            list
+        line_switches: list[OSMRailwayElement]
+            list of railway switches found in the downloaded OSM region
+
         """
         switches = self.get_switches()
 
@@ -620,34 +751,41 @@ class OSM:
         return line_switches
 
     def get_signals(self) -> List[OSMRailwayElement]:
-        """ Returns a list of railway signals found in the downloaded OSM region
+        """
+        Returns a list of railway signals found in the downloaded OSM region
 
         Returns
         -------
-            list
+        list[OSMRailwayElement]
+            list of railway signals
         """
         return [el for el in self.railway_elements if type(el) == OSMRailwaySignal]
 
     def get_milestones(self) -> List[OSMRailwayElement]:
-        """ Returns a list of railway milestones found in the downloaded OSM region
+        """
+        Returns a list of railway milestones found in the downloaded OSM region
 
         Returns
         -------
-            list
+        list[OSMRailwayElement]
+            List of railway milestones
         """
         return [el for el in self.railway_elements if type(el) == OSMRailwayMilestone]
 
     def get_level_crossings(self) -> List[OSMRailwayElement]:
-        """ Returns a list of railway level crossings found in the downloaded OSM region
+        """
+        Returns a list of railway level crossings found in the downloaded OSM region
 
         Returns
         -------
-            list
+        list[OSMRailwayElement]
+            List of railway level crossings
         """
         return [el for el in self.railway_elements if type(el) == OSMLevelCrossing]
 
     def get_railway_line(self, name) -> List[OSMRailwayLine]:
-        """ Get railway line by name. Always returns a list, even if only one line is found that matches the name
+        """
+        Get railway line by name. Always returns a list, even if only one line is found that matches the name
 
         Parameters
         ----------
@@ -656,12 +794,14 @@ class OSM:
 
         Returns
         -------
-            list
+        list[OSMRailwayElement]
+            List of railway lines
         """
         return [line for line in self.railway_lines if re.search(r'\b{0}\b'.format(name), line.name)]
 
     def reset_way_attributes(self):
-        """ Deletes all attributes of each way. E.g results are saved
+        """
+        Deletes all attributes of each way. E.g results are saved
 
         """
         for w in self.ways:

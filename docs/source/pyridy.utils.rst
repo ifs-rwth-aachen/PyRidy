@@ -1,8 +1,11 @@
-pyridy.utils package
-====================
+pyridy.utils
+===================
 
-Submodules
-----------
+
+.. toctree::
+   :maxdepth: 2
+
+   series_example
 
 pyridy.utils.device module
 --------------------------

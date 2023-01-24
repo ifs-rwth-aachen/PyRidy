@@ -52,6 +52,13 @@ class Map(LeafletMap):
         self.add(LayersControl(position='topright'))
 
     def _add_tile_layers(self):
+        """
+        Creating a TileLayer from railwaymap and adding it using the basemap_to_tiles function
+
+        Returns
+        -------
+
+        """
         self.railwaymap = config.OPEN_RAILWAY_MAP
         self.add(self.railwaymap)
         self.railwaymap.opacity = 0.4
@@ -61,7 +68,8 @@ class Map(LeafletMap):
         self.add(positron)
 
     def add_measurements(self, campaign: 'Campaign') -> Union[None, List[LayerGroup]]:
-        """ Add all GPS tracks from the campaign files to a Map
+        """
+        Add all GPS tracks from the campaign files to a Map
 
         Parameters
         ----------
@@ -70,7 +78,8 @@ class Map(LeafletMap):
 
         Returns
         -------
-        None
+        measurement_layers: List[LayerGroup]
+            Group of layers containing the measurements
 
         """
         measurement_layers = []
@@ -88,7 +97,8 @@ class Map(LeafletMap):
 
     def add_measurement(self, file: RDYFile, t_lim: Tuple[np.datetime64, np.datetime64] = None,
                         show_hor_acc: bool = False) -> Optional[LayerGroup]:
-        """ Adds a GPS track from a file to the Map
+        """
+        Adds a GPS track from a file to the Map
 
         Parameters
         ----------
@@ -102,7 +112,7 @@ class Map(LeafletMap):
             that the real position is within the circle is defined as 68 %
         Returns
         -------
-        The measurement layer
+        The measurement layer: Layer instance
 
         """
         measurement_layer = create_measurement_layer(file, t_lim, show_hor_acc)
@@ -113,7 +123,8 @@ class Map(LeafletMap):
         return measurement_layer
 
     def add_osm_routes(self, campaign: 'Campaign') -> Union[None, LayerGroup]:
-        """ Adds OSM Routes from the downloaded OSM Region
+        """
+        Adds OSM Routes from the downloaded OSM Region
 
         Parameters
         ----------
@@ -122,7 +133,7 @@ class Map(LeafletMap):
 
         Returns
         -------
-        None
+        railway_lines_layer: LayerGroup instance
 
         """
         if campaign.osm:
@@ -145,7 +156,8 @@ class Map(LeafletMap):
             return None
 
     def add_osm_railway_elements(self, campaign: 'Campaign') -> LayerGroup:
-        """ Draws railway elements using markers on top of a map
+        """
+        Draws railway elements using markers on top of a map
 
         Parameters
         ----------
@@ -154,7 +166,7 @@ class Map(LeafletMap):
 
         Returns
         -------
-        The Railway Elements LayerGroup
+        railway_elements: LayerGroup instance
 
         """
         railway_elements = LayerGroup()
@@ -173,7 +185,20 @@ class Map(LeafletMap):
         return railway_elements
 
     def add_results(self, nodes: List[OSMResultNode], use_file_color=False):
+        """
+        Draws the resulting nodes on the map
+        Parameters
+        ----------
+        nodes: List[OSMResultNode]
+            List of resulting nodes
 
+        use_file_color: bool
+            Defines whether to use the file or node color
+
+        Returns
+        -------
+        None
+        """
         circles = []
 
         logger.debug(f"Add {len(nodes)} results to the map.")
@@ -194,12 +219,29 @@ class Map(LeafletMap):
         self.refresh_controls()
 
     def add_results_from_campaign(self, campaign: 'Campaign', use_file_color=False):
+        """
+        Gets the results from a campaign and draws the nodes on the map
+        Parameters
+        ----------
+        campaign: Campaign
+            The campaign to get the result nodes from
+        use_file_color: bool, default: False
+            Defines whether to use the file color or not
+
+        Returns
+        -------
+        None
+        """
         nodes = list(itertools.chain.from_iterable([w.attributes.get("results", []) for w in campaign.osm.ways]))
         self.add_results(nodes, use_file_color=use_file_color)
 
     def to_html(self) -> str:
         """
         Converts this map to a static html document
+        Returns
+        -------
+        html_buffer's value: str
+            A str containing the entire contents of the buffer.
         """
         html_buffer = io.StringIO()
         self.save(html_buffer)
@@ -207,7 +249,23 @@ class Map(LeafletMap):
 
 
 def create_marker(pos: Tuple[float, float], popup: Union[str, HTML] = None, color: str = "orange"):
-    # Add Start/End markers
+
+    """
+    Add Start/End markers
+    Parameters
+    ----------
+    pos: Tuple[float, float]
+        The tuple containing the latitude/longitude of the marker.
+    popup: Union[str, HTML]
+        The popup message of the marker. Defaults to None.
+    color: str
+        The color of the marker. Defaults to "orange".
+
+    Returns
+    -------
+    marker: Marker instance
+        Clickable/Draggable marker on the map.
+    """
     icon = Icon(
         icon_url=f'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-{color}.png',
         shadow_url='https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
@@ -231,6 +289,25 @@ def create_marker(pos: Tuple[float, float], popup: Union[str, HTML] = None, colo
 
 def create_measurement_layer(file: RDYFile, t_lim: Tuple[np.datetime64, np.datetime64] = None,
                              show_hor_acc: bool = False) -> Optional[LayerGroup]:
+    """
+    Create a group of layers containing the measurements which can be out on the map
+    Parameters
+    ----------
+    file: RDYFile
+        The file containing the measurements that should be drawn on the map
+    t_lim: tuple, default: None
+        Time limit as a tuple of np.datetime64 to show only parts of the GPS track that are within the specified
+            time interval
+    show_hor_acc: bool
+        If true shows the horizontal accuracies for each measurement point using circles. The likelihood that
+            the real position is within the circle is defined as 68 %
+
+    Returns
+    -------
+    measurement_layer: LayerGroup instance
+        A group of layers containing the measurements
+    """
+
     gps_series = file.measurements[GPSSeries]
     coords = gps_series.to_ipyleaflef()
     time = gps_series.time

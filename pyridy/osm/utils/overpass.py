@@ -15,6 +15,11 @@ class Overpass(OverpyOverpass):
     def __init__(self, *args, session: requests.Session = None, **kwargs):
         """
         Initialise an overpy.Overpass instance and a session
+        Parameters
+        ----------
+        args
+        session
+        kwargs
         """
         super().__init__(*args, **kwargs)
         if session is None:
@@ -22,6 +27,30 @@ class Overpass(OverpyOverpass):
         self.session = session
     
     def request(self, query: Union[bytes, str]) -> "Result":
+        """
+        Query the Overpass API using requests
+
+        Parameters
+        ----------
+        query: Union[bytes, str]
+            The query string in Overpass QL
+
+        Returns
+        -------
+        content_type: str
+            Type of response application/json or application/osm3s+xml
+        response:
+            Raw JSON or XML Data
+
+        Raises
+        -------
+         overpy.exception.OverpassUnknownContentType: Raised if the reported content type isn’t handled by OverPy.
+         overpy.exception.OverpassBadRequest: Raised if the Overpass API service returns a syntax error.
+         overpy.exception.OverpassTooManyRequests: Raised if the Overpass API service returns a 429 status code.
+         overpy.exception.OverpassGatewayTimeout: Raised if load of the Overpass API service is too high and it can’t handle the request.
+         overpy.exception.OverpassUnknownHTTPStatusCode: Raised if the returned HTTP status code isn’t handled by OverPy.
+         overpy.exception.MaxRetriesReached: Raised if max retries reached and the Overpass server didn’t respond with a result.
+        """
         retry_num: int = 0
         retry_exceptions: List[exception.OverPyException] = []
         do_retry: bool = True if self.max_retry_count > 0 else False
@@ -93,6 +122,23 @@ class Overpass(OverpyOverpass):
         raise exception.MaxRetriesReached(retry_count=retry_num, exceptions=retry_exceptions)
 
     def parse_response(self, content_type: str, response):
+        """
+        Parse raw response from Overpass service
+
+        Parameters
+        ----------
+        content_type: str
+            Type of response (application/json or application/osm3s+xml)
+        response:
+            Raw JSON or XML Data
+
+        Returns
+        -------
+            Result object
+        Raises
+        -------
+         overpy.exception.OverpassUnknownContentType: Raised if the reported content type isn’t handled by OverPy.
+        """
         if content_type == "application/json":
             return self.parse_json(response)
 
@@ -104,8 +150,15 @@ class Overpass(OverpyOverpass):
     def query(self, query: Union[bytes, str]) -> "Result":
         """
         Query the Overpass API
-        :param query: The query string in Overpass QL
-        :return: The parsed result
+
+        Parameters
+        ----------
+        query: Union[bytes, str]
+            The query string in Overpass QL
+
+        Returns
+        -------
+            Parsed result
         """
         content_type, response = self.request(query)
         return self.parse_response(content_type, response)

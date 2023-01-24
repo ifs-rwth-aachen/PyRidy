@@ -196,7 +196,20 @@ class RDYFile:
                                                        else "N/A")
 
     def _do_candidate_search(self, osm_xy: np.ndarray, track_xy: np.ndarray, hor_acc: np.ndarray):
-        """ Internal method to search for candidate edges for map matching
+        """
+        Internal method to search for candidate edges for map matching
+        Parameters
+        ----------
+        osm_xy: np.ndarray
+        track_xy: np.ndarray
+        hor_acc: np.ndarray
+
+        Returns
+        -------
+        node candidates: Dict
+            A dictionary with node candidates for each GPS coord
+        edges: Dict
+            Candidate edges with their emission probabilities
 
         """
         # Find the closest coordinates using KDTrees
@@ -271,8 +284,15 @@ class RDYFile:
         return c_dict, c_edges
 
     def _synchronize(self):
-        """ Internal method that synchronizes the timestamps to a given sync timestamp
+        """
+        Internal method that synchronizes the timestamps to a given sync timestamp
+        Returns
+        -------
+        None
 
+        Raises:
+        -------
+        ValueError: sync_method is not a valid str
         """
         if self.sync_method == "timestamp":
             for m in self.measurements.values():
@@ -342,7 +362,8 @@ class RDYFile:
         pass
 
     def create_map(self, t_lim: Tuple[np.datetime64, np.datetime64] = None, show_hor_acc: bool = False) -> Map:
-        """ Creates an ipyleaflet Map using OpenStreetMap and OpenRailwayMap to show the GPS track of the
+        """
+        Creates an ipyleaflet Map using OpenStreetMap and OpenRailwayMap to show the GPS track of the
         measurement file
 
         Parameters
@@ -356,7 +377,7 @@ class RDYFile:
 
         Returns
         -------
-            Map
+            Map: ipyleaflet.Map instance
         """
         from .widgets import Map
 
@@ -368,7 +389,8 @@ class RDYFile:
         return m
 
     def determine_track_center(self, gps_series: Optional[GPSSeries] = None) -> (float, float):
-        """ Determines the geographical center of the GPSSeries, returns None if the GPSSeries is emtpy.
+        """
+        Determines the geographical center of the GPSSeries, returns None if the GPSSeries is emtpy.
 
         Parameters
         ----------
@@ -377,7 +399,8 @@ class RDYFile:
 
         Returns
         -------
-            float, float
+            center longitude: float
+            center_latitude: float
         """
         if not gps_series:
             gps_series = self.measurements[GPSSeries]
@@ -396,7 +419,8 @@ class RDYFile:
                         algorithm: str = config.options["MAP_MATCHING_DEFAULT_ALGORITHM"],
                         alpha: int = config.options["MAP_MATCHING_ALPHA"],
                         beta: int = config.options["MAP_MATCHING_BETA"]):
-        """ Performs map matching of the GPS track to closest OSM nodes/ways
+        """
+        Performs map matching of the GPS track to closest OSM nodes/ways
 
         Parameters
         ----------
@@ -413,7 +437,10 @@ class RDYFile:
 
         Returns
         -------
-
+        None
+         Raises:
+        -------
+        ValueError: Error occurs when Algorithm is neither nx nor pyridy
         """
         if algorithm not in ["nx", "pyridy"]:
             raise ValueError("(%s) Algorithm must be either nx or pyridy, not %s" % (self.filename, algorithm))
@@ -493,12 +520,12 @@ class RDYFile:
         pass
 
     def get_integrity_report(self):
-        """ Returns a dict that contains information which measurement types are available in the file
-
+        """
+        Returns a dict that contains information which measurement types are available in the file
 
         Returns
         -------
-            dict
+            report: dict
         """
         report = {}
 
@@ -530,7 +557,8 @@ class RDYFile:
         self._filename = v
 
     def load_file(self, path: str):
-        """ Loads a single Ridy file located at path
+        """
+        Loads a single Ridy file located at path
 
         Parameters
         ----------
@@ -1161,6 +1189,9 @@ class RDYFile:
 
 
 class FileIterator:
+    """
+    A class to iterate over file measurements
+    """
     def __init__(self, file: RDYFile):
         self._file = file
         self._series_types = list(self._file.measurements.keys())
