@@ -58,6 +58,9 @@ class RDYFile:
             Strips timezone from timestamps as np.datetime64 does not support timezones
         filename: str
             Name of the files, will be the filename if not provided
+        series: Union[List[Type[TimeSeries]], Type[TimeSeries]]
+            Classes of TimeSeries to load, if None all TimeSeries of each file will be imported
+        color: str
         """
         self.path = path
 
@@ -368,16 +371,16 @@ class RDYFile:
 
         Parameters
         ----------
-            t_lim: tuple, default: None
-                Time limit as a tuple of np.datetime64 to show only parts of the GPS track that are within the specified
-                time interval
-            show_hor_acc : bool, default: False
-                If true shows the horizontal accuracies for each measurement point using circles. The likelihood that
-                that the real position is within the circle is defined as 68 %
+        t_lim: tuple, default: None
+            time limit as a tuple of np.datetime64 to show only parts of the GPS track that are within the specified
+            time interval
+        show_hor_acc : bool, default: False
+            If true shows the horizontal accuracies for each measurement point using circles. The likelihood that
+            the real position is within the circle is defined as 68 %
 
         Returns
         -------
-            Map: ipyleaflet.Map instance
+        Map: ipyleaflet.Map instance
         """
         from .widgets import Map
 
@@ -394,13 +397,13 @@ class RDYFile:
 
         Parameters
         ----------
-            gps_series: GPSSeries, default: None
-                If not None, takes the given GPSSeries to determine the track center
+        gps_series: GPSSeries, default: None
+            If not None, takes the given GPSSeries to determine the track center
 
         Returns
         -------
-            center longitude: float
-            center_latitude: float
+        center longitude: float
+        center_latitude: float
         """
         if not gps_series:
             gps_series = self.measurements[GPSSeries]
@@ -438,7 +441,8 @@ class RDYFile:
         Returns
         -------
         None
-         Raises:
+
+        Raises:
         -------
         ValueError: Error occurs when Algorithm is neither nx nor pyridy
         """
@@ -562,7 +566,8 @@ class RDYFile:
 
         Parameters
         ----------
-        path Path to the ridy file
+        path: str
+            Path to the ridy file
 
         """
         logger.debug("Loading file: %s" % path)

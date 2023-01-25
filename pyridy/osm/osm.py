@@ -448,10 +448,10 @@ class OSM:
 
         Raises
         -------
-        overpy.exception.OverpassBadRequest: Raised if the Overpass API service returns a syntax error.
-        overpy.exception.OverpassTooManyRequests: Raised if the Overpass API service returns a 429 status code.
-        overpy.exception.OverpassGatewayTimeout: Raised if load of the Overpass API service is too high and it can’t handle the request.
-        overpy.exception.OverpassRuntimeError: Raised if the server returns a remark-tag(xml) or remark element(json) with a message starting with ‘runtime error:’.
+        overpy.exception.OverpassBadRequest: Raised if the Overpass API service returns a syntax error
+        overpy.exception.OverpassTooManyRequests: Raised if the Overpass API service returns a 429 status code
+        overpy.exception.OverpassGatewayTimeout: Raised if load of the Overpass API service is too high and it can’t handle the request
+        overpy.exception.OverpassRuntimeError: Raised if the server returns a remark-tag(xml) or remark element(json) with a message starting with ‘runtime error:’
         QueryToOverpassApiFailed: Raised when query to overpass fails
         """
         for a in range(attempts):

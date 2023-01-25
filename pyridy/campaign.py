@@ -50,11 +50,11 @@ class Campaign:
         ----------
         name: str
             Name of the campaign
-        folder: str or list of str
+        folder: Union[list, str]
             Folder or list of folders that should be imported
         recursive: bool, default: True
             Flag if folders should be searched recursively
-        exclude: str or list of str
+        exclude: Union[list, str]
             Name(s) of file or folder that should be excluded
         sync_method: str
             Method to use to sync timestamps of individual files
@@ -81,7 +81,7 @@ class Campaign:
             Railway type to be downloaded from OSM, e.g., "rail", "subway", "tram" or "light_rail"
         osm_recurse_type : str
             Recurse type to be used when querying OSM data using the overpass API
-        series: list or TimeSeries
+        series: Union[List[Type[TimeSeries]], Type[TimeSeries]]
             Classes of TimeSeries to load, if None all TimeSeries of each file will be imported
         """
         self.folder = folder
@@ -385,7 +385,7 @@ class Campaign:
         Downloads the OSM data and
         Parameters
         ----------
-        railway_types: list or list of str
+        railway_types: Union[list, str]
             Railway type to be downloaded from OSM, e.g., "rail", "subway", "tram" or "light_rail". Defaults to None.
         osm_recurse_type: str
             Recurse type to be used when querying OSM data using the overpass API. Defaults to ">".
@@ -426,32 +426,34 @@ class Campaign:
 
         Parameters
         ----------
-        series
-        timedelta_unit: str , default: 'timedelta64[ns]'
-            Timedelta unit for timestamp sync method
-        strip_timezone: bool, default: True
-            If True, strips timezone from timestamp arrays
-        trim_ends: bool, default: True
-            If True, trims measurement precisely to timestamp when the measurement was started respectively stopped
-        file_paths: str or list of str
+        file_paths: Union[list, str]
             Individual file paths of the files that should be imported
         sync_method: str
             Method to use for timestamp syncing
+        timedelta_unit: str , default: 'timedelta64[ns]'
+            Timedelta unit for timestamp sync method
+        trim_ends: bool, default: True
+            If True, trims measurement precisely to timestamp when the measurement was started respectively stopped
+        strip_timezone: bool, default: True
+            If True, strips timezone from timestamp arrays
         det_geo_extent: bool, default: True
             If True, determine the geographic extent of the imported files
+        use_multiprocessing : bool, default: True
+            If True, uses multiprocessing to import Ridy files
         download_osm_data: bool, default: False
             If True, download OSM Data via the Overpass API
         railway_types: str or list of str
             Railway types to be downloaded via the Overpass API
         osm_recurse_type : str
             Recurse type to be used when querying OSM data using the overpass API
-        use_multiprocessing : bool, default: True
-            If True, uses multiprocessing to import Ridy files
+        series: Union[List[Type[TimeSeries]], Type[TimeSeries]]
+            Classes of TimeSeries to load, if None all TimeSeries of each file will be imported
 
-        Raises:
+        Raises
         -------
         TypeError: Occurs if path's arguments are not of type str or list of str
         ValueError: Error if the series is not of type Timeseries or if series' arguments ar not valid
+
         """
         if osm_recurse_type:
             self.osm_recurse_type = osm_recurse_type
@@ -522,9 +524,12 @@ class Campaign:
             Flag if folders should be imported recursively, i.e., whether subfolders should also be searched
         exclude: str or list of str
             Folder(s) or file(s) that should be excluded while importing
-        Raises:
+
+        Raises
         -------
         TypeError: Occurs if folder's arguments are not of type str or list of str
+
+
         """
         if exclude is None:
             exclude = []

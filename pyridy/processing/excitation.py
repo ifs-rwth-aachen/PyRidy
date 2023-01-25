@@ -34,10 +34,13 @@ class ExcitationProcessor(PostProcessor):
             in the campaign.
         f_s: int, default: 200
             Sampling frequency to be used.
-        f_c: float, default: 0.1
+        f_c: float, default: 1
             Cut-Off frequency for the high-pass filter
         order: int, default: 4
             Order of the high-pass filter
+        p_thres: float, default .025
+        p_dist: int, default 50
+        osm_integration: bool, default True
         """
         super(ExcitationProcessor, self).__init__(campaign)
         self.f_s = f_s
@@ -58,12 +61,12 @@ class ExcitationProcessor(PostProcessor):
 
         Parameters
         ----------
-        reset: bool
-            Resets all result nodes
+        axes: Union[str, list], default: "z"
+            Axes to which processor should be applied to. Can be a single axis or a list of axes
         intp_gps: bool, default: True
             If true interpolates the GPS measurements onto the results
-        axes: str or list, default: "z"
-            Axes to which processor should be applied to. Can be a single axis or a list of axes
+        reset: bool
+            Resets all result nodes
 
         Raises
         -------

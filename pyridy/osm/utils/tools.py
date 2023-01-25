@@ -17,7 +17,7 @@ def calc_unit_vector(v: Union[list, np.ndarray]) -> np.ndarray:
 
     Parameters
     ----------
-    v : array_like
+    v : Union[np.ndarray, list]
         Vector of which the unit vector should be calculated
     Returns
         -------
@@ -32,9 +32,9 @@ def calc_angle_between(v1: Union[list, np.ndarray], v2: Union[list, np.ndarray])
 
     Parameters
     ----------
-    v1 : array_like
+    v1 : Union[np.ndarray, list]
         First vector
-    v2 : array_like
+    v2 : Union[np.ndarray, list]
         Second vector
     Returns
         -------
@@ -61,7 +61,7 @@ def calc_curvature(x: List[float], y: List[float]) -> List[float]:
 
     Raises
     -------
-    ValueError: Raised if x and y are not of same length.
+    ValueError: Raised if x and y are not of same length
     """
     if len(x) != len(y):
         raise ValueError("x and y have to be same length")
@@ -133,7 +133,7 @@ def calc_distance_from_xy(x: List[float], y: List[float]) -> Tuple[list, list]:
         List containing total distance, list of pairwise distances
     Raises
     -------
-    ValueError: Raised if x and y are not of same length.
+    ValueError: Raised if x and y are not of same length
     """
     if len(x) != len(y):
         raise ValueError("x and y have to be same length")
@@ -177,7 +177,7 @@ def calc_distance_from_lon_lat(lon: List[float], lat: List[float]):
 
     Raises
     -------
-    ValueError: Raised if x and y are not of same length.
+    ValueError: Raised if x and y are not of same length
     """
     if len(lon) != len(lat):
         raise ValueError("x and y have to be same length")
@@ -200,7 +200,7 @@ def calc_distance_from_lon_lat(lon: List[float], lat: List[float]):
 
 def convert_way_to_line_string(w: overpy.Way, frmt: str = "lon,lat") -> LineString:
     """
-    Converts a way to LineString; one-dimensional figure comprising one or more line segments.
+    Converts a way to LineString; one-dimensional figure comprising one or more line segments
 
     Parameters
     ----------
@@ -215,7 +215,7 @@ def convert_way_to_line_string(w: overpy.Way, frmt: str = "lon,lat") -> LineStri
 
     Raises
     -------
-    ValueError: Raised if the format is unknown.
+    ValueError: Raised if the format is unknown
     """
     if frmt == "lon,lat":
         coords = [(float(n.lon), float(n.lat)) for n in w.nodes]
@@ -241,7 +241,7 @@ def convert_lon_lat_to_xy(lon: List[float], lat: List[float], adjust_zero_point:
     lat: list[float]
         Latitude
     adjust_zero_point: bool
-        If True, first coordinate will be 0,0. Defaults to False.
+        If True, first coordinate will be 0,0. Defaults to False
 
     Returns
     -------
@@ -312,7 +312,7 @@ def project_point_onto_line(line: Union[np.ndarray, list], point: Union[np.ndarr
     line and secondly the (perpendicular) distance to this point
     Parameters
     ----------
-    line: np.ndarray or list
+    line: Union[np.ndarray, list]
         List of two points defining the line in the form of [[x1, y1],[x2, y2]]
     point: np.ndarray or list
         Point of which the distance perpendicular from the line should be calculated to
@@ -357,6 +357,7 @@ def boxes_to_edges(boxes):
     Parameters
     -------
     boxes: list
+
     Returns
     -------
     None

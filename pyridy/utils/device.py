@@ -35,7 +35,7 @@ class Device:
         gnss_hardware_model_name: Union[int, Series]
             The exact GNSS hardware in-use in the device.
         gnss_year_of_hardware: Union[int, Series]
-            The year of manufacture of GNSS hardware in-use ?.
+            The year of manufacture of GNSS hardware in-use.
         """
         if type(api_level) == Series:
             self.api_level = api_level[0] if len(api_level) > 0 else None

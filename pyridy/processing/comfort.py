@@ -76,8 +76,8 @@ class ComfortProcessor(PostProcessor):
 
         """
         # The evaluation assumes the phone is laying on the floor pointing in the direction of travel
-        Wb = ComfortProcessor.Wb(f_s)
-        Wd = ComfortProcessor.Wd(f_s)
+        Wb = ComfortProcessor.Wb(f_s) # weighting factor: Vertical Whole-Body Vibration, Z Axis
+        Wd = ComfortProcessor.Wd(f_s) # Horizontal Whole-Body Vibration, X or Y Axis
 
         a_x_wd = signal.lfilter(Wd[0], Wd[1], acc_x)  # Adjusting to vehicle coordinate system
         a_y_wd = signal.lfilter(Wd[0], Wd[1], acc_y)
@@ -239,6 +239,19 @@ class ComfortProcessor(PostProcessor):
     # Filter functions
     @staticmethod
     def Wb(f_s: int):
+        """
+        Calculates the frequency weighting filter Wb in the vertical direction
+
+        Parameters
+        ----------
+        f_s: int
+            sample rate
+
+        Returns
+        -------
+        tuple(np.ndarray, np.ndarray)
+            Numerator and denominator of the weighting factor
+        """
 
         f1, f2 = 0.4, 100  # [Hz]
         f3, f4 = 16, 16  # [Hz]
@@ -271,6 +284,19 @@ class ComfortProcessor(PostProcessor):
 
     @staticmethod
     def Wc(f_s: int):
+        """
+        Calculates the weighting filter Wc in Horizontal seated direction
+
+        Parameters
+        ----------
+        f_s: int
+            sample rate
+
+        Returns
+        -------
+        tuple(np.ndarray, np.ndarray)
+            Numerator and denominator of the weighting factor
+        """
 
         f1, f2 = 0.4, 100  # [Hz]
         f3, f4 = 8, 8  # [Hz]
@@ -296,6 +322,19 @@ class ComfortProcessor(PostProcessor):
 
     @staticmethod
     def Wd(f_s: int):
+        """
+        Calculates the frequency weighting filter Wb in both longitudinal and lateral direction
+
+        Parameters
+        ----------
+        f_s: int
+            sample rate
+
+        Returns
+        -------
+        tuple(np.ndarray, np.ndarray)
+            Numerator and denominator of the weighting factor
+        """
 
         f1, f2 = 0.4, 100  # [Hz]
         f3, f4 = 2, 2  # [Hz]
@@ -321,6 +360,19 @@ class ComfortProcessor(PostProcessor):
 
     @staticmethod
     def Wp(f_s: int):
+        """
+        Calculates the frequency weighting filter Wb on the floor level
+
+        Parameters
+        ----------
+        f_s: int
+            sample rate
+
+        Returns
+        -------
+        tuple(np.ndarray, np.ndarray)
+            Numerator and denominator of the weighting factor
+        """
 
         f1 = 0  # [Hz]
         f2 = 100  # [Hz]
