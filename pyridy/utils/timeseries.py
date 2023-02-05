@@ -69,12 +69,12 @@ class TimeSeries(ABC):
 
         Parameters
         ----------
-        inplace: bool, Default: True
-            If True cuts data inplace, otherwise returns it
         start: float
             Seconds to cutoff after start
         end: float
             Seconds to cutoff before end
+        inplace: bool, Default: True
+            If True cuts data inplace, otherwise returns it
 
         Returns
         ----------

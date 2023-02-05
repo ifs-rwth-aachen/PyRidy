@@ -68,11 +68,11 @@ class ComfortProcessor(PostProcessor):
         t: ndarray
             Array of segment times
         cc_x: ndarray
-            Square magnitude of x
+            Comfort index according to x-axis
         cc_y: ndarray
-            Square magnitude of y
+            Comfort index according to y-axis
         cc_z: ndarray
-            Square magnitude of z
+            Comfort index according to z-axis
 
         """
         # The evaluation assumes the phone is laying on the floor pointing in the direction of travel
@@ -111,6 +111,7 @@ class ComfortProcessor(PostProcessor):
         Returns
         -------
         m: pyridy.widgets Map
+            The created map.
         """
         m = self.campaign.create_map(show_gps_tracks=True, show_railway_elements=False)
         m.add_results_from_campaign(self.campaign, use_file_color=use_file_color)

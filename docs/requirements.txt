@@ -1,4 +1,10 @@
 sphinx==5.0.1
 sphinx_rtd_theme==1.0.0
 readthedocs-sphinx-search==0.1.2
-pyridy==0.8.8
+pyridy==0.9.25
+ipyleaflet==0.17.0
+jupyterlab
+jupyter-packaging
+jupyter-sphinx
+nbsphinx
+nbsphinx-link

@@ -287,6 +287,7 @@ class OSM:
     def get_live_overpass_api_instances(self):
         """
         The function returns live instances by testing the connection to the api_instances' list.
+
         Returns
         -------
         live_instances: list

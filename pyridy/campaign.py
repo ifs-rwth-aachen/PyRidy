@@ -204,6 +204,7 @@ class Campaign:
         if not center:
             center = self.determine_geographic_center()
 
+        print(center)
         m = Map(center=center, zoom=12)
 
         # Plot OSM Tracks
@@ -317,6 +318,7 @@ class Campaign:
     def determine_bounding_boxes(self, simplify=True, plot=False):
         """
         Determine bounding boxes of files and stores them in self.bboxs.
+
         Parameters
         ----------
         simplify: bool
@@ -324,11 +326,11 @@ class Campaign:
             stores these in self.s_bboxs. Defaults to True.
         plot: bool
             Defaults to False.
+
         Returns
         -------
         None
         """
-        # determine bounding boxes of files
         self.bboxs = [f.bbox for f in self.files if f.bbox]
         if simplify:
             self.simplify_bounding_boxes()

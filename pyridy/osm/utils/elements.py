@@ -54,6 +54,7 @@ class OSMResultWay:
     def __init(self, way, res: float = .5):
         """
         Class representing an element of type way
+
         Parameters
         ----------
         way: overpy.Way
@@ -261,14 +262,14 @@ class OSMRailwayLine(OSMRelation):
 
         Parameters
         ----------
-        id: int
-            ID of the railway line
+        relation: overpy.Relation
+            Relation
         ways: list
             List of ways of the railway line
         tags: dict
             Tags associated with the railway line
-        members: list
-            list of nodes and ways associated with the railway line
+        color:
+            Color when used to draw the line e.g. using ipyleaflet
 
         Returns
         -------

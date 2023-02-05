@@ -39,6 +39,8 @@ extensions = [
     'sphinx.ext.napoleon',
     'sphinx.ext.intersphinx',
     'nbsphinx',
+    'nbsphinx_link',
+
 ]
 
 intersphinx_mapping = {
