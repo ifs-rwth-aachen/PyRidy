@@ -92,7 +92,7 @@ class OSM:
             desired_railway_types = OSM.supported_railway_types
         else:
             if type(desired_railway_types) == str:
-                desired_railway_types = list(desired_railway_types)
+                desired_railway_types = [desired_railway_types]
             if type(desired_railway_types) == list:
                 for desired in desired_railway_types:
                     if desired not in OSM.supported_railway_types:

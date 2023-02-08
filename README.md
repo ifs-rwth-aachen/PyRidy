@@ -49,11 +49,12 @@ Install using pip
 
 Information and examples on how to use the library can be found in the [PyRidy documentation](https://pyridy.readthedocs.io/)
 
-### Developer
+### Creator
 Philipp Leibner - philipp.leibner@ifs.rwth-aachen.de
 
 ### Contributor
 Daniel Pujiula Buhl - daniel.pujiula@rwth-aachen.de
+Sarra Bouchkati - sarra.bouchkati@rwth-aachen.de
 
 <div>  
 <a href="">

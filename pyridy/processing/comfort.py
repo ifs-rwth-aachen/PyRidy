@@ -47,7 +47,7 @@ class ComfortProcessor(PostProcessor):
             raise NotImplementedError('The Wz method has not been implemented yet.')
 
     @staticmethod
-    def calc_comfort_en12999(acc_x: np.ndarray, acc_y: np.ndarray, acc_z: np.ndarray, f_s: int = 200):
+    def calc_comfort_en12999(acc_x: np.ndarray, acc_y: np.ndarray, acc_z: np.ndarray, f_s: int):
         """
         Static method that works purely with numpy arrays for optional use on non campaign like data
 
