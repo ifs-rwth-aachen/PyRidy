@@ -21,5 +21,5 @@ help:
 
 html:
     # rm -r "$(BUILDDIR)"
-    python rst_process.py
+    # python rst_process.py
     @$(SPHINXBUILD) -M $@ "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)

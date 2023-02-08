@@ -73,7 +73,7 @@ class Map(LeafletMap):
 
         Parameters
         ----------
-        campaign: Campaign
+        campaign: pyridy.Campaign
             pyridy Campaign
 
         Returns
@@ -128,8 +128,8 @@ class Map(LeafletMap):
 
         Parameters
         ----------
-        campaign: Campaign
-            pyridy.Campaign
+        campaign: pyridy.Campaign
+            campaign whose route details
 
         Returns
         -------
@@ -161,7 +161,7 @@ class Map(LeafletMap):
 
         Parameters
         ----------
-        campaign: Campaign
+        campaign: pyridy.Campaign
             campaign whose railway elements should be drawn
 
         Returns
@@ -187,6 +187,7 @@ class Map(LeafletMap):
     def add_results(self, nodes: List[OSMResultNode], use_file_color=False):
         """
         Draws the resulting nodes on the map
+
         Parameters
         ----------
         nodes: List[OSMResultNode]
@@ -221,9 +222,10 @@ class Map(LeafletMap):
     def add_results_from_campaign(self, campaign: 'Campaign', use_file_color=False):
         """
         Gets the results from a campaign and draws the nodes on the map
+
         Parameters
         ----------
-        campaign: Campaign
+        campaign: pyridy.Campaign
             The campaign to get the result nodes from
         use_file_color: bool, default: False
             Defines whether to use the file color or not

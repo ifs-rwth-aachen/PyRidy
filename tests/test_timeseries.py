@@ -25,7 +25,7 @@ def test_cut(my_campaign, caplog):
     caplog.set_level(logging.DEBUG)
     my_campaign.import_files("files/sqlite/sample3.sqlite", sync_method="ntp_time")
     acc_dur_pre = my_campaign[0].measurements[AccelerationSeries].get_duration()
-    my_campaign[0].measurements[AccelerationSeries].cut(5, 5)
+    my_campaign[0].measurements[AccelerationSeries].cut(5, 5, inplace=True)
     acc_dur_post = my_campaign[0].measurements[AccelerationSeries].get_duration()
 
     assert int(acc_dur_pre - acc_dur_post) == 10

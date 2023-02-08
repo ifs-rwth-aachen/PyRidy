@@ -27,8 +27,8 @@ class OSMResultNode:
             Longitude of node coordinate
         value:
             Node value
-        f:
-        proc:
+        f: RDYFile
+        proc: processor
         direction: str
         color: str
             Node color. Defaults to None.
@@ -54,11 +54,12 @@ class OSMResultWay:
     def __init(self, way, res: float = .5):
         """
         Class representing an element of type way
+
         Parameters
         ----------
         way: overpy.Way
         res: float
-            Defaults to 0.5.
+            Calculated result. Defaults to 0.5.
 
         Returns
         -------
@@ -261,14 +262,14 @@ class OSMRailwayLine(OSMRelation):
 
         Parameters
         ----------
-        id: int
-            ID of the railway line
+        relation: overpy.Relation
+            Relation
         ways: list
             List of ways of the railway line
         tags: dict
             Tags associated with the railway line
-        members: list
-            list of nodes and ways associated with the railway line
+        color:
+            Color when used to draw the line e.g. using ipyleaflet
 
         Returns
         -------

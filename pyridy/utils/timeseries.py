@@ -63,18 +63,18 @@ class TimeSeries(ABC):
                                                                                   seconds=self.get_duration())),
                                                                               self.get_sample_rate())
 
-    def cut(self, start: float = 0, end: float = 0, inplace: bool = False):
+    def cut(self, start: float = 0, end: float = 0, inplace: bool = True):
         """
         Cuts off seconds after start and before end
 
         Parameters
         ----------
-        inplace: bool, Default: True
-            If True cuts data inplace, otherwise returns it
         start: float
             Seconds to cutoff after start
         end: float
             Seconds to cutoff before end
+        inplace: bool, Default: True
+            If True cuts data inplace, otherwise returns it
 
         Returns
         ----------
@@ -168,7 +168,7 @@ class TimeSeries(ABC):
 
         Returns
         -------
-            pd.DataFrame : Pandas DataFrame
+        pd.DataFrame : Pandas DataFrame
 
         """
         d = self.__dict__.copy()
@@ -900,7 +900,7 @@ class TemperatureSeries(TimeSeries):
         time: Union[list, np.ndarray]
             Series's timestamps.
         temperature: Union[list, np.ndarray]
-            Device temperature.
+            Ambient temperature.
         rdy_format_version: float
         filename: str
         """
@@ -959,7 +959,7 @@ class WzSeries(TimeSeries):
                  rdy_format_version: float = None,
                  filename: str = ""):
         """
-
+        Based on the Sperling's ride index to determine ride Comfort
         Parameters
         ----------
         time: Union[list, np.ndarray]

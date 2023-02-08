@@ -24,6 +24,7 @@ class Sensor:
         string_type: str
             A constant string describing the sensor's type.
         power: float
+            The power in mA used by this sensor while in use.
         resolution: float
             Resolution of the sensor in the sensor's unit.
         version: int

@@ -10,9 +10,17 @@ Check out the :doc:`usage` section for usage information on pyridy, including ho
 :ref:`install <installation>` the library.
 General information about Ridy can be found in the :doc:`ridy` section.
 
+Contents:
+
 .. toctree::
    :maxdepth: 2
-   :caption: Contents:
+
+   ridy
+   usage
+   examples/index
+   api
+   campaign
+   contact
 
 
 
@@ -23,13 +31,4 @@ Indices and tables
 * :ref:`modindex`
 * :ref:`search`
 
-Contents
---------
 
-.. toctree::
-
-   ridy
-   usage
-   campaign
-   api
-   contact

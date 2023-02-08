@@ -138,10 +138,10 @@ dmypy.json
 cython_debug/
 
 # Test Files wal/shm data
-/tests/files/sqlite/sync/device1.sqlite-wal
-/tests/files/sqlite/sync/device1.sqlite-shm
-/tests/files/sqlite/sync/device2.sqlite-shm
-/tests/files/sqlite/sync/device2.sqlite-wal
+/docs/source/files/sqlite/sync/device1.sqlite-wal
+/docs/source/files/sqlite/sync/device1.sqlite-shm
+/docs/source/files/sqlite/sync/device2.sqlite-shm
+/docs/source/files/sqlite/sync/device2.sqlite-wal
 
 # .idea folder from PyCharm
 .idea/
