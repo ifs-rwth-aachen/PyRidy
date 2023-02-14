@@ -1,4 +1,4 @@
-Ridy Smart Sensing Platform
+Ridy Smart Sensing
 ===========================
 
 .. image:: images/ic_launcher.png
@@ -6,7 +6,7 @@ Ridy Smart Sensing Platform
    :alt: Ridy Logo
    :align: center
 
-The Ridy Smart Sensing Platform comprises of multiple components for fast and easy measurement of sensor data using
+Ridy Smart Sensing comprises of multiple components for fast and easy measurement of sensor data using
 smartphones. The platform is designed for use-cases in the railways, however, it can also be used for other use-case
 scenarios in combination with your own custom algorithms. 
 
@@ -79,23 +79,22 @@ Sharing
 
 Availability
 ------------
-The Ridy Android App is currently not publicly available. If you are interested in using it, please contact us 
+The Ridy Android App is currently not yet publicly available. If you are interested in being added to the beta program, please contact us
 (see :doc:`contact`).
 
-Ridy Web
-########
-Ridy Web is a modern web application for user-friendly processing of
-measurement data currently under development at the Chair and Institute for Rail Vehicles
-and Transport Systems at RWTH Aachen University.
-
-Availability
-------------
-Ridy Web is currently not publicly available.
 
 PyRidy Python Library
 #####################
+
+The pyridy library helps to important and use the smartphone sensor data recorded with Ridy application directly in python.
+This documentation contains examples and the API-reference to use this library.
 
 Availability
 ------------
 The PyRidy Python library is publicly available and Open Source.
 The source code can be found here: `<https://github.com/ifs-rwth-aachen/PyRidy/>`_
+
+.. image:: images/rwth_ifs_bild_rgb.png
+   :width: 300px
+   :alt: ifs Logo
+   :align: left

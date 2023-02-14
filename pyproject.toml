@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pyridy"
-version = "0.9.26"
+version = "0.9.27"
 description = "Support library for measurements made with the Ridy Android App"
 authors = ["Philipp Simon Leibner <philipp.leibner@ifs.rwth-aachen.de>"]
 license = "Apache-2.0"
@@ -30,15 +30,11 @@ geopy = "^2.1.0"
 scipy = "^1.6.3"
 pyproj = "^3.3.0"
 ipyleaflet = "^0.17.0"
-Sphinx = "^5.0.1"
-sphinx-rtd-theme = "^1.0.0"
 networkx = "^2.6.3"
 HeapDict = "^1.0.1"
 Shapely = "^1.8.1"
 requests-cache = "^0.9.5"
 rwthcolors = "^0.1.6"
-nbsphinx = "^0.8.12"
-pandoc = "^2.3"
 
 [tool.poetry.dev-dependencies]
 
