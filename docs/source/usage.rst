@@ -10,7 +10,7 @@ To use PyRidy, first install it using pip:
 
 .. code-block:: console
 
-   (.venv) $ pip install pyridy
+   pip install pyridy
 
 File Formats
 ############
