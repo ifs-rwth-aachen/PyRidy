@@ -197,7 +197,8 @@ class Campaign:
             Defines if railway elements are shown or not
         Returns
         -------
-        pyridy.widgets Map
+        Map : pyridy.widgets.Map
+            Created map
         """
         from .widgets import Map
 
@@ -259,11 +260,13 @@ class Campaign:
 
         Returns
         -------
-        Tuple[float, float]
+        Center : Tuple [float, float]
             Geographic center of the campaign
-        Raises:
+
+        Raises
         -------
-        ValueError: An error occurred determining the geographic center.
+        ValueError
+            An error occurred determining the geographic center.
         """
         if self.lat_sw and self.lat_ne and self.lon_sw and self.lon_ne:
             return (
@@ -280,13 +283,15 @@ class Campaign:
         ----------
         rematch: Bool, default: False
             If True performs map matching again, even when file already contains a map matching
+
         Returns
         -------
         None
 
-        Raises:
+        Raises
         -------
-        RuntimeError: An error occurred matching maps
+        RuntimeError
+            An error occurred matching maps
         """
         if self.osm:
             for f in tqdm(self, desc="Map Matching: Files in Campaign"):
@@ -385,6 +390,7 @@ class Campaign:
     def download_osm_data(self, railway_types: Union[list, str] = None, osm_recurse_type: str = ">",):
         """
         Downloads the OSM data and
+
         Parameters
         ----------
         railway_types: Union[list, str]
@@ -453,8 +459,10 @@ class Campaign:
 
         Raises
         -------
-        TypeError: Occurs if path's arguments are not of type str or list of str
-        ValueError: Error if the series is not of type Timeseries or if series' arguments ar not valid
+        TypeError
+            Occurs if path's arguments are not of type str or list of str
+        ValueError
+            Error if the series is not of type Timeseries or if series' arguments ar not valid
 
         """
         if osm_recurse_type:
@@ -529,7 +537,8 @@ class Campaign:
 
         Raises
         -------
-        TypeError: Occurs if folder's arguments are not of type str or list of str
+        TypeError
+            Occurs if folder's arguments are not of type str or list of str
 
 
         """

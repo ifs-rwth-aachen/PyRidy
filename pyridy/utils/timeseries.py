@@ -79,7 +79,7 @@ class TimeSeries(ABC):
         Returns
         ----------
         time_series_copy: TimeSeries
-            A copy of the timeseries without the cut interval
+            A copy of the timeseries without the interval
         """
         if (start + end) >= self.get_duration():
             raise ValueError(f'Trying to cut off more seconds than duration of {self.__class__.__name__}')
@@ -169,7 +169,7 @@ class TimeSeries(ABC):
         Returns
         -------
         pd.DataFrame : Pandas DataFrame
-
+            Dataframe containing series measurements
         """
         d = self.__dict__.copy()
         d.pop("rdy_format_version")
@@ -179,11 +179,12 @@ class TimeSeries(ABC):
 
     def get_sub_series_names(self) -> list:
         """
-        Returns names of sub series (e.g., acc_x, acc_y, acc_z)
+        Returns names of subseries (e.g., acc_x, acc_y, acc_z)
 
         Returns
         -------
-            list
+        names :  list
+            List of subseries' names
         """
         d = self.__dict__.copy()
 
@@ -234,7 +235,8 @@ class TimeSeries(ABC):
 
         Returns
         -------
-            bool
+        empty : bool
+            True if Timeseries is empty else False
         """
         if len(self) == 0:
             return True
@@ -258,7 +260,8 @@ class TimeSeries(ABC):
 
         Raises
         -------
-        ValueError: Raised if method is not supported or sync_time's type is not compatible with given method
+        ValueError
+            Raised if method is not supported or sync_time's type is not compatible with given method
         """
         if sync_timestamp and type(sync_timestamp) not in [int, np.int64]:
             raise ValueError(
@@ -331,15 +334,17 @@ class AccelerationSeries(TimeSeries):
 
         Parameters
         ----------
-        time: Union[list, np.ndarray]
+        time: Union [list, np.ndarray]
             Series' timestamps.
-        acc_x: Union[list, np.ndarray]
+        acc_x: Union [list, np.ndarray]
             Acceleration according to x-axis.
-        acc_y: Union[list, np.ndarray]
+        acc_y: Union [list, np.ndarray]
             Acceleration according to y-axis.
-        acc_z: Union[list, np.ndarray]
+        acc_z: Union [list, np.ndarray]
             Acceleration according to z-axis.
         rdy_format_version: float
+        filename: str
+            Ridy File's name containing measurements
         """
         args = locals().copy()
         args.pop("self")
@@ -361,22 +366,23 @@ class AccelerationUncalibratedSeries(TimeSeries):
 
         Parameters
         ----------
-        time: Union[list, np.ndarray]
+        time: Union [list, np.ndarray]
             Series' timestamps.
-        acc_uncal_x: Union[list, np.ndarray]
+        acc_uncal_x: Union [list, np.ndarray]
             Uncalibrated acceleration according to x-axis without any bias compensation.
-        acc_uncal_y: Union[list, np.ndarray]
+        acc_uncal_y: Union [list, np.ndarray]
             Uncalibrated acceleration according to y-axis without any bias compensation.
-        acc_uncal_z: Union[list, np.ndarray]
+        acc_uncal_z: Union [list, np.ndarray]
             Uncalibrated acceleration according to z-axis without any bias compensation.
-        acc_uncal_x_bias: Union[list, np.ndarray]
+        acc_uncal_x_bias: Union [list, np.ndarray]
             Measured acceleration along the x-axis with estimated bias compensation.
-        acc_uncal_y_bias: Union[list, np.ndarray]
+        acc_uncal_y_bias: Union [list, np.ndarray]
             Measured acceleration along the y-axis with estimated bias compensation.
-        acc_uncal_z_bias: Union[list, np.ndarray]
+        acc_uncal_z_bias: Union [list, np.ndarray]
             Measured acceleration along the z-axis with estimated bias compensation.
         rdy_format_version: float
         filename: str
+            Ridy File's name containing measurements
         """
         args = locals().copy()
         args.pop("self")
@@ -396,16 +402,17 @@ class LinearAccelerationSeries(TimeSeries):
 
         Parameters
         ----------
-        time: Union[list, np.ndarray]
+        time: Union [list, np.ndarray]
             Series' timestamps.
-        lin_acc_x: Union[list, np.ndarray]
+        lin_acc_x: Union [list, np.ndarray]
             Linear acceleration force along x-axis.
-        lin_acc_y: Union[list, np.ndarray]
+        lin_acc_y: Union [list, np.ndarray]
             Linear acceleration force along y-axis.
-        lin_acc_z: Union[list, np.ndarray]
+        lin_acc_z: Union [list, np.ndarray]
             Linear acceleration force along z-axis.
         rdy_format_version: float
         filename: str
+            Ridy File's name containing measurements
         """
         args = locals().copy()
         args.pop("self")
@@ -438,16 +445,17 @@ class MagnetometerSeries(TimeSeries):
 
         Parameters
         ----------
-        time: Union[list, np.ndarray]
+        time: Union [list, np.ndarray]
             Series' timestamps.
-        mag_x: Union[list, np.ndarray]
+        mag_x: Union [list, np.ndarray]
             Geomagnetic field strength according to x-axis.
-        mag_y: Union[list, np.ndarray]
+        mag_y: Union [list, np.ndarray]
             Geomagnetic field strength according to y-axis.
-        mag_z: Union[list, np.ndarray]
+        mag_z: Union [list, np.ndarray]
             Geomagnetic field strength according to z-axis.
         rdy_format_version: float
         filename: str
+            Ridy File's name containing measurements
         """
         args = locals().copy()
         args.pop("self")
@@ -468,22 +476,23 @@ class MagnetometerUncalibratedSeries(TimeSeries):
 
         Parameters
         ----------
-        time: Union[list, np.ndarray]
+        time: Union [list, np.ndarray]
             Series' timestamps.
-        mag_uncal_x: Union[list, np.ndarray]
+        mag_uncal_x: Union [list, np.ndarray]
             Geomagnetic field strength (without hard iron calibration) along the x-axis.
-        mag_uncal_y: Union[list, np.ndarray]
+        mag_uncal_y: Union [list, np.ndarray]
             Geomagnetic field strength (without hard iron calibration) along the y-axis.
-        mag_uncal_z: Union[list, np.ndarray]
+        mag_uncal_z: Union [list, np.ndarray]
             Geomagnetic field strength (without hard iron calibration) along the z-axis.
-        mag_uncal_x_bias: Union[list, np.ndarray]
+        mag_uncal_x_bias: Union [list, np.ndarray]
             Iron bias estimation along the x-axis.
-        mag_uncal_y_bias: Union[list, np.ndarray]
+        mag_uncal_y_bias: Union [list, np.ndarray]
             Iron bias estimation along the y-axis.
-        mag_uncal_z_bias: Union[list, np.ndarray]
+        mag_uncal_z_bias: Union [list, np.ndarray]
             Iron bias estimation along the z-axis.
         rdy_format_version: float
         filename: str
+            Ridy File's name containing measurements
         """
         args = locals().copy()
         args.pop("self")
@@ -503,14 +512,15 @@ class NMEAMessageSeries(TimeSeries):
 
         Parameters
         ----------
-        time: Union[list, np.ndarray]
+        time: Union [list, np.ndarray]
             Series' timestamps.
-        utc_time: Union[list, np.ndarray]
+        utc_time: Union [list, np.ndarray]
             Time of the observation, UTC time zone.
-        msg: Union[list, np.ndarray]
+        msg: Union [list, np.ndarray]
             NMEA message from GNSS chipset
         rdy_format_version: float
         filename: str
+            Ridy File's name containing measurements
         """
         args = locals().copy()
         args.pop("self")
@@ -543,38 +553,39 @@ class GNSSClockMeasurementSeries(TimeSeries):
 
         Parameters
         ----------
-        time: Union[list, np.ndarray]:
+        time: Union [list, np.ndarray]:
             Timeseries's timestamps
-        bias_nanos: Union[list, np.ndarray]
+        bias_nanos: Union [list, np.ndarray]
             The clock's sub-nanosecond bias.
-        bias_uncertainty_nanos: Union[list, np.ndarray]
+        bias_uncertainty_nanos: Union [list, np.ndarray]
             The clock's Bias Uncertainty (1-Sigma) in nanoseconds.
-        drift_nanos_per_second: Union[list, np.ndarray]
+        drift_nanos_per_second: Union [list, np.ndarray]
             The clock's Drift in nanoseconds per second.
-        drift_uncertainty_nanos_per_second: Union[list, np.ndarray]
+        drift_uncertainty_nanos_per_second: Union [list, np.ndarray]
             The clock's Drift Uncertainty (1-Sigma) in nanoseconds per second.
-        elapsed_realtime_nanos: Union[list, np.ndarray]
+        elapsed_realtime_nanos: Union [list, np.ndarray]
             The elapsed real-time of this clock since system boot, in nanoseconds.
-        elapsed_realtime_uncertainty_nanos: Union[list, np.ndarray]
+        elapsed_realtime_uncertainty_nanos: Union [list, np.ndarray]
             The estimate of the relative precision of the alignment of the elapsed_realtime_nanos timestamp.
-        full_bias_nanos: Union[list, np.ndarray]
+        full_bias_nanos: Union [list, np.ndarray]
             The difference between hardware clock inside GPS receiver and the true GPS time.
-        hardware_clock_discontinuity_count: Union[list, np.ndarray]
+        hardware_clock_discontinuity_count: Union [list, np.ndarray]
             Count of hardware clock discontinuities.
-        leap_second: Union[list, np.ndarray]
+        leap_second: Union [list, np.ndarray]
             The leap second associated with the clock's time
-        reference_carrier_frequency_hz_for_isb: Union[list, np.ndarray]
+        reference_carrier_frequency_hz_for_isb: Union [list, np.ndarray]
             The reference carrier frequency in Hz for inter-signal bias.
-        reference_code_type_for_isb: Union[list, np.ndarray]
+        reference_code_type_for_isb: Union [list, np.ndarray]
             The reference code type for inter-signal bias.
-        reference_constellation_type_for_isb: Union[list, np.ndarray]
+        reference_constellation_type_for_isb: Union [list, np.ndarray]
             The reference constellation type for inter-signal bias.
-        time_nanos: Union[list, np.ndarray]
+        time_nanos: Union [list, np.ndarray]
             The GNSS receiver internal hardware clock value in nanoseconds.
-        time_uncertainty_nanos: Union[list, np.ndarray]
+        time_uncertainty_nanos: Union [list, np.ndarray]
             The clock's time Uncertainty (1-Sigma) in nanoseconds.
         rdy_format_version: float
         filename: str
+            Ridy File's name containing measurements
         """
         args = locals().copy()
         args.pop("self")
@@ -618,60 +629,61 @@ class GNSSMeasurementSeries(TimeSeries):
 
         Parameters
         ----------
-        time: Union[list, np.ndarray]
+        time: Union [list, np.ndarray]
          Series's timestamps.
-        accumulated_delta_range_meters: Union[list, np.ndarray]
+        accumulated_delta_range_meters: Union [list, np.ndarray]
             The accumulated delta range since the last channel reset, in meters.
-        accumulated_delta_range_state: Union[list, np.ndarray]
+        accumulated_delta_range_state: Union [list, np.ndarray]
             The state (availability of the value) of the accumulated_delta_range_meters measurement.
-        accumulated_delta_range_uncertainty_meters: Union[list, np.ndarray]
+        accumulated_delta_range_uncertainty_meters: Union [list, np.ndarray]
             The accumulated delta range's uncertainty (1-Sigma) in meters.
-        automatic_gain_control_level_db: Union[list, np.ndarray]
+        automatic_gain_control_level_db: Union [list, np.ndarray]
             The Automatic Gain Control level in dB.
-        baseband_cn0DbHz: Union[list, np.ndarray]
+        baseband_cn0DbHz: Union [list, np.ndarray]
             The baseband carrier-to-noise density in dB-Hz. Typical range: 10-50 dB-Hz.
-        carrier_cycles: Union[list, np.ndarray]
+        carrier_cycles: Union [list, np.ndarray]
             The number of full carrier cycles between the satellite and the receiver.
-        carrier_frequency_hz: Union[list, np.ndarray]
+        carrier_frequency_hz: Union [list, np.ndarray]
             The carrier frequency of the tracked signal.
-        carrier_phase: Union[list, np.ndarray]
+        carrier_phase: Union [list, np.ndarray]
             The RF phase detected by the receiver. Range: [0.0, 1.0].
-        carrier_phase_uncertainty: Union[list, np.ndarray]
+        carrier_phase_uncertainty: Union [list, np.ndarray]
             The carrier-phase's uncertainty (1-Sigma).
-        cn0DbHz: Union[list, np.ndarray]
+        cn0DbHz: Union [list, np.ndarray]
             The Carrier-to-noise density in dB-Hz.
-        code_type: Union[list, np.ndarray]
+        code_type: Union [list, np.ndarray]
             The GNSS measurement's code type.
-        constellation_type: Union[list, np.ndarray]
+        constellation_type: Union [list, np.ndarray]
             The constellation type.
-        full_inter_signal_bias_nanos: Union[list, np.ndarray]
+        full_inter_signal_bias_nanos: Union [list, np.ndarray]
             The GNSS measurement's inter-signal bias in nanoseconds with sub-nanosecond accuracy.
-        full_inter_signal_bias_uncertainty_nanos: Union[list, np.ndarray]
+        full_inter_signal_bias_uncertainty_nanos: Union [list, np.ndarray]
             The GNSS measurement's inter-signal bias uncertainty (1 sigma) in nanoseconds with sub-nanosecond accuracy.
-        multipath_indicator: Union[list, np.ndarray]
+        multipath_indicator: Union [list, np.ndarray]
             Values indicating the 'multipath' state of the event.
-        pseudorange_rate_meters_per_second: Union[list, np.ndarray]
+        pseudorange_rate_meters_per_second: Union [list, np.ndarray]
             The Pseudorange rate at the timestamp in m/s.
-        pseudorange_rate_uncertainty_meters_per_second: Union[list, np.ndarray]
+        pseudorange_rate_uncertainty_meters_per_second: Union [list, np.ndarray]
             The pseudorange's rate uncertainty (1-Sigma) in m/s.
-        received_sv_time_nanos: Union[list, np.ndarray]
+        received_sv_time_nanos: Union [list, np.ndarray]
             The received GNSS satellite time, at the measurement time, in nanoseconds.
-        received_sv_time_uncertainty_nanos: Union[list, np.ndarray]
+        received_sv_time_uncertainty_nanos: Union [list, np.ndarray]
             The error estimate (1-sigma) for the received GNSS time, in nanoseconds.
-        satellite_inter_signal_bias_nanos: Union[list, np.ndarray]
+        satellite_inter_signal_bias_nanos: Union [list, np.ndarray]
             The GNSS measurement's satellite inter-signal bias in nanoseconds with sub-nanosecond accuracy.
-        satellite_inter_signal_bias_uncertainty_nanos: Union[list, np.ndarray]
+        satellite_inter_signal_bias_uncertainty_nanos: Union [list, np.ndarray]
             The GNSS measurement's satellite inter-signal bias uncertainty (1 sigma) in nanoseconds with sub-nanosecond accuracy.
-        snrInDb: Union[list, np.ndarray]
+        snrInDb: Union [list, np.ndarray]
             The (post-correlation & integration) Signal-to-Noise ratio (SNR) in dB.
-        state: Union[list, np.ndarray]
+        state: Union [list, np.ndarray]
             The per-satellite-signal sync state.
-        svid: Union[list, np.ndarray]
+        svid: Union [list, np.ndarray]
             The satellite ID.
-        time_offset_nanos: Union[list, np.ndarray]
+        time_offset_nanos: Union [list, np.ndarray]
             The time offset at which the measurement was taken in nanoseconds.
         rdy_format_version: float
         filename: str
+            Ridy File's name containing measurements
         """
         args = locals().copy()
         args.pop("self")
@@ -690,16 +702,17 @@ class OrientationSeries(TimeSeries):
 
         Parameters
         ----------
-        time: Union[list, np.ndarray]
+        time: Union [list, np.ndarray]
             Series's timestamps.
-        azimuth: Union[list, np.ndarray]
+        azimuth: Union [list, np.ndarray]
             Azimuth (angle around the z-axis).
-        pitch: Union[list, np.ndarray]
+        pitch: Union [list, np.ndarray]
             Pitch (angle around the x-axis).
-        roll: Union[list, np.ndarray]
+        roll: Union [list, np.ndarray]
             Roll (angle around the y-axis).
         rdy_format_version: float
         filename: str
+            Ridy File's name containing measurements
         """
         args = locals().copy()
         args.pop("self")
@@ -718,16 +731,17 @@ class GyroSeries(TimeSeries):
 
         Parameters
         ----------
-        time: Union[list, np.ndarray]
+        time: Union [list, np.ndarray]
             Series's timestamps.
-        w_x: Union[list, np.ndarray]
+        w_x: Union [list, np.ndarray]
             Rate of rotation around x-axis.
-        w_y: Union[list, np.ndarray]
+        w_y: Union [list, np.ndarray]
             Rate of rotation around y-axis.
-        w_z: Union[list, np.ndarray]
+        w_z: Union [list, np.ndarray]
             Rate of rotation around z-axis.
         rdy_format_version: float
         filename: str
+            Ridy File's name containing measurements
         """
         args = locals().copy()
         args.pop("self")
@@ -748,22 +762,23 @@ class GyroUncalibratedSeries(TimeSeries):
 
         Parameters
         ----------
-        time: Union[list, np.ndarray]
+        time: Union [list, np.ndarray]
             Series's timestamps.
-        w_uncal_x: Union[list, np.ndarray]
+        w_uncal_x: Union [list, np.ndarray]
             Rate of rotation (without drift compensation) around x-axis.
-        w_uncal_y: Union[list, np.ndarray]
+        w_uncal_y: Union [list, np.ndarray]
             Rate of rotation (without drift compensation) around y-axis.
-        w_uncal_z: Union[list, np.ndarray]
+        w_uncal_z: Union [list, np.ndarray]
             Rate of rotation (without drift compensation) around z-axis.
-        w_uncal_x_bias: Union[list, np.ndarray]
+        w_uncal_x_bias: Union [list, np.ndarray]
             Estimated drift around the x-axis.
-        w_uncal_y_bias: Union[list, np.ndarray]
+        w_uncal_y_bias: Union [list, np.ndarray]
             Estimated drift around the y-axis.
-        w_uncal_z_bias: Union[list, np.ndarray]
+        w_uncal_z_bias: Union [list, np.ndarray]
             Estimated drift around the z-axis.
         rdy_format_version: float
         filename: str
+            Ridy File's name containing measurements
         """
         args = locals().copy()
         args.pop("self")
@@ -784,18 +799,20 @@ class RotationSeries(TimeSeries):
 
         Parameters
         ----------
-        time: Union[list, np.ndarray]
+        time: Union [list, np.ndarray]
             Series timestamps.
-        rot_x: Union[list, np.ndarray]
+        rot_x: Union [list, np.ndarray]
             Rotation vector component along the x-axis.
-        rot_y: Union[list, np.ndarray]
+        rot_y: Union [list, np.ndarray]
             Rotation vector component along the y-axis.
-        rot_z: Union[list, np.ndarray]
+        rot_z: Union [list, np.ndarray]
             Rotation vector component along the y-axis.
-        cos_phi: Union[list, np.ndarray]
+        cos_phi: Union [list, np.ndarray]
             Scalar component of the rotation vector.
-        heading_acc: Union[list, np.ndarray]
+        heading_acc: Union [list, np.ndarray]
         rdy_format_version: float
+        filename: str
+            Ridy File's name containing measurements
         """
         args = locals().copy()
         args.pop("self")
@@ -821,29 +838,30 @@ class GPSSeries(TimeSeries):
 
         Parameters
         ----------
-        time: Union[list, np.ndarray]
+        time: Union [list, np.ndarray]
             Series's timestamps.
-        lat: Union[list, np.ndarray]
+        lat: Union [list, np.ndarray]
             The latitude in degrees.
-        lon: Union[list, np.ndarray]
+        lon: Union [list, np.ndarray]
             The longitude in degrees.
-        altitude: Union[list, np.ndarray]
+        altitude: Union [list, np.ndarray]
             The altitude of this location in meters
-        bearing: Union[list, np.ndarray]
+        bearing: Union [list, np.ndarray]
             The bearing at the time of this location in degrees.
-        speed: Union[list, np.ndarray]
+        speed: Union [list, np.ndarray]
             The speed at the time of this location in meters per second.
-        hor_acc: Union[list, np.ndarray]
+        hor_acc: Union [list, np.ndarray]
             The estimated horizontal accuracy radius in meters of this location.
-        ver_acc: Union[list, np.ndarray]
+        ver_acc: Union [list, np.ndarray]
             The estimated altitude accuracy in meters of this location.
-        bear_acc: Union[list, np.ndarray]
+        bear_acc: Union [list, np.ndarray]
             The estimated bearing accuracy in degrees of this location.
-        speed_acc: Union[list, np.ndarray]
+        speed_acc: Union [list, np.ndarray]
             The estimated speed accuracy in meters per second of this location
-        utc_time: Union[list, np.ndarray]
+        utc_time: Union [list, np.ndarray]
         rdy_format_version: float
         filename: str
+            Ridy File's name containing measurements
         """
         args = locals().copy()
         args.pop("self")
@@ -852,9 +870,11 @@ class GPSSeries(TimeSeries):
     def to_ipyleaflef(self) -> List[list]:
         """
         Gives a list of coordinates of the form [latitude, longitude]
+
         Returns
         -------
-        List[list]
+        coordinates : list [list]
+            List of coordinates
 
         """
         if np.array_equal(self.lat, np.array(None)) and np.array_equal(self.lat, np.array(None)):
@@ -873,16 +893,19 @@ class PressureSeries(TimeSeries):
                  rdy_format_version: float = None,
                  filename: str = ""):
         """
+        Series containing the ambient air pressure and the timestamps
 
         Parameters
         ----------
-        time: Union[list, np.ndarray]
+        time: Union [list, np.ndarray]
             Series's timestamps.
-        pressure: Union[list, np.ndarray]
+        pressure: Union [list, np.ndarray]
             Ambient air pressure.
         rdy_format_version: float
         filename: str
+            Ridy File's name containing measurements
         """
+        # TODO : description of the series
         args = locals().copy()
         args.pop("self")
         super(PressureSeries, self).__init__(**args)
@@ -894,15 +917,17 @@ class TemperatureSeries(TimeSeries):
                  rdy_format_version: float = None,
                  filename: str = ""):
         """
+        Series containing ambient temperature and the corresponding timestamps
 
         Parameters
         ----------
-        time: Union[list, np.ndarray]
+        time: Union [list, np.ndarray]
             Series's timestamps.
-        temperature: Union[list, np.ndarray]
+        temperature: Union [list, np.ndarray]
             Ambient temperature.
         rdy_format_version: float
         filename: str
+            Ridy File's name containing measurements
         """
         args = locals().copy()
         args.pop("self")
@@ -915,16 +940,19 @@ class HumiditySeries(TimeSeries):
                  rdy_format_version: float = None,
                  filename: str = ""):
         """
+        Series contaning the ambient relative humidity and the corresponding timestamps
 
         Parameters
         ----------
-        time: Union[list, np.ndarray]
+        time: Union [list, np.ndarray]
             Series's timestamps.
-        humidity: Union[list, np.ndarray]
+        humidity: Union [list, np.ndarray]
             Ambient relative humidity.
         rdy_format_version: float
         filename: str
+            Ridy File's name containing measurements
         """
+        # TODO : description of the series
         args = locals().copy()
         args.pop("self")
         super(HumiditySeries, self).__init__(**args)
@@ -936,15 +964,17 @@ class LightSeries(TimeSeries):
                  rdy_format_version: float = None,
                  filename: str = ""):
         """
+        Series containing the light measurements and the corresponding timestamps
 
         Parameters
         ----------
-        time: Union[list, np.ndarray]
+        time: Union [list, np.ndarray]
             Series's timestamps.
         light: Union[list, np.ndarray]
             Illuminance.
         rdy_format_version: float
         filename: str
+            Ridy File's name containing measurements
         """
         args = locals().copy()
         args.pop("self")
@@ -960,16 +990,22 @@ class WzSeries(TimeSeries):
                  filename: str = ""):
         """
         Based on the Sperling's ride index to determine ride Comfort
+
         Parameters
         ----------
-        time: Union[list, np.ndarray]
+        time: Union [list, np.ndarray]
             Series's timestamps.
-        wz_x: Union[list, np.ndarray]
-        wz_y: Union[list, np.ndarray]
-        wz_z: Union[list, np.ndarray]
+        wz_x: Union [list, np.ndarray]
+            Sperling's ride index in y direction
+        wz_y: Union [list, np.ndarray]
+            Sperling's ride index in y direction
+        wz_z: Union [list, np.ndarray]
+            Sperling's ride index in y direction
         rdy_format_version: float
         filename: str
+            Ridy File's name containing measurements
         """
+
         args = locals().copy()
         args.pop("self")
         super(WzSeries, self).__init__(**args)
@@ -981,14 +1017,16 @@ class SubjectiveComfortSeries(TimeSeries):
                  rdy_format_version: float = None,
                  filename: str = ""):
         """
+        Series containing the subjective comfort measurements and their timestamps
 
         Parameters
         ----------
-        time: Union[list, np.ndarray]
+        time: Union [list, np.ndarray]
             Series's timestamps.
         comfort: Union[list, np.ndarray]
         rdy_format_version: float
         filename: str
+            Ridy File's name containing measurements
         """
         args = locals().copy()
         args.pop("self")
@@ -1002,16 +1040,19 @@ class NTPDatetimeSeries(TimeSeries):
                  strip_timezone: bool = False,
                  filename: str = ""):
         """
+        Series containing the Date-time from NTP and their timestamps
 
         Parameters
         ----------
-        time: Union[list, np.ndarray]
+        time: Union [list, np.ndarray]
             Series's timestamps.
-        ntp_datetime: Union[list, np.ndarray]
+        ntp_datetime: Union [list, np.ndarray]
             Date-time from NTP(Network Time Protocol) server.
         rdy_format_version: float
         filename: str
+            Ridy File's name containing measurements
         """
+
         self.ntp_datetime = ntp_datetime
 
         args = locals().copy()
@@ -1025,3 +1066,5 @@ class NTPDatetimeSeries(TimeSeries):
                 self.ntp_datetime = np.array([np.datetime64(el) for el in ntp_datetime])
             else:
                 self.ntp_datetime = np.array([np.datetime64(el) for el in self.ntp_datetime])
+
+# TODO : rdy-format is missing description in all class members

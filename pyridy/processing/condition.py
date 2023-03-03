@@ -62,10 +62,12 @@ class ConditionProcessor:
         Returns
         ----------
         df_merged: pd.DataFrame
+            Dataframe containing merged dataframes
 
         Raises
         -------
-        ValueError: Raised if method is not supported ('acc', 'velocity' or 'comfort')
+        ValueError
+            Raised if method is not supported ('acc', 'velocity' or 'comfort')
 
         """
 
@@ -148,6 +150,7 @@ class TrackCondition(Enum):
     Parameters
     ----------
     Enum: Enum
+        Mapping of condition to color
 
     """
     GOOD = "#57AB27"  # (RWTHGrün100)

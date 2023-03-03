@@ -11,6 +11,7 @@ from pyridy import config
 
 def test_connection_to_url(url, timeout=None):
     """
+    Tests if there is connection to the provided URL
 
     Parameters
     ----------
@@ -21,7 +22,8 @@ def test_connection_to_url(url, timeout=None):
 
     Returns
     -------
-    bool
+    connection : bool
+        Set to True if internet connection is available
     """
     parsed = urlparse(url)
     hostname = parsed.hostname
@@ -39,16 +41,17 @@ def internet(host="8.8.8.8", port=53, timeout=None):
 
     Parameters
     ----------
-    host: str
+    host : str
         IP of the host, which should be used for checking the internet connections. Defaults to "8.8.8.8".
-    port: int
+    port : int
         Port that should be used. Defaults to 53.
-    timeout: int
+    timeout : int
         Timeout in seconds. Defaults to None.
 
     Returns
     -------
-    bool
+    connection : bool
+        Set to True if internet connection is available
     """
     if not timeout:
         timeout = config.options["SOCKET_TIMEOUT"]
@@ -63,14 +66,22 @@ def internet(host="8.8.8.8", port=53, timeout=None):
 
 
 def generate_random_color(color_format: str = "RGB") -> Union[list, str]:
-    """
+    """Generates random color based on the given format RGB or HEX
+
     Parameters
     ----------
     color_format: str
         Color format of the generated color, either "RGB" or "HEX". RGB values range from 0 to 255. Defaults to "RGB"
+
+    Returns
+    ----------
+    color: Union [list, str]
+        Randomly generated colors
+
     Raises
     ----------
-    ValueError: Raised if color format is not supported ('RGB' or 'HEX')
+    ValueError
+        Raised if color format is not supported ('RGB' or 'HEX')
     """
 
     if color_format == "RGB":
@@ -95,9 +106,11 @@ def create_map_circle(lat: float, lon: float, color="green", radius: int = 2):
         Color of the circle. Defaults to green.
     radius: int
         Radius of the circle marker in pixels. Defaults to 2.
+
     Returns
     -------
     circle: ipyleaflet.Circle
+        Circle marker
     """
     circle = Circle()
     circle.location = (lat, lon)
@@ -116,11 +129,17 @@ def requires_internet(func):
     ----------
     func: func
         Function that requires an active internet connection
+
     Returns
     -------
 
-    """
+    Raises
+    -------
+    ConnectionError
+        Raised if there is no internet connection
 
+    """
+    # TODO : what's the return here?
     def inner(*args, **kwargs):
         if internet():
             return func(*args, **kwargs)

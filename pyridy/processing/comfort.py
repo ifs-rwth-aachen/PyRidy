@@ -34,7 +34,10 @@ class ComfortProcessor(PostProcessor):
 
         Raises
         -------
-        ValueError: Raised if method is not supported ("EN1299" or "Wz")
+        ValueError
+            Raised if method is not supported ("EN1299" or "Wz")
+        NotImplementedError
+            Raised if WZ method is passed as method
         """
         super(ComfortProcessor, self).__init__(campaign)
         self.f_s = f_s
@@ -65,14 +68,15 @@ class ComfortProcessor(PostProcessor):
         Returns
         -------
         n_mv: ndarray
-        t: ndarray
-            Array of segment times
-        cc_x: ndarray
-            Comfort index according to x-axis
-        cc_y: ndarray
-            Comfort index according to y-axis
-        cc_z: ndarray
-            Comfort index according to z-axis
+            Mean comfort index Nmv
+        t : ndarray
+            Array of timestamps
+        cc_x : ndarray
+            Continuous comfort index according to x-axis
+        cc_y : ndarray
+            Continuous comfort index according to y-axis
+        cc_z : ndarray
+            Continuous comfort index according to z-axis
 
         """
         # The evaluation assumes the phone is laying on the floor pointing in the direction of travel
@@ -111,14 +115,15 @@ class ComfortProcessor(PostProcessor):
         Returns
         -------
         m: pyridy.widgets Map
-            The created map.
+            The created map
         """
         m = self.campaign.create_map(show_gps_tracks=True, show_railway_elements=False)
         m.add_results_from_campaign(self.campaign, use_file_color=use_file_color)
         return m
 
     def execute(self):
-        """ Executes the Comfort Processor on the given axes
+        """
+        Executes the Comfort Processor on the given axes
 
         Returns
         ----------
@@ -250,10 +255,10 @@ class ComfortProcessor(PostProcessor):
 
         Returns
         -------
-        tuple(np.ndarray, np.ndarray)
+        weighting filter : tuple (np.ndarray, np.ndarray)
             Numerator and denominator of the weighting factor
         """
-
+        # TODO : check documentation of params of all class members if correct
         f1, f2 = 0.4, 100  # [Hz]
         f3, f4 = 16, 16  # [Hz]
         f5, f6 = 2.5, 4  # [Hz]
@@ -295,7 +300,7 @@ class ComfortProcessor(PostProcessor):
 
         Returns
         -------
-        tuple(np.ndarray, np.ndarray)
+        weighting filter : tuple (np.ndarray, np.ndarray)
             Numerator and denominator of the weighting factor
         """
 
@@ -333,7 +338,7 @@ class ComfortProcessor(PostProcessor):
 
         Returns
         -------
-        tuple(np.ndarray, np.ndarray)
+        weighting filter : tuple (np.ndarray, np.ndarray)
             Numerator and denominator of the weighting factor
         """
 
@@ -371,7 +376,7 @@ class ComfortProcessor(PostProcessor):
 
         Returns
         -------
-        tuple(np.ndarray, np.ndarray)
+        weighting filter : tuple(np.ndarray, np.ndarray)
             Numerator and denominator of the weighting factor
         """
 

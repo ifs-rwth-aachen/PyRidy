@@ -19,9 +19,11 @@ def calc_unit_vector(v: Union[list, np.ndarray]) -> np.ndarray:
     ----------
     v : Union[np.ndarray, list]
         Vector of which the unit vector should be calculated
+
     Returns
-        -------
-        unit vector: np.ndarray
+    -------
+    unit vector: np.ndarray
+        Unit vector of the input vector
     """
     return v / np.linalg.norm(v)
 
@@ -36,9 +38,11 @@ def calc_angle_between(v1: Union[list, np.ndarray], v2: Union[list, np.ndarray])
         First vector
     v2 : Union[np.ndarray, list]
         Second vector
+
     Returns
-        -------
-        angle: np.ndarray
+    -------
+    angle: np.ndarray
+        Angle in radians between input vectors
     """
     v1_u = calc_unit_vector(v1)
     v2_u = calc_unit_vector(v2)
@@ -51,17 +55,20 @@ def calc_curvature(x: List[float], y: List[float]) -> List[float]:
 
     Parameters
     ----------
-    x: List[float]
+    x: List [float]
         x-coordinate
-    y: List[float]
+    y: List [float]
         y-coordinate
+
     Returns
     -------
-    list of Menger curvature of the coordinates
+    coordinates: list [float]
+        List of Menger curvature of the coordinates
 
     Raises
     -------
-    ValueError: Raised if x and y are not of same length
+    ValueError
+        Raised if x and y are not of same length
     """
     if len(x) != len(y):
         raise ValueError("x and y have to be same length")
@@ -122,14 +129,14 @@ def calc_distance_from_xy(x: List[float], y: List[float]) -> Tuple[list, list]:
 
     Parameters
     ----------
-    x: List[float]
+    x: List [float]
         x-coordinate
-    y: List[float]
+    y: List [float]
         y-coordinate
 
     Returns
     -------
-    Tuple
+    distances: Tuple [list, list]
         List containing total distance, list of pairwise distances
     Raises
     -------
@@ -165,19 +172,22 @@ def calc_distance_from_lon_lat(lon: List[float], lat: List[float]):
 
     Parameters
     ----------
-    lon: list
+    lon: list [float]
         Longitude
-    lat: list
+    lat: list [float]
         Latitude
 
     Returns
     -------
     pairwise distance: list
+        Pairwise of individual lat/lon coordinates
     total distance: list
+        Total distance using geodesic distance of individual lat/lon coordinates
 
     Raises
     -------
-    ValueError: Raised if x and y are not of same length
+    ValueError
+        Raised if x and y are not of same length
     """
     if len(lon) != len(lat):
         raise ValueError("x and y have to be same length")
@@ -211,11 +221,13 @@ def convert_way_to_line_string(w: overpy.Way, frmt: str = "lon,lat") -> LineStri
 
     Returns
     -------
-    LineString
+    linestring : LineString
+        A one-dimensional figure comprising one or more line segments
 
     Raises
     -------
-    ValueError: Raised if the format is unknown
+    ValueError
+        Raised if the format is unknown
     """
     if frmt == "lon,lat":
         coords = [(float(n.lon), float(n.lat)) for n in w.nodes]
@@ -246,7 +258,9 @@ def convert_lon_lat_to_xy(lon: List[float], lat: List[float], adjust_zero_point:
     Returns
     -------
     x: list
+        x-coordinate
     y: list
+        y-coordinate
     """
     if lon and lat:
         x, y = config.proj(lon, lat)
@@ -264,20 +278,22 @@ def bspline(cv, n=10000, degree=3, periodic=False):
 
     Parameters
     ----------
-     cv: array_like
-        Array ov control vertices
+     cv: array
+        Array of control vertices
     n: int
         Number of samples to return
     degree: int
         Curve degree
     periodic: bool
         True - Curve is closed, False - Curve is open
+
     Returns
     -------
-    np.ndarray
+    samples : np.ndarray
+       Samples on a bspline
 
-        """
-
+    """
+    # TODO: array-like type
     # If periodic, extend the point array by count+degree+1
     cv = np.asarray(cv)
     count = len(cv)
@@ -308,21 +324,26 @@ def bspline(cv, n=10000, degree=3, periodic=False):
 
 def project_point_onto_line(line: Union[np.ndarray, list], point: Union[np.ndarray, list]) -> tuple:
     """
-    Returns a tuple with the point where the orthogonal projections of the given points intersects the given the
+    Returns a tuple with the point where the orthogonal projections of the given points intersects the given
     line and secondly the (perpendicular) distance to this point
+
     Parameters
     ----------
-    line: Union[np.ndarray, list]
+    line : Union [np.ndarray, list]
         List of two points defining the line in the form of [[x1, y1],[x2, y2]]
-    point: np.ndarray or list
+    point: Union [np.ndarray, list]
         Point of which the distance perpendicular from the line should be calculated to
+
     Returns
     -------
-    tuple
+    point_distance : tuple
+        The point where the orthogonal projections of the given points intersects the given
+        line and the (perpendicular) distance to this point
 
     Raises
     -------
-    ValueError: Raised if the given line consists of two identical points.
+    ValueError
+        Raised if the given line consists of two identical points.
 
     """
     if type(line) is list:
@@ -351,17 +372,22 @@ def project_point_onto_line(line: Union[np.ndarray, list], point: Union[np.ndarr
 def boxes_to_edges(boxes):
     """
     Source: https://stackoverflow.com/questions/4842613/merge-lists-that-share-common-elements
-
     treat `l` as a Graph and returns it's edges
     to_edges(['a','b','c','d']) -> [(a,b), (b,c),(c,d)]
+
     Parameters
     -------
     boxes: list
+        List of boxes to form edges for
 
-    Returns
+    Yields
     -------
-    None
+    last :
+        From-element of the edge
+    current :
+        To-element of the edge
     """
+    # TODO: check doc of yields?
     it = iter(boxes)
     last = next(it)
 
@@ -386,7 +412,8 @@ def overlap(b1: List[float], b2: List[float], thres: float = .8) -> bool:
 
     Returns
     -------
-    bool
+    overlap : bool
+        Defines if overlap is larger than the defined threshold
     """
     a1 = abs(b1[2] - b1[0]) * abs(b1[3] - b1[1])
     a2 = abs(b2[2] - b2[0]) * abs(b2[3] - b2[1])
@@ -416,6 +443,7 @@ def iou(b1: List[float], b2: List[float]):
         A box defined by its coordinates [x_min, y_min, x_max, y_max]
     b2: List[float]
         A box defined by its coordinates [x_min, y_min, x_max, y_max]
+
     Returns
     -------
     iou: float
@@ -455,7 +483,7 @@ def iou(b1: List[float], b2: List[float]):
 
 def is_point_within_line_projection(line: Union[np.ndarray, list], point: Union[np.ndarray, list]) -> bool:
     """
-    Checks whether a given points line projection falls within the points that the define the line
+    Checks whether a given point line projection falls within the points that define the line
 
     Parameters
     ----------
@@ -464,9 +492,11 @@ def is_point_within_line_projection(line: Union[np.ndarray, list], point: Union[
     point: Union[np.ndarray, list]
         Point of which it should be determined whether the projection onto the line falls within the points that
         define the line
+
     Returns
     -------
-    bool
+    inline : bool
+        Tells if point is one of the points that define the line or not
     """
     if type(line) is list:
         line = np.array(line)
@@ -502,9 +532,10 @@ def haversine(lon1: float, lat1: float, lon2: float, lat2: float) -> float:
         Longitude of second point
     lat2: float
         Latitude of second point
+
     Returns
     -------
-    float
+    distance : float
         Distance between the points in meters
 
     """

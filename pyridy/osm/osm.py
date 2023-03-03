@@ -67,8 +67,9 @@ class OSM:
 
         Raises
         -------
-        ValueError: Raised if bounding boxes are empty, the bounding box is not a list with coordinates or list of bounding boxes,
-        desired_railway_type is not supported or recurse type is invalid
+        ValueError
+            Raised if bounding boxes are empty, the bounding box is not a list with coordinates or list of bounding boxes,
+            desired_railway_type is not supported or recurse type is invalid
 
         """
 
@@ -182,7 +183,8 @@ class OSM:
 
         Raises
         -------
-        ValueError: Raised if coordinates are invalid
+        ValueError
+            Raised if coordinates are invalid
         """
         if len(bbox) != 4:
             raise ValueError("Bounding box must have 4 coordinates, not %d" % len(bbox))
@@ -218,7 +220,8 @@ class OSM:
 
         Raises
         -------
-        ValueError: Raised if the desired_railway_type is not supported or recurse type is invalid
+        ValueError
+            Raised if the desired_railway_type is not supported or recurse type is invalid
         """
         if recurse not in [">", ">>", "<", "<<"]:
             raise ValueError("recurse type %s not supported" % recurse)
@@ -256,7 +259,8 @@ class OSM:
 
         Raises
         -------
-        ValueError: Raised if graph G has no nodes
+        ValueError
+            Raised if graph G has no nodes
         """
         if not len(self.G.nodes):
             raise ValueError("Can't determine allowed switch transits if Graph G has no nodes")
@@ -306,6 +310,7 @@ class OSM:
     def _check_connection_and_download_track_data(self):
         """
         Download track data if there is a working internet connection
+
         Returns
         -------
         None
@@ -320,9 +325,8 @@ class OSM:
 
     def _query_data_for_bbox(self, b, overpass_instances=None):
         """
-        Query data for a bounding box.
+        Query data for a bounding box.Stores returned data in self.relations, self.nodes and self.ways.
 
-        Stores returned data in self.relations, self.nodes and self.ways.
         Parameters
         ----------
         b: List[float]
@@ -416,6 +420,7 @@ class OSM:
     def _download_track_data(self, overpass_instances=None):
         """
         Downloads the track data by querying data for bounding boxes.
+
         Parameters
         ----------
         overpass_instances: list[Overpass]
@@ -449,10 +454,14 @@ class OSM:
 
         Raises
         -------
-        overpy.exception.OverpassBadRequest: Raised if the Overpass API service returns a syntax error
-        overpy.exception.OverpassTooManyRequests: Raised if the Overpass API service returns a 429 status code
-        overpy.exception.OverpassGatewayTimeout: Raised if load of the Overpass API service is too high and it can’t handle the request
-        overpy.exception.OverpassRuntimeError: Raised if the server returns a remark-tag(xml) or remark element(json) with a message starting with ‘runtime error:’
+        overpy.exception.OverpassBadRequest
+            Raised if the Overpass API service returns a syntax error
+        overpy.exception.OverpassTooManyRequests
+            Raised if the Overpass API service returns a 429 status code
+        overpy.exception.OverpassGatewayTimeout
+            Raised if load of the Overpass API service is too high and it can’t handle the request
+        overpy.exception.OverpassRuntimeError
+            Raised if the server returns a remark-tag(xml) or remark element(json) with a message starting with ‘runtime error:’
         QueryToOverpassApiFailed: Raised when query to overpass fails
         """
         for a in range(attempts):
@@ -494,6 +503,7 @@ class OSM:
         Parameters
         ----------
         query: str
+            The query string in Overpass QL
         attempts: int
             Number of attempts
         overpass_instances: List[Overpass]
@@ -501,11 +511,12 @@ class OSM:
 
         Returns
         -------
-        None
+        Parsed result: Overp
 
-        Raises
+        Raises:
         -------
-        QueryToOverpassApiFailed: Raised when query to overpass fails
+        QueryToOverpassApiFailed
+            Raised when query to overpass fails
         """
         if attempts is None:
             attempts = config.options["OSM_RETRIES"]
@@ -564,7 +575,8 @@ class OSM:
 
         Raises
         -------
-        ValueError: Raised when given method is not supported
+        ValueError
+            Raised when given method is not supported
         """
         dist = {n: np.inf for n in self.G.nodes}
         prev = {n: None for n in self.G.nodes}
@@ -684,7 +696,8 @@ class OSM:
             np.ndarray
         Raises
         -------
-        ValueError: Raised when format is not lon/lat or xy
+        ValueError
+            Raised when format is not lon/lat or xy
         """
         if frmt not in ["lon/lat", "xy"]:
             raise ValueError("fmrt must be lon/lat or xy")
@@ -703,9 +716,11 @@ class OSM:
     def get_switches(self, line: OSMRailwayLine = None) -> List[OSMRailwayElement]:
         """
         Returns a list of railway switches found in the downloaded OSM region
+
         Parameters
         ----------
         line: OSMRailwayLine
+
         Returns
         -------
         line_switches: list[OSMRailwayElement]

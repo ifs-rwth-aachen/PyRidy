@@ -42,6 +42,7 @@ class ExcitationProcessor(PostProcessor):
         p_dist: int, default 50
         osm_integration: bool, default True
         """
+        # TODO : finish documentation of parameters
         super(ExcitationProcessor, self).__init__(campaign)
         self.f_s = f_s
         self.f_c = f_c
@@ -70,7 +71,8 @@ class ExcitationProcessor(PostProcessor):
 
         Raises
         -------
-        ValueError: Raised if axes are not of type list or str, or not in the format 'x', 'y' or 'z'
+        ValueError
+            Raised if axes are not of type list or str, or not in the format 'x', 'y' or 'z'
         """
         if type(axes) == str:
             if axes not in ["x", "y", "z"]:
@@ -184,7 +186,9 @@ class ExcitationProcessor(PostProcessor):
         Returns
         -------
         m: pyridy.widgets Map
+            Created map
         """
+        # TODO : do we need this function?
         m = self.campaign.create_map(show_gps_tracks=True, show_railway_elements=False)
         m.add_results_from_campaign(self.campaign, use_file_color=use_file_color)
         return m
