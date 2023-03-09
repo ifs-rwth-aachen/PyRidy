@@ -29,7 +29,9 @@ class OSMResultNode:
             Node value
         f: RDYFile
         proc: processor
+            Postprocessing Processor used
         direction: str
+            Axis that has been used
         color: str
             Node color. Defaults to None.
 
@@ -37,7 +39,6 @@ class OSMResultNode:
         -------
         None
         """
-        # TODO: complete doc for file, proc and direction
         self.lat = lat
         self.lon = lon
         self.value = value
@@ -58,6 +59,7 @@ class OSMResultWay:
         Parameters
         ----------
         way : overpy.Way
+            OSM Way retrieved using Overpy
         res : float
             Calculated result. Defaults to 0.5.
 
@@ -65,7 +67,6 @@ class OSMResultWay:
         -------
         None
         """
-        # TODO: add doc for parameter way
         self.way: overpy.Way = way
         self.res = res
 

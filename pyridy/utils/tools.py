@@ -130,16 +130,12 @@ def requires_internet(func):
     func: func
         Function that requires an active internet connection
 
-    Returns
-    -------
-
     Raises
     -------
     ConnectionError
         Raised if there is no internet connection
 
     """
-    # TODO : what's the return here?
     def inner(*args, **kwargs):
         if internet():
             return func(*args, **kwargs)

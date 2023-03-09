@@ -343,6 +343,7 @@ class AccelerationSeries(TimeSeries):
         acc_z: Union [list, np.ndarray]
             Acceleration according to z-axis.
         rdy_format_version: float
+            File format version
         filename: str
             Ridy File's name containing measurements
         """
@@ -381,6 +382,7 @@ class AccelerationUncalibratedSeries(TimeSeries):
         acc_uncal_z_bias: Union [list, np.ndarray]
             Measured acceleration along the z-axis with estimated bias compensation.
         rdy_format_version: float
+            File format version
         filename: str
             Ridy File's name containing measurements
         """
@@ -411,6 +413,7 @@ class LinearAccelerationSeries(TimeSeries):
         lin_acc_z: Union [list, np.ndarray]
             Linear acceleration force along z-axis.
         rdy_format_version: float
+            File format version
         filename: str
             Ridy File's name containing measurements
         """
@@ -454,6 +457,7 @@ class MagnetometerSeries(TimeSeries):
         mag_z: Union [list, np.ndarray]
             Geomagnetic field strength according to z-axis.
         rdy_format_version: float
+            File format version
         filename: str
             Ridy File's name containing measurements
         """
@@ -491,6 +495,7 @@ class MagnetometerUncalibratedSeries(TimeSeries):
         mag_uncal_z_bias: Union [list, np.ndarray]
             Iron bias estimation along the z-axis.
         rdy_format_version: float
+            File format version
         filename: str
             Ridy File's name containing measurements
         """
@@ -519,6 +524,7 @@ class NMEAMessageSeries(TimeSeries):
         msg: Union [list, np.ndarray]
             NMEA message from GNSS chipset
         rdy_format_version: float
+            File format version
         filename: str
             Ridy File's name containing measurements
         """
@@ -584,6 +590,7 @@ class GNSSClockMeasurementSeries(TimeSeries):
         time_uncertainty_nanos: Union [list, np.ndarray]
             The clock's time Uncertainty (1-Sigma) in nanoseconds.
         rdy_format_version: float
+            File format version
         filename: str
             Ridy File's name containing measurements
         """
@@ -682,6 +689,7 @@ class GNSSMeasurementSeries(TimeSeries):
         time_offset_nanos: Union [list, np.ndarray]
             The time offset at which the measurement was taken in nanoseconds.
         rdy_format_version: float
+            File format version
         filename: str
             Ridy File's name containing measurements
         """
@@ -711,6 +719,7 @@ class OrientationSeries(TimeSeries):
         roll: Union [list, np.ndarray]
             Roll (angle around the y-axis).
         rdy_format_version: float
+            File format version
         filename: str
             Ridy File's name containing measurements
         """
@@ -740,6 +749,7 @@ class GyroSeries(TimeSeries):
         w_z: Union [list, np.ndarray]
             Rate of rotation around z-axis.
         rdy_format_version: float
+            File format version
         filename: str
             Ridy File's name containing measurements
         """
@@ -777,6 +787,7 @@ class GyroUncalibratedSeries(TimeSeries):
         w_uncal_z_bias: Union [list, np.ndarray]
             Estimated drift around the z-axis.
         rdy_format_version: float
+            File format version
         filename: str
             Ridy File's name containing measurements
         """
@@ -810,7 +821,9 @@ class RotationSeries(TimeSeries):
         cos_phi: Union [list, np.ndarray]
             Scalar component of the rotation vector.
         heading_acc: Union [list, np.ndarray]
+            Heading accuracy
         rdy_format_version: float
+            File format version
         filename: str
             Ridy File's name containing measurements
         """
@@ -859,7 +872,9 @@ class GPSSeries(TimeSeries):
         speed_acc: Union [list, np.ndarray]
             The estimated speed accuracy in meters per second of this location
         utc_time: Union [list, np.ndarray]
+            UTC-Time received by GPS, accurate to 1 s
         rdy_format_version: float
+            File format version
         filename: str
             Ridy File's name containing measurements
         """
@@ -902,10 +917,10 @@ class PressureSeries(TimeSeries):
         pressure: Union [list, np.ndarray]
             Ambient air pressure.
         rdy_format_version: float
+            File format version
         filename: str
             Ridy File's name containing measurements
         """
-        # TODO : description of the series
         args = locals().copy()
         args.pop("self")
         super(PressureSeries, self).__init__(**args)
@@ -926,6 +941,7 @@ class TemperatureSeries(TimeSeries):
         temperature: Union [list, np.ndarray]
             Ambient temperature.
         rdy_format_version: float
+            File format version
         filename: str
             Ridy File's name containing measurements
         """
@@ -949,10 +965,10 @@ class HumiditySeries(TimeSeries):
         humidity: Union [list, np.ndarray]
             Ambient relative humidity.
         rdy_format_version: float
+            File format version
         filename: str
             Ridy File's name containing measurements
         """
-        # TODO : description of the series
         args = locals().copy()
         args.pop("self")
         super(HumiditySeries, self).__init__(**args)
@@ -973,6 +989,7 @@ class LightSeries(TimeSeries):
         light: Union[list, np.ndarray]
             Illuminance.
         rdy_format_version: float
+            File format version
         filename: str
             Ridy File's name containing measurements
         """
@@ -1002,6 +1019,7 @@ class WzSeries(TimeSeries):
         wz_z: Union [list, np.ndarray]
             Sperling's ride index in y direction
         rdy_format_version: float
+            File format version
         filename: str
             Ridy File's name containing measurements
         """
@@ -1024,7 +1042,9 @@ class SubjectiveComfortSeries(TimeSeries):
         time: Union [list, np.ndarray]
             Series's timestamps.
         comfort: Union[list, np.ndarray]
+            Subjective ride comfort
         rdy_format_version: float
+            File format version
         filename: str
             Ridy File's name containing measurements
         """
@@ -1049,6 +1069,7 @@ class NTPDatetimeSeries(TimeSeries):
         ntp_datetime: Union [list, np.ndarray]
             Date-time from NTP(Network Time Protocol) server.
         rdy_format_version: float
+            File format version
         filename: str
             Ridy File's name containing measurements
         """
@@ -1066,5 +1087,3 @@ class NTPDatetimeSeries(TimeSeries):
                 self.ntp_datetime = np.array([np.datetime64(el) for el in ntp_datetime])
             else:
                 self.ntp_datetime = np.array([np.datetime64(el) for el in self.ntp_datetime])
-
-# TODO : rdy-format is missing description in all class members

@@ -258,7 +258,6 @@ class ComfortProcessor(PostProcessor):
         weighting filter : tuple (np.ndarray, np.ndarray)
             Numerator and denominator of the weighting factor
         """
-        # TODO : check documentation of params of all class members if correct
         f1, f2 = 0.4, 100  # [Hz]
         f3, f4 = 16, 16  # [Hz]
         f5, f6 = 2.5, 4  # [Hz]

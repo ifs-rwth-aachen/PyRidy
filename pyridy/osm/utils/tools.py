@@ -278,7 +278,7 @@ def bspline(cv, n=10000, degree=3, periodic=False):
 
     Parameters
     ----------
-     cv: array
+    cv: array
         Array of control vertices
     n: int
         Number of samples to return
@@ -293,7 +293,6 @@ def bspline(cv, n=10000, degree=3, periodic=False):
        Samples on a bspline
 
     """
-    # TODO: array-like type
     # If periodic, extend the point array by count+degree+1
     cv = np.asarray(cv)
     count = len(cv)
@@ -387,7 +386,6 @@ def boxes_to_edges(boxes):
     current :
         To-element of the edge
     """
-    # TODO: check doc of yields?
     it = iter(boxes)
     last = next(it)
 

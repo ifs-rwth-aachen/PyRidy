@@ -39,10 +39,12 @@ class ExcitationProcessor(PostProcessor):
         order: int, default: 4
             Order of the high-pass filter
         p_thres: float, default .025
+            Peak detection threshold
         p_dist: int, default 50
+            Peak detection distance
         osm_integration: bool, default True
+            If True, integrate results into OSM nodes
         """
-        # TODO : finish documentation of parameters
         super(ExcitationProcessor, self).__init__(campaign)
         self.f_s = f_s
         self.f_c = f_c
@@ -188,7 +190,6 @@ class ExcitationProcessor(PostProcessor):
         m: pyridy.widgets Map
             Created map
         """
-        # TODO : do we need this function?
         m = self.campaign.create_map(show_gps_tracks=True, show_railway_elements=False)
         m.add_results_from_campaign(self.campaign, use_file_color=use_file_color)
         return m
