@@ -61,6 +61,12 @@ Query
 .. autoclass:: pyridy.osm.utils.query.QueryResult
    :members:
 
+Tools
+~~~~~~~~~~~~~~~~~~~~~~
+
+.. automodule:: pyridy.osm.utils.tools
+   :members:
+
 
 Processor
 ----------------------
@@ -167,6 +173,11 @@ Series
 .. autoclass:: pyridy.utils.timeseries.NTPDatetimeSeries
    :members:
 
+Tools
+~~~~~~~~~~~~~~~~~~~~~~
+
+.. automodule:: pyridy.utils.tools
+   :members:
 
 Widgets
 ----------------------
@@ -176,4 +187,20 @@ Map
 ~~~~~~~~~~~~~~~~~~~~~~
 
 .. autoclass:: pyridy.widgets.map.Map
+   :members:
+
+
+Campaign
+----------------------
+
+.. autoclass:: pyridy.campaign.Campaign
+   :members:
+
+File
+----------------------
+
+.. autoclass:: pyridy.file.RDYFile
+   :members:
+
+.. autoclass:: pyridy.file.FileIterator
    :members:

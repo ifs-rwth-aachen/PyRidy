@@ -41,7 +41,6 @@ class RDYFile:
                  series: Union[List[Type[TimeSeries]], Type[TimeSeries]] = None,
                  color: str = None):
         """
-
         Parameters
         ----------
         path: str
@@ -53,7 +52,7 @@ class RDYFile:
             stopped. By default Ridy measurement files can contain several seconds of measurements from before/after
             the button press
         timedelta_unit: str
-            NumPy timedelta unit to applied
+            NumPy timedelta unit to be applied
         strip_timezone: bool, default: True
             Strips timezone from timestamps as np.datetime64 does not support timezones
         filename: str
@@ -61,6 +60,7 @@ class RDYFile:
         series: Union[List[Type[TimeSeries]], Type[TimeSeries]]
             Classes of TimeSeries to load, if None all TimeSeries of each file will be imported
         color: str
+            Color
         """
         self.path = path
 
@@ -185,10 +185,11 @@ class RDYFile:
 
     def __iter__(self):
         """
+        Iterator function
 
         Returns
         -------
-            FileIterator
+        iterator-object: FileIterator
         """
         return FileIterator(self)
 
@@ -201,11 +202,15 @@ class RDYFile:
     def _do_candidate_search(self, osm_xy: np.ndarray, track_xy: np.ndarray, hor_acc: np.ndarray):
         """
         Internal method to search for candidate edges for map matching
+
         Parameters
         ----------
         osm_xy: np.ndarray
+            OSM coordinates
         track_xy: np.ndarray
+            Track coordinates
         hor_acc: np.ndarray
+            Acceleration
 
         Returns
         -------
@@ -213,7 +218,6 @@ class RDYFile:
             A dictionary with node candidates for each GPS coord
         edges: Dict
             Candidate edges with their emission probabilities
-
         """
         # Find the closest coordinates using KDTrees
         kd_tree_osm = KDTree(osm_xy)
@@ -289,13 +293,11 @@ class RDYFile:
     def _synchronize(self):
         """
         Internal method that synchronizes the timestamps to a given sync timestamp
-        Returns
-        -------
-        None
 
-        Raises:
+        Raises
         -------
-        ValueError: sync_method is not a valid str
+        ValueError
+            sync_method is not a valid str
         """
         if self.sync_method == "timestamp":
             for m in self.measurements.values():
@@ -380,7 +382,8 @@ class RDYFile:
 
         Returns
         -------
-        Map: ipyleaflet.Map instance
+        Map: ipyleaflet.Map
+            Created map
         """
         from .widgets import Map
 
@@ -393,7 +396,7 @@ class RDYFile:
 
     def determine_track_center(self, gps_series: Optional[GPSSeries] = None) -> (float, float):
         """
-        Determines the geographical center of the GPSSeries, returns None if the GPSSeries is emtpy.
+        Determines the geographical center of the GPSSeries, returns None if the GPSSeries is emtpy
 
         Parameters
         ----------
@@ -402,8 +405,10 @@ class RDYFile:
 
         Returns
         -------
-        center longitude: float
+        center_longitude: float
+            Longitude of the GPSSeries' center
         center_latitude: float
+            Latitude of the GPSSeries' center
         """
         if not gps_series:
             gps_series = self.measurements[GPSSeries]
@@ -438,13 +443,10 @@ class RDYFile:
         v_thres: float, default: 1.0
             Speed threshold, GPS points measured with a velocity below v_thres [m/s] will not be considered
 
-        Returns
+        Raises
         -------
-        None
-
-        Raises:
-        -------
-        ValueError: Error occurs when Algorithm is neither nx nor pyridy
+        ValueError
+            Error occurs when Algorithm is neither nx nor pyridy
         """
         if algorithm not in ["nx", "pyridy"]:
             raise ValueError("(%s) Algorithm must be either nx or pyridy, not %s" % (self.filename, algorithm))
@@ -529,7 +531,8 @@ class RDYFile:
 
         Returns
         -------
-            report: dict
+        report : dict
+            Dict with measurement types that are available in the file
         """
         report = {}
 
@@ -568,7 +571,6 @@ class RDYFile:
         ----------
         path: str
             Path to the ridy file
-
         """
         logger.debug("Loading file: %s" % path)
 
@@ -1173,12 +1175,13 @@ class RDYFile:
 
         Parameters
         ----------
-            interpolate : bool
-                If true interpolates NaN values of concatenated measurement series
+        interpolate : bool
+            If true interpolates NaN values of concatenated measurement series
 
         Returns
         -------
-            pd.DataFrame
+        dataframe : pd.DataFrame
+            Dataframe containing the measurements
         """
         data_frames = [series.to_df() for series in self.measurements.values()]
 
@@ -1203,6 +1206,19 @@ class FileIterator:
         self._index = 0
 
     def __next__(self):
+        """
+        Determines the next series of the file
+
+        Returns
+        -------
+        measurements :
+            Measurements corresponding to the next series
+
+        Raises
+        ----------
+        StopIteration
+            Raised when all measurements have been iterated over
+        """
         if self._index < len(self._series_types):
             series_type = self._series_types[self._index]
 

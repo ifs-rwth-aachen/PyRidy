@@ -19,7 +19,6 @@ Contents:
    usage
    examples/index
    api
-   campaign
    contact
 
 

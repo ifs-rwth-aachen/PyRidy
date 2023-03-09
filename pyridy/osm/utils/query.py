@@ -12,6 +12,7 @@ class QueryResult:
             Result of the overpy query
         railway_type: str
             Railway type that was used for this query
+
         Returns
         -------
         None
@@ -27,10 +28,11 @@ class QueryResult:
     def result(self, value: overpy.Result):
         """
         Assigns ways to nodes
+
         Parameters
         ----------
-        value: overpy.Result
-            The result whose nodes are assigned ways to.
+        value : overpy.Result
+            The result whose nodes are assigned ways to
 
         Returns
         -------

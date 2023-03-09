@@ -37,7 +37,7 @@ class OSMResultNode:
         -------
         None
         """
-
+        # TODO: complete doc for file, proc and direction
         self.lat = lat
         self.lon = lon
         self.value = value
@@ -57,14 +57,15 @@ class OSMResultWay:
 
         Parameters
         ----------
-        way: overpy.Way
-        res: float
+        way : overpy.Way
+        res : float
             Calculated result. Defaults to 0.5.
 
         Returns
         -------
         None
         """
+        # TODO: add doc for parameter way
         self.way: overpy.Way = way
         self.res = res
 
@@ -76,7 +77,7 @@ class OSMRailwayElement(ABC):
 
         Parameters
         ----------
-        n: overpy.Node
+        n : overpy.Node
             OpenStreetMap node queried by Overpy
         """
         self.n = n
@@ -103,7 +104,7 @@ class OSMLevelCrossing(OSMRailwayElement):
 
         Parameters
         ----------
-        n: overpy.Node
+        n : overpy.Node
             OpenStreetMap Node retrieved using Overpy
         """
         super(OSMLevelCrossing, self).__init__(n)
@@ -119,12 +120,13 @@ class OSMRailwayMilestone(OSMRailwayElement):
 
         Parameters
         ----------
-        n: overpy.Node
+        n : overpy.Node
             OpenStreetMap node retrieved using Overpy
 
         Raises
         ----------
-        ValueError: Error caused by unusual milestone position format
+        ValueError
+            Error caused by unusual milestone position format
         """
         super(OSMRailwayMilestone, self).__init__(n)
 
@@ -151,7 +153,7 @@ class OSMRailwaySignal(OSMRailwayElement):
 
         Parameters
         ----------
-        n: overpy.Node
+        n : overpy.Node
             OpenStreetMap node retrieved using Overpy
         """
         super(OSMRailwaySignal, self).__init__(n)
@@ -167,7 +169,7 @@ class OSMRailwaySwitch(OSMRailwayElement):
 
         Parameters
         ----------
-        n: overpy.Node
+        n : overpy.Node
             OpenStreetMap node retrieved using Overpy
         """
         super(OSMRailwaySwitch, self).__init__(n)
@@ -185,8 +187,8 @@ class OSMRelation:
         Parameters
         ----------
         relation: overpy.Relation
-            Relation
-        ways: List[overpy.Way]
+            Relation between the ways
+        ways: List [overpy.Way]
             Ways part of the relation
         color:
             Color when used to draw the track e.g. using ipyleaflet
@@ -246,9 +248,11 @@ class OSMRelation:
     def to_ipyleaflef(self) -> List[list]:
         """
         A function to convert the nodes to a list of nodes' coordinates [latitude, longitude]
+
         Returns
         -------
-        List of nodes' location (latitude, longitude)
+        coordinates :  list [list]
+            List of nodes' location [latitude, longitude]
         """
         return [[n.lat, n.lon] for n in self.nodes]
 
@@ -256,19 +260,15 @@ class OSMRelation:
 class OSMRailwayLine(OSMRelation):
     def __init__(self, relation: overpy.Relation, ways: List[overpy.Way] = None, color=None):
         """
-        Class representing a railway line
-
-        See https://wiki.openstreetmap.org/wiki/Tag:railway%3Drail
+        Class representing a railway line. See https://wiki.openstreetmap.org/wiki/Tag:railway%3Drail
 
         Parameters
         ----------
-        relation: overpy.Relation
-            Relation
-        ways: list
+        relation : overpy.Relation
+            Relation between the ways
+        ways : list
             List of ways of the railway line
-        tags: dict
-            Tags associated with the railway line
-        color:
+        color :
             Color when used to draw the line e.g. using ipyleaflet
 
         Returns
@@ -294,9 +294,10 @@ class OSMTrack:
 
         Parameters
         ----------
-        nodes: List[overpy.node]
+        nodes : list [overpy.node]
             Nodes that make up the track
-        ways: List[overpy.Way]
+        ways : list [overpy.Way]
+            Ways that make up the track
 
         Returns
         -------
@@ -323,9 +324,10 @@ class OSMTrack:
     def nodes(self, nodes: List[overpy.Node]):
         """
         A setter function for nodes
+
         Parameters
         ----------
-        nodes: List[overpy.Node]
+        nodes : list [overpy.Node]
             Nodes to be set.
 
         Returns
@@ -350,9 +352,11 @@ class OSMTrack:
     def to_ipyleaflet(self):
         """
         Converts the coordinates to the format required by ipyleaflet for drawing
+
         Returns
         -------
-            list of coordinates
+        coordinates : list
+            list of coordinates in ipyleaflet format
         """
         if self.lat and self.lon:
             return [[float(lat), float(lon)] for lat, lon in zip(self.lat, self.lon)]
@@ -362,17 +366,21 @@ class OSMTrack:
     def to_tuple_list(self, frmt: str = "lon,lat"):
         """
         Converts the coordinates to a list of tuples
+
         Parameters
         ----------
-            frmt : str, default: "lon,lat"
-                Format, lon,lat or x,y
+        frmt : str
+            Format, lon,lat or x,y. Defaults to "lon,lat"
 
         Returns
         -------
-            list
+        coordinates : list [tuple]
+            List of coordinates as tuples
+
         Raises
         -------
-        ValueError: Error occurs if the format of coordinates is not supported
+        ValueError
+            Error occurs if the format of coordinates is not supported
         """
         if frmt == "lon,lat":
             if self.lat and self.lon:
