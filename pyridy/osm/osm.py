@@ -511,7 +511,8 @@ class OSM:
 
         Returns
         -------
-        Parsed result: Overp
+        Parsed result: Overpy.Result
+            Parsed result
 
         Raises:
         -------

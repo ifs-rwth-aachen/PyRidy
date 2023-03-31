@@ -52,7 +52,7 @@ class OSMResultNode:
 
 
 class OSMResultWay:
-    def __init(self, way, res: float = .5):
+    def __init__(self, way, res: float = .5):
         """
         Class representing an element of type way
 
