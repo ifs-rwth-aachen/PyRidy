@@ -28,6 +28,7 @@ class OSMResultNode:
         value:
             Node value
         f: RDYFile
+            Ridy File containing measurements
         proc: processor
             Postprocessing Processor used
         direction: str
