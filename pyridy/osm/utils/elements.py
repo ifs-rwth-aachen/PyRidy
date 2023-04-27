@@ -28,6 +28,7 @@ class OSMResultNode:
         value:
             Node value
         f: RDYFile
+            Ridy File containing measurements
         proc: processor
             Postprocessing Processor used
         direction: str
@@ -52,7 +53,7 @@ class OSMResultNode:
 
 
 class OSMResultWay:
-    def __init(self, way, res: float = .5):
+    def __init__(self, way, res: float = .5):
         """
         Class representing an element of type way
 
