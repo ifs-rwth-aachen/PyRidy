@@ -80,12 +80,12 @@ class ComfortProcessor(PostProcessor):
 
         """
         # The evaluation assumes the phone is laying on the floor pointing in the direction of travel
-        Wb = ComfortProcessor.Wb(f_s) # weighting factor: Vertical Whole-Body Vibration, Z Axis
-        Wd = ComfortProcessor.Wd(f_s) # Horizontal Whole-Body Vibration, X or Y Axis
+        Wb = ComfortProcessor.Wb(f_s)  # weighting factor: Vertical Whole-Body Vibration, Z Axis
+        Wd = ComfortProcessor.Wd(f_s)  # Horizontal Whole-Body Vibration, X or Y Axis
 
-        a_x_wd = signal.lfilter(Wd[0], Wd[1], acc_x)  # Adjusting to vehicle coordinate system
-        a_y_wd = signal.lfilter(Wd[0], Wd[1], acc_y)
-        a_z_wb = signal.lfilter(Wb[0], Wb[1], acc_z)
+        a_x_wd = signal.lfilter(Wd[0], Wd[1], np.squeeze(acc_x))  # Adjusting to vehicle coordinate system
+        a_y_wd = signal.lfilter(Wd[0], Wd[1], np.squeeze(acc_y))
+        a_z_wb = signal.lfilter(Wb[0], Wb[1], np.squeeze(acc_z))
 
         # Moving RMS over 5s window
         f_x, t, Pa_x = signal.spectrogram(a_x_wd, f_s, nperseg=5 * f_s, noverlap=0, mode='psd')

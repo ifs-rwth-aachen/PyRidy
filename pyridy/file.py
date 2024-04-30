@@ -11,8 +11,7 @@ import networkx as nx
 import numpy as np
 import overpy
 import pandas as pd
-from ipyleaflet import Map, ScaleControl, FullScreenControl, Polyline, Marker, Circle, LayerGroup
-from ipywidgets import HTML
+from ipyleaflet import Map
 from pandas.io.sql import DatabaseError as PandasDatabaseError
 from scipy.spatial import KDTree
 from scipy.stats import norm
@@ -26,7 +25,6 @@ from pyridy.utils import Sensor, AccelerationSeries, LinearAccelerationSeries, M
     SubjectiveComfortSeries, AccelerationUncalibratedSeries, MagnetometerUncalibratedSeries, GyroUncalibratedSeries, \
     GNSSClockMeasurementSeries, GNSSMeasurementSeries, NMEAMessageSeries, TimeSeries, NTPDatetimeSeries
 from pyridy.utils.device import Device
-from pyridy.utils.tools import generate_random_color
 
 logger = logging.getLogger(__name__)
 
@@ -1181,7 +1179,7 @@ class RDYFile:
         Returns
         -------
         dataframe : pd.DataFrame
-            Dataframe containing the measurements
+            DataFrame containing the measurements
         """
         data_frames = [series.to_df() for series in self.measurements.values()]
 
